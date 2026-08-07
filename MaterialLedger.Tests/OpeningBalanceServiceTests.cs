@@ -61,6 +61,28 @@ public class OpeningBalanceServiceTests : IClassFixture<SqlServerTestDatabaseFix
     }
 
     [Fact]
+    public async Task RecordOpeningBalanceAsync_Drop_RejectsQuantityZero()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db, InventoryLocationType.Bay);
+        var service = new OpeningBalanceService(db, new OperationLogGuard(db));
+        var request = new OpeningBalanceRequest(locationId, specId, InventoryItemKind.Drop, 0m, 1m, 1m, ShapeClassification.Rectangular, false, null);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.RecordOpeningBalanceAsync(Guid.NewGuid(), request, userId));
+    }
+
+    [Fact]
+    public async Task RecordOpeningBalanceAsync_FullSheetBundle_RejectsQuantityZero()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var service = new OpeningBalanceService(db, new OperationLogGuard(db));
+        var request = new OpeningBalanceRequest(locationId, specId, InventoryItemKind.FullSheetBundle, 0m, null, null, ShapeClassification.Rectangular, false, null);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.RecordOpeningBalanceAsync(Guid.NewGuid(), request, userId));
+    }
+
+    [Fact]
     public async Task RecordOpeningBalanceAsync_QuarantinedItem_IsNotAvailable()
     {
         await using var db = _fixture.CreateContext();
