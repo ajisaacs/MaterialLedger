@@ -2,6 +2,7 @@ using MaterialLedger.Data;
 using MaterialLedger.Web.Authorization;
 using MaterialLedger.Web.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,14 @@ builder.Services.AddDbContext<MaterialLedgerDbContext>(options =>
 builder.Services.AddSingleton<PasswordHasher<MaterialLedger.Data.Models.AppUser>>();
 builder.Services.AddScoped<AppUserAuthenticator>();
 builder.Services.AddScoped<AppUserSeeder>();
+
+// Sessions are configured to never expire on a timer (see ExpireTimeSpan below), but the auth
+// cookie's contents are encrypted/signed with ASP.NET Core Data Protection keys. Without explicit
+// key persistence, keys are generated in memory (or an ephemeral profile directory under a service
+// account/container) and are lost on every restart, silently invalidating every "long-lived" session.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(builder.Configuration["DataProtection:KeyPath"] ?? "keys"))
+    .SetApplicationName("MaterialLedger");
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

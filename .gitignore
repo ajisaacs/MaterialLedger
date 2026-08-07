@@ -10,3 +10,9 @@ Thumbs.db
 bin/
 obj/
 .vs/
+
+# ASP.NET Core Data Protection keys (see Program.cs AddDataProtection/PersistKeysToFileSystem) —
+# key material must never be committed; default relative path used when DataProtection:KeyPath
+# is not configured.
+keys/
+MaterialLedger.Web/keys/
