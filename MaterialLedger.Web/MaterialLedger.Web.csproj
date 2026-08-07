@@ -7,4 +7,13 @@
   <ItemGroup>
     <ProjectReference Include="../MaterialLedger.Data/MaterialLedger.Data.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Required for dotnet ef design-time tooling: MaterialLedger.Data's Design package
+         reference is PrivateAssets="all" and does not flow transitively, and this project
+         is the startup project used to generate migrations. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>
