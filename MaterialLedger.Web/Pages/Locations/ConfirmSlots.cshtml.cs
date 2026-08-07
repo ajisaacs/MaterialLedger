@@ -46,6 +46,12 @@ public class ConfirmSlotsModel(MaterialLedgerDbContext db, LocationSlotService s
             return Page();
         }
 
+        if (StartingNumber < 1)
+        {
+            Error = "Starting number must be at least 1.";
+            return Page();
+        }
+
         var slots = Enumerable.Range(StartingNumber, SlotCount)
             .Select(n => new SlotDefinition($"{SlotPrefix}{n:D2}", $"{SlotPrefix}{n:D2}", n))
             .ToList();
@@ -55,9 +61,12 @@ public class ConfirmSlotsModel(MaterialLedgerDbContext db, LocationSlotService s
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await slotService.ConfirmLocationSlotsAsync(CorrelationId, Code, slots, userId);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or LocationSlotConflictException)
+        catch (Exception ex) when (ex is InvalidOperationException or LocationSlotConflictException
+            or MaterialLedger.Data.Idempotency.OperationConflictException)
         {
-            Error = ex.Message;
+            Error = ex is MaterialLedger.Data.Idempotency.OperationConflictException
+                ? "This form was already submitted with different values — please review and resubmit."
+                : ex.Message;
             return Page();
         }
 

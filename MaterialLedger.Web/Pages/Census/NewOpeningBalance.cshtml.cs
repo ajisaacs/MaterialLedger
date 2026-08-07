@@ -69,6 +69,18 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
         ExistingActiveItems = (await openingBalance.GetActiveItemsAtLocationAsync(LocationId)).ToList();
         AvailableSpecs = (await materialSpecs.SearchAsync(null)).ToList();
 
+        if (ExistingMaterialSpecId is null && (string.IsNullOrWhiteSpace(MaterialFamily) || ThicknessIn <= 0))
+        {
+            Error = "Select an existing material or enter a family and thickness for a new one.";
+            return Page();
+        }
+
+        if (ExistingMaterialSpecId is not null && AvailableSpecs.All(s => s.MaterialSpecId != ExistingMaterialSpecId))
+        {
+            Error = "The selected existing material is no longer available. Please choose another.";
+            return Page();
+        }
+
         try
         {
             var specId = ExistingMaterialSpecId
@@ -82,9 +94,12 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
             var result = await openingBalance.RecordOpeningBalanceAsync(CorrelationId, request, userId);
             return RedirectToPage("Success", new { code = result.PublicItemCode });
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException
+            or MaterialLedger.Data.Idempotency.OperationConflictException)
         {
-            Error = ex.Message;
+            Error = ex is MaterialLedger.Data.Idempotency.OperationConflictException
+                ? "This form was already submitted with different values — please review and resubmit."
+                : ex.Message;
             return Page();
         }
     }

@@ -33,6 +33,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     {
         options.LoginPath = "/Login";
         options.LogoutPath = "/Logout";
+        options.AccessDeniedPath = "/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromDays(3650); // "sessions do not expire on a timer"
         options.SlidingExpiration = true;
         options.Cookie.IsEssential = true;
