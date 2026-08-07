@@ -1,8 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>7af7f5df-cd94-4830-b249-ed94a1456580</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../MaterialLedger.Data/MaterialLedger.Data.csproj" />
