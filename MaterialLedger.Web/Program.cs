@@ -15,6 +15,8 @@ builder.Services.AddSingleton<PasswordHasher<MaterialLedger.Data.Models.AppUser>
 builder.Services.AddScoped<AppUserAuthenticator>();
 builder.Services.AddScoped<AppUserSeeder>();
 builder.Services.AddScoped<LocationSeeder>();
+builder.Services.AddScoped<MaterialLedger.Data.Idempotency.OperationLogGuard>();
+builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationSlotService>();
 
 // Sessions are configured to never expire on a timer (see ExpireTimeSpan below), but the auth
 // cookie's contents are encrypted/signed with ASP.NET Core Data Protection keys. Without explicit
