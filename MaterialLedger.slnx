@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MaterialLedger.Data/MaterialLedger.Data.csproj" />
+  <Project Path="MaterialLedger.Tests/MaterialLedger.Tests.csproj" />
+  <Project Path="MaterialLedger.Web/MaterialLedger.Web.csproj" />
+</Solution>
