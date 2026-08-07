@@ -16,3 +16,7 @@ obj/
 # is not configured.
 keys/
 MaterialLedger.Web/keys/
+
+# Subagent-driven-development scratch workspace (ledgers, briefs, review packages) — not part of
+# the shipped codebase.
+.superpowers/
