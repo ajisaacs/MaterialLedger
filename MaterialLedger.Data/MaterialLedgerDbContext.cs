@@ -56,7 +56,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
         {
             e.HasKey(x => x.MaterialSpecExternalMappingId);
             e.Property(x => x.ExternalSystem).HasMaxLength(40).IsRequired();
-            e.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP')");
+            e.ToTable(t => t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP')"));
             e.Property(x => x.ExternalKey).HasMaxLength(256).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             e.HasIndex(x => new { x.ExternalSystem, x.ExternalKey }).IsUnique();
@@ -103,9 +103,9 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.ShapeClassification).HasConversion<string>().HasMaxLength(30).IsRequired();
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.RowVersion).IsRowVersion();
-            e.HasCheckConstraint("CK_InventoryItem_QuantityOnHand",
+            e.ToTable(t => t.HasCheckConstraint("CK_InventoryItem_QuantityOnHand",
                 "([ItemKind] IN (N'FullSheetBundle', N'FullSheet') AND [QuantityOnHand] = FLOOR([QuantityOnHand]) AND [QuantityOnHand] >= 0) " +
-                "OR ([ItemKind] = N'Drop' AND [QuantityOnHand] IN (0, 1))");
+                "OR ([ItemKind] = N'Drop' AND [QuantityOnHand] IN (0, 1))"));
             e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.SheetLot).WithMany().HasForeignKey(x => x.SheetLotId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.InventoryLocation).WithMany().HasForeignKey(x => x.InventoryLocationId).OnDelete(DeleteBehavior.Restrict);
@@ -127,7 +127,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.ExpectedRemainderLengthIn).HasColumnType("decimal(10,3)");
             e.Property(x => x.ExpectedRemainderSourceType).HasConversion<string?>().HasMaxLength(20);
             e.Property(x => x.RowVersion).IsRowVersion();
-            e.HasCheckConstraint("CK_MaterialReservation_ReservedQuantity", "[ReservedQuantity] = 1");
+            e.ToTable(t => t.HasCheckConstraint("CK_MaterialReservation_ReservedQuantity", "[ReservedQuantity] = 1"));
             e.HasOne(x => x.InventoryItem).WithMany().HasForeignKey(x => x.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.ApprovedByUser).WithMany().HasForeignKey(x => x.ApprovedBy).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
