@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Material Ledger</title></head>
+<body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <p>Signed in as @User.Identity.Name (@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)
+           — <form method="post" action="/Logout" style="display:inline">@Html.AntiForgeryToken()<button type="submit">Sign out</button></form></p>
+    }
+    @RenderBody()
+</body>
+</html>

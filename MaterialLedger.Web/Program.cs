@@ -1,13 +1,47 @@
 using MaterialLedger.Data;
+using MaterialLedger.Web.Authorization;
+using MaterialLedger.Web.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// TODO(Task 7): this is a temporary design-time-only registration so `dotnet ef` can
-// resolve MaterialLedgerDbContext. Task 7 replaces this with the real registration.
 builder.Services.AddDbContext<MaterialLedgerDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MaterialLedger")
-        ?? "Server=localhost;Database=MaterialLedger;Trusted_Connection=True;TrustServerCertificate=True;"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("MaterialLedger")));
+
+builder.Services.AddSingleton<PasswordHasher<MaterialLedger.Data.Models.AppUser>>();
+builder.Services.AddScoped<AppUserAuthenticator>();
+builder.Services.AddScoped<AppUserSeeder>();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Login";
+        options.LogoutPath = "/Logout";
+        options.ExpireTimeSpan = TimeSpan.FromDays(3650); // "sessions do not expire on a timer"
+        options.SlidingExpiration = true;
+        options.Cookie.IsEssential = true;
+    });
+builder.Services.AddAuthorization(options => options.AddMaterialLedgerPolicies());
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<AppUserSeeder>();
+    await seeder.SeedAsync();
+}
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapRazorPages();
 app.Run();
