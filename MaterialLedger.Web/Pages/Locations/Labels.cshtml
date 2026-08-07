@@ -1,0 +1,15 @@
+@* MaterialLedger.Web/Pages/Locations/Labels.cshtml *@
+@page "{code}"
+@model MaterialLedger.Web.Pages.Locations.LabelsModel
+@{ Layout = "Shared/_Layout"; }
+<style>
+  .label { border: 1px solid #000; padding: 1em; margin: 0.5em; display: inline-block; font-family: monospace; font-size: 1.2em; }
+  @@media print { a, .no-print { display: none; } }
+</style>
+<h1 class="no-print">Printable labels — @Model.Rack?.DisplayName</h1>
+<p class="no-print"><a href="javascript:window.print()">Print</a></p>
+<div class="label">REMCO:ML:LOC:@Model.Rack?.LocationCode</div>
+@foreach (var slot in Model.Slots)
+{
+    <div class="label">REMCO:ML:LOC:@slot.LocationCode</div>
+}

@@ -1,0 +1,19 @@
+@* MaterialLedger.Web/Pages/Locations/Index.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Locations.IndexModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Material Map</h1>
+<table>
+    <thead><tr><th>Code</th><th>Rack</th><th>Storage</th><th>Slots confirmed</th></tr></thead>
+    <tbody>
+    @foreach (var rack in Model.Racks)
+    {
+        <tr>
+            <td>@rack.LocationCode</td>
+            <td><a asp-page="Details" asp-route-code="@rack.LocationCode">@rack.DisplayName</a></td>
+            <td>@rack.StorageMode</td>
+            <td>@(rack.CapacityConfirmed ? "Yes" : "No")</td>
+        </tr>
+    }
+    </tbody>
+</table>

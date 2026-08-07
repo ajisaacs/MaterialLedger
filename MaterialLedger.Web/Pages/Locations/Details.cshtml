@@ -1,0 +1,28 @@
+@* MaterialLedger.Web/Pages/Locations/Details.cshtml *@
+@page "{code}"
+@model MaterialLedger.Web.Pages.Locations.DetailsModel
+@{ Layout = "Shared/_Layout"; }
+<h1>@Model.Rack!.DisplayName (@Model.Rack.LocationCode)</h1>
+<p>Storage: @Model.Rack.StorageMode — Slots confirmed: @(Model.Rack.CapacityConfirmed ? "Yes" : "No")</p>
+@if (Model.CanConfirmSlots)
+{
+    <p><a asp-page="ConfirmSlots" asp-route-code="@Model.Rack.LocationCode">Confirm slot count</a></p>
+}
+else if (Model.Rack.CapacityConfirmed)
+{
+    <p><a asp-page="Labels" asp-route-code="@Model.Rack.LocationCode">Printable labels</a></p>
+}
+<table>
+    <thead><tr><th>Code</th><th>Name</th><th>Type</th></tr></thead>
+    <tbody>
+    @foreach (var slot in Model.Slots)
+    {
+        <tr>
+            <td>@slot.LocationCode</td>
+            <td>@slot.DisplayName</td>
+            <td>@slot.LocationType</td>
+        </tr>
+    }
+    </tbody>
+</table>
+<p><a asp-page="Index">Back to material map</a></p>

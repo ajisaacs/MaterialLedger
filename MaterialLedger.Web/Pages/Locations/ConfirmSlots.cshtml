@@ -1,0 +1,17 @@
+@* MaterialLedger.Web/Pages/Locations/ConfirmSlots.cshtml *@
+@page "{code}"
+@model MaterialLedger.Web.Pages.Locations.ConfirmSlotsModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Confirm slots for @Model.Rack?.DisplayName</h1>
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Code" />
+    <input type="hidden" asp-for="CorrelationId" />
+    <label>Number of slots (prefix "@Model.SlotPrefix") <input asp-for="SlotCount" type="number" min="1" max="200" /></label>
+    <label>Starting number <input asp-for="StartingNumber" type="number" min="1" /></label>
+    <button type="submit">Create slots</button>
+</form>
