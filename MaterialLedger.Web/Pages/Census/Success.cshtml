@@ -1,0 +1,8 @@
+@* MaterialLedger.Web/Pages/Census/Success.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Census.SuccessModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Opening balance recorded</h1>
+<p>Item code: <strong>@Model.Code</strong></p>
+<p>QR payload for a printed label (drops only): <code>@Model.Code</code></p>
+<p><a asp-page="SelectSlot">Record another item</a></p>

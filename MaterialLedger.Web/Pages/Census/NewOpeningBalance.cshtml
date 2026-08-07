@@ -1,0 +1,72 @@
+@* MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Census.NewOpeningBalanceModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Opening balance — @Model.Location?.LocationCode</h1>
+
+@if (Model.ExistingActiveItems.Count > 0)
+{
+    <div style="border:1px solid #900; padding:0.5em; margin-bottom:1em;">
+        <strong>Already recorded at this slot — confirm this is a NEW item before continuing:</strong>
+        <ul>
+        @foreach (var item in Model.ExistingActiveItems)
+        {
+            <li>
+                @item.PublicItemCode — @item.MaterialSpec?.DisplayName — qty @item.QuantityOnHand — @item.Status
+                (<a asp-page="NewOpeningBalance" asp-route-locationId="@Model.LocationId" asp-route-copyFromItemId="@item.InventoryItemId">copy as new item</a>)
+            </li>
+        }
+        </ul>
+    </div>
+}
+
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="LocationId" />
+    <input type="hidden" asp-for="CorrelationId" />
+
+    <fieldset>
+        <legend>Material</legend>
+        <label>Existing spec
+            <select asp-for="ExistingMaterialSpecId">
+                <option value="">-- new material --</option>
+                @foreach (var spec in Model.AvailableSpecs)
+                {
+                    <option value="@spec.MaterialSpecId">@spec.DisplayName</option>
+                }
+            </select>
+        </label>
+        <p>Or enter a new material:</p>
+        <label>Family <input asp-for="MaterialFamily" /></label>
+        <label>Grade <input asp-for="Grade" /></label>
+        <label>Finish <input asp-for="Finish" /></label>
+        <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Item</legend>
+        <label><input type="radio" asp-for="ItemKind" value="FullSheetBundle" /> Full sheet / bundle</label>
+        <label><input type="radio" asp-for="ItemKind" value="FullSheet" /> Single full sheet</label>
+        <label><input type="radio" asp-for="ItemKind" value="Drop" /> Drop</label>
+        <label>Quantity <input asp-for="Quantity" type="number" step="1" /></label>
+        <label>Usable width (in) <input asp-for="UsableWidthIn" type="number" step="0.001" /></label>
+        <label>Usable length (in) <input asp-for="UsableLengthIn" type="number" step="0.001" /></label>
+        <label>Shape
+            <select asp-for="ShapeClassification">
+                <option value="Rectangular">Rectangular</option>
+                <option value="IrregularConservativeRectangle">Irregular (conservative rectangle)</option>
+                <option value="Unknown">Unknown</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <label><input type="checkbox" asp-for="IsQuarantined" /> Unknown / mixed — quarantine (not available for reservation)</label>
+    <label>Notes <textarea asp-for="Notes"></textarea></label>
+
+    <button type="submit">Save opening balance</button>
+</form>

@@ -1,0 +1,18 @@
+@* MaterialLedger.Web/Pages/Census/SelectSlot.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Census.SelectSlotModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Opening census — select a slot</h1>
+<table>
+    <thead><tr><th>Rack</th><th>Slot</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var slot in Model.ConfirmedSlots)
+    {
+        <tr>
+            <td>@slot.ParentInventoryLocation?.DisplayName</td>
+            <td>@slot.LocationCode</td>
+            <td><a asp-page="NewOpeningBalance" asp-route-locationId="@slot.InventoryLocationId">Record opening balance</a></td>
+        </tr>
+    }
+    </tbody>
+</table>
