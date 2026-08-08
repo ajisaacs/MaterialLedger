@@ -29,6 +29,11 @@ builder.Services.AddScoped(sp => new MaterialLedger.Data.Reservations.Reservatio
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Closeout.CloseoutService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>()));
+builder.Services.AddScoped(sp => new MaterialLedger.Data.Exceptions.MaterialExceptionService(
+    sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
+    sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>(),
+    builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90),
+    builder.Configuration.GetValue("CloseoutOverdueThresholdDays", 1)));
 
 // Sessions are configured to never expire on a timer (see ExpireTimeSpan below), but the auth
 // cookie's contents are encrypted/signed with ASP.NET Core Data Protection keys. Without explicit
