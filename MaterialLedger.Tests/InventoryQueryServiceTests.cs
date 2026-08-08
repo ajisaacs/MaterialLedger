@@ -51,9 +51,10 @@ public class InventoryQueryServiceTests : IClassFixture<SqlServerTestDatabaseFix
         db.MaterialReservations.Add(new MaterialReservation { InventoryItemId = item.InventoryItemId, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId });
         db.MaterialReservations.Add(new MaterialReservation { InventoryItemId = item.InventoryItemId, Status = ReservationStatus.Released, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId });
         await db.SaveChangesAsync();
+        var slot = await db.InventoryLocations.FindAsync(slotId);
         var service = new InventoryQueryService(db, freshnessThresholdDays: 90);
 
-        var results = await service.SearchAsync(new InventoryFilter(null, null, null, null, null, null, null, null, false));
+        var results = await service.SearchAsync(new InventoryFilter(null, null, null, null, null, null, null, slot!.LocationCode, false));
 
         var summary = Assert.Single(results);
         Assert.Equal(6m, summary.QuantityOnHand);

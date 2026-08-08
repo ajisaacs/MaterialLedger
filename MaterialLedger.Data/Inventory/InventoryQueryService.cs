@@ -55,26 +55,38 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
 
     private record ItemRow(InventoryItem Item, MaterialSpec Spec, InventoryLocation Location, AppUser Observer, int ActiveCount);
 
-    private async Task<IReadOnlyList<ItemRow>> GetBaseRowsAsync()
+    /// <summary>
+    /// Builds a base query for inventory items with all scalar filters applied in SQL.
+    /// Returns an IQueryable to allow additional filtering before materialization.
+    /// </summary>
+    private IQueryable<ItemRow> BaseQuery(InventoryFilter filter)
     {
-        var activeCounts = await db.MaterialReservations
-            .Where(r => ActiveReservationStatuses.Contains(r.Status))
-            .GroupBy(r => r.InventoryItemId)
-            .Select(g => new { InventoryItemId = g.Key, Count = g.Count() })
-            .ToListAsync();
-
-        var activeLookup = activeCounts.ToDictionary(x => x.InventoryItemId, x => x.Count);
-
         var query = from item in db.InventoryItems
                     join spec in db.MaterialSpecs on item.MaterialSpecId equals spec.MaterialSpecId
                     join location in db.InventoryLocations on item.InventoryLocationId equals location.InventoryLocationId
                     join observer in db.AppUsers on item.LastObservedBy equals observer.AppUserId
                     where item.Status != InventoryItemStatus.Depleted && item.Status != InventoryItemStatus.Scrapped
-                    select new ItemRow(item, spec, location, observer, 0);
+                    select new { item, spec, location, observer };
 
-        var rows = await query.ToListAsync();
-        return rows.Select(row => new ItemRow(row.Item, row.Spec, row.Location, row.Observer,
-            activeLookup.TryGetValue(row.Item.InventoryItemId, out var count) ? count : 0)).ToList();
+        // Apply all scalar filters in SQL
+        if (!string.IsNullOrWhiteSpace(filter.MaterialFamily))
+            query = query.Where(x => EF.Functions.Like(x.spec.MaterialFamily, $"%{filter.MaterialFamily}%"));
+        if (!string.IsNullOrWhiteSpace(filter.Grade))
+            query = query.Where(x => x.spec.Grade != null && EF.Functions.Like(x.spec.Grade, $"%{filter.Grade}%"));
+        if (!string.IsNullOrWhiteSpace(filter.Finish))
+            query = query.Where(x => x.spec.Finish != null && EF.Functions.Like(x.spec.Finish, $"%{filter.Finish}%"));
+        if (filter.ThicknessIn is not null)
+            query = query.Where(x => x.spec.ThicknessIn == filter.ThicknessIn);
+        if (filter.ItemKind is not null)
+            query = query.Where(x => x.item.ItemKind == filter.ItemKind);
+        if (filter.MinUsableWidthIn is not null)
+            query = query.Where(x => x.item.UsableWidthIn != null && x.item.UsableWidthIn >= filter.MinUsableWidthIn);
+        if (filter.MinUsableLengthIn is not null)
+            query = query.Where(x => x.item.UsableLengthIn != null && x.item.UsableLengthIn >= filter.MinUsableLengthIn);
+        if (!string.IsNullOrWhiteSpace(filter.LocationCode))
+            query = query.Where(x => x.location.LocationCode == filter.LocationCode);
+
+        return query.Select(x => new ItemRow(x.item, x.spec, x.location, x.observer, 0));
     }
 
     private InventoryItemSummary ToSummary(ItemRow row) => new()
@@ -96,27 +108,24 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
 
     public async Task<IReadOnlyList<InventoryItemSummary>> SearchAsync(InventoryFilter filter)
     {
-        var rows = await GetBaseRowsAsync();
+        // Compute active reservation counts as a separate query, materialized to dictionary
+        var activeCounts = await db.MaterialReservations
+            .Where(r => ActiveReservationStatuses.Contains(r.Status))
+            .GroupBy(r => r.InventoryItemId)
+            .Select(g => new { InventoryItemId = g.Key, Count = g.Count() })
+            .ToListAsync();
 
-        IEnumerable<ItemRow> filtered = rows;
-        if (!string.IsNullOrWhiteSpace(filter.MaterialFamily))
-            filtered = filtered.Where(x => x.Spec.MaterialFamily.Contains(filter.MaterialFamily, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(filter.Grade))
-            filtered = filtered.Where(x => x.Spec.Grade != null && x.Spec.Grade.Contains(filter.Grade, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(filter.Finish))
-            filtered = filtered.Where(x => x.Spec.Finish != null && x.Spec.Finish.Contains(filter.Finish, StringComparison.OrdinalIgnoreCase));
-        if (filter.ThicknessIn is not null)
-            filtered = filtered.Where(x => x.Spec.ThicknessIn == filter.ThicknessIn);
-        if (filter.ItemKind is not null)
-            filtered = filtered.Where(x => x.Item.ItemKind == filter.ItemKind);
-        if (filter.MinUsableWidthIn is not null)
-            filtered = filtered.Where(x => x.Item.UsableWidthIn != null && x.Item.UsableWidthIn >= filter.MinUsableWidthIn);
-        if (filter.MinUsableLengthIn is not null)
-            filtered = filtered.Where(x => x.Item.UsableLengthIn != null && x.Item.UsableLengthIn >= filter.MinUsableLengthIn);
-        if (!string.IsNullOrWhiteSpace(filter.LocationCode))
-            filtered = filtered.Where(x => x.Location.LocationCode == filter.LocationCode);
+        var activeLookup = activeCounts.ToDictionary(x => x.InventoryItemId, x => x.Count);
 
-        IEnumerable<InventoryItemSummary> results = filtered.Select(ToSummary);
+        // Execute the base query with all scalar filters applied in SQL
+        var rows = await BaseQuery(filter).ToListAsync();
+
+        // Merge active counts in-memory
+        var rowsWithCounts = rows.Select(row => new ItemRow(row.Item, row.Spec, row.Location, row.Observer,
+            activeLookup.TryGetValue(row.Item.InventoryItemId, out var count) ? count : 0)).ToList();
+
+        // Apply AvailableOnly filter in-memory (needs computed AvailableQuantity)
+        IEnumerable<InventoryItemSummary> results = rowsWithCounts.Select(ToSummary);
         if (filter.AvailableOnly)
             results = results.Where(x => x.AvailableQuantity > 0 && x.Status != InventoryItemStatus.Quarantined && !x.IsStale);
         return results.ToList();
@@ -124,14 +133,58 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
 
     public async Task<IReadOnlyList<InventoryItemSummary>> GetItemsAtLocationsAsync(IReadOnlyList<long> locationIds)
     {
-        var rows = await GetBaseRowsAsync();
-        var filtered = rows.Where(x => locationIds.Contains(x.Location.InventoryLocationId)).ToList();
-        return filtered.Select(ToSummary).ToList();
+        // Compute active reservation counts as a separate query, materialized to dictionary
+        var activeCounts = await db.MaterialReservations
+            .Where(r => ActiveReservationStatuses.Contains(r.Status))
+            .GroupBy(r => r.InventoryItemId)
+            .Select(g => new { InventoryItemId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var activeLookup = activeCounts.ToDictionary(x => x.InventoryItemId, x => x.Count);
+
+        // Execute base query without filters, filter by location in SQL
+        var query = from item in db.InventoryItems
+                    join spec in db.MaterialSpecs on item.MaterialSpecId equals spec.MaterialSpecId
+                    join location in db.InventoryLocations on item.InventoryLocationId equals location.InventoryLocationId
+                    join observer in db.AppUsers on item.LastObservedBy equals observer.AppUserId
+                    where item.Status != InventoryItemStatus.Depleted && item.Status != InventoryItemStatus.Scrapped
+                        && locationIds.Contains(location.InventoryLocationId)
+                    select new ItemRow(item, spec, location, observer, 0);
+
+        var rows = await query.ToListAsync();
+
+        // Merge active counts in-memory
+        var rowsWithCounts = rows.Select(row => new ItemRow(row.Item, row.Spec, row.Location, row.Observer,
+            activeLookup.TryGetValue(row.Item.InventoryItemId, out var count) ? count : 0)).ToList();
+
+        return rowsWithCounts.Select(ToSummary).ToList();
     }
 
     public async Task<IReadOnlyList<LocationSummary>> GetRackSummariesAsync()
     {
-        var rows = await GetBaseRowsAsync();
+        // Compute active reservation counts as a separate query, materialized to dictionary
+        var activeCounts = await db.MaterialReservations
+            .Where(r => ActiveReservationStatuses.Contains(r.Status))
+            .GroupBy(r => r.InventoryItemId)
+            .Select(g => new { InventoryItemId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var activeLookup = activeCounts.ToDictionary(x => x.InventoryItemId, x => x.Count);
+
+        // Get all items with their spec/location/observer information
+        var query = from item in db.InventoryItems
+                    join spec in db.MaterialSpecs on item.MaterialSpecId equals spec.MaterialSpecId
+                    join location in db.InventoryLocations on item.InventoryLocationId equals location.InventoryLocationId
+                    join observer in db.AppUsers on item.LastObservedBy equals observer.AppUserId
+                    where item.Status != InventoryItemStatus.Depleted && item.Status != InventoryItemStatus.Scrapped
+                    select new ItemRow(item, spec, location, observer, 0);
+
+        var rows = await query.ToListAsync();
+
+        // Merge active counts in-memory
+        var rowsWithCounts = rows.Select(row => new ItemRow(row.Item, row.Spec, row.Location, row.Observer,
+            activeLookup.TryGetValue(row.Item.InventoryItemId, out var count) ? count : 0)).ToList();
+
         var racks = await db.InventoryLocations
             .Where(x => x.LocationType == InventoryLocationType.Rack && x.IsActive)
             .OrderBy(x => x.SortOrder)
@@ -139,7 +192,7 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
 
         return racks.Select(rack =>
         {
-            var rackRows = rows.Where(r => (r.Location.ParentInventoryLocationId ?? r.Location.InventoryLocationId) == rack.InventoryLocationId).ToList();
+            var rackRows = rowsWithCounts.Where(r => (r.Location.ParentInventoryLocationId ?? r.Location.InventoryLocationId) == rack.InventoryLocationId).ToList();
             return new LocationSummary
             {
                 LocationCode = rack.LocationCode,
