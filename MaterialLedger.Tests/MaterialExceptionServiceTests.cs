@@ -100,6 +100,34 @@ public class MaterialExceptionServiceTests : IClassFixture<SqlServerTestDatabase
     }
 
     [Fact]
+    public async Task ScanAsync_OverdueApprovedReservation_DoesNotOpenException()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var item = NewItem(slotId, specId, userId, InventoryItemStatus.Available);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var reservation = new MaterialReservation
+        {
+            InventoryItemId = item.InventoryItemId,
+            ReservedQuantity = 1,
+            Status = ReservationStatus.Approved,
+            CreatedAtUtc = DateTime.UtcNow.AddDays(-3),
+            CreatedBy = userId,
+            ApprovedAtUtc = DateTime.UtcNow.AddDays(-3),
+            ApprovedBy = userId
+        };
+        db.MaterialReservations.Add(reservation);
+        await db.SaveChangesAsync();
+        var service = new MaterialExceptionService(db, new OperationLogGuard(db), freshnessThresholdDays: 90, closeoutOverdueThresholdDays: 1);
+
+        await service.ScanAsync();
+
+        var count = await db.MaterialExceptions.CountAsync(x => x.MaterialReservationId == reservation.MaterialReservationId);
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
     public async Task ScanAsync_ConditionAlreadyOpen_DoesNotOpenSecondRow()
     {
         await using var db = _fixture.CreateContext();

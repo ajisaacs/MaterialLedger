@@ -15,7 +15,7 @@ public class MaterialExceptionService(MaterialLedgerDbContext db, OperationLogGu
 {
     private static readonly ReservationStatus[] OverdueEligibleStatuses =
     [
-        ReservationStatus.Approved, ReservationStatus.AwaitingCloseout
+        ReservationStatus.AwaitingCloseout
     ];
 
     public async Task<ExceptionScanResult> ScanAsync()
@@ -95,6 +95,7 @@ public class MaterialExceptionService(MaterialLedgerDbContext db, OperationLogGu
             .Where(x => x.Status == MaterialExceptionStatus.Open)
             .Include(x => x.InventoryItem)!.ThenInclude(x => x!.MaterialSpec)
             .Include(x => x.MaterialReservation)
+            .Include(x => x.OpenedByUser)
             .OrderByDescending(x => x.OpenedAtUtc)
             .ToListAsync();
 

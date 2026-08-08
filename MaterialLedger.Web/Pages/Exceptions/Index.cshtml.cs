@@ -5,6 +5,7 @@ using MaterialLedger.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace MaterialLedger.Web.Pages.Exceptions;
 
@@ -22,7 +23,15 @@ public class IndexModel(MaterialExceptionService exceptions) : PageModel
 
     public async Task OnGetAsync()
     {
-        await exceptions.ScanAsync();
+        try
+        {
+            await exceptions.ScanAsync();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or Microsoft.Data.SqlClient.SqlException)
+        {
+            Error = "The exception scan couldn't run (someone else may be writing at the same time) — showing the existing list. Refresh to try again.";
+        }
+
         await LoadAsync();
     }
 
@@ -36,9 +45,9 @@ public class IndexModel(MaterialExceptionService exceptions) : PageModel
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await exceptions.ResolveMaterialExceptionAsync(correlationId, id, ResolutionNotes, userId);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException)
+        catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException or DbUpdateException)
         {
-            Error = ex.Message;
+            Error = ex is DbUpdateException ? "This exception was changed by someone else — refresh and try again." : ex.Message;
             await LoadAsync();
             return Page();
         }

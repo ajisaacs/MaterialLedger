@@ -9,7 +9,7 @@
 }
 <h2>Open</h2>
 <table>
-    <thead><tr><th>Type</th><th>Item</th><th>Reservation</th><th>Opened</th><th></th></tr></thead>
+    <thead><tr><th>Type</th><th>Item</th><th>Reservation</th><th>Opened</th><th>Notes</th><th></th></tr></thead>
     <tbody>
     @foreach (var e in Model.OpenExceptions)
     {
@@ -17,7 +17,8 @@
             <td>@e.ExceptionType</td>
             <td>@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</td>
             <td>@(e.MaterialReservationId is not null ? $"#{e.MaterialReservationId}" : "-")</td>
-            <td>@e.OpenedAtUtc.ToString("u")</td>
+            <td>@e.OpenedAtUtc.ToString("u") by @e.OpenedByUser?.DisplayName</td>
+            <td>@e.Notes</td>
             <td>
             @if (Model.CanResolve)
             {
