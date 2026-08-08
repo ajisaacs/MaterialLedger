@@ -1,17 +1,8 @@
 @page
 @model MaterialLedger.Web.Pages.Inventory.SearchModel
 @using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
-
-@{
-    string GetStatusColor(InventoryItemStatus status) => status switch
-    {
-        InventoryItemStatus.Available => "#e6f4ea",
-        InventoryItemStatus.Reserved => "#fff4e5",
-        InventoryItemStatus.Quarantined => "#fdecea",
-        _ => ""
-    };
-}
 
 <h1>Search inventory</h1>
 <form method="get">
@@ -41,7 +32,7 @@
     <tbody>
     @foreach (var r in Model.Results)
     {
-        <tr style="@(r.IsStale ? "background:#fee" : $"background:{GetStatusColor(r.Status)}")">
+        <tr style="@(r.IsStale ? "background:#fee" : $"background:{InventoryStatusDisplay.BackgroundColor(r.Status)}")">
             <td>@r.PublicItemCode</td>
             <td>@r.MaterialSpecDisplayName</td>
             <td>@r.ItemKind</td>

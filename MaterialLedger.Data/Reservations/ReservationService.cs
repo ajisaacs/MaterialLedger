@@ -135,11 +135,12 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
         var item = await db.InventoryItems.FirstAsync(x => x.InventoryItemId == reservation.InventoryItemId);
 
+        if (item.Status != InventoryItemStatus.Available)
+            throw new ReservationBalanceException(
+                $"Item '{item.PublicItemCode}' is no longer available to approve this reservation against (current status: {item.Status}).");
+
         if (item.ItemKind is InventoryItemKind.Drop or InventoryItemKind.FullSheet)
         {
-            if (item.Status != InventoryItemStatus.Available)
-                throw new ReservationBalanceException(
-                    $"Item '{item.PublicItemCode}' is no longer available to approve this reservation against (current status: {item.Status}).");
             item.Status = InventoryItemStatus.Reserved;
         }
         else

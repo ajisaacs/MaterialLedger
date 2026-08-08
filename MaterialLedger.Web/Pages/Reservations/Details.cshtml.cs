@@ -43,9 +43,12 @@ public class DetailsModel(MaterialLedgerDbContext db, ReservationService reserva
             await reservations.ApproveReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ReservationBalanceException
-            or ReservationConcurrencyException or OperationConflictException)
+            or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
         {
-            return await ShowErrorAsync(id, ex.Message);
+            var message = ex is DbUpdateException
+                ? "This reservation was changed by someone else — refresh and try again."
+                : ex.Message;
+            return await ShowErrorAsync(id, message);
         }
 
         return RedirectToPage("Details", new { id });
@@ -61,9 +64,12 @@ public class DetailsModel(MaterialLedgerDbContext db, ReservationService reserva
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await reservations.ReleaseReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId, ReleaseNotes);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ReservationConcurrencyException or OperationConflictException)
+        catch (Exception ex) when (ex is InvalidOperationException or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
         {
-            return await ShowErrorAsync(id, ex.Message);
+            var message = ex is DbUpdateException
+                ? "This reservation was changed by someone else — refresh and try again."
+                : ex.Message;
+            return await ShowErrorAsync(id, message);
         }
 
         return RedirectToPage("Details", new { id });

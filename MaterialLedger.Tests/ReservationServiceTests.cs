@@ -3,6 +3,7 @@ using MaterialLedger.Data;
 using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.Reservations;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -185,6 +186,85 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
 
         await Assert.ThrowsAsync<ReservationBalanceException>(() =>
             service.ApproveReservationAsync(Guid.NewGuid(), secondReservation.MaterialReservationId, secondReservation.RowVersion, userId));
+    }
+
+    [Fact]
+    public async Task ApproveReservationAsync_BundleQuarantinedAfterProposal_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var item = NewBundle(slotId, specId, userId, 5m);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var created = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+
+        // Simulate a quarantine event happening after the reservation was proposed but before approval.
+        var itemToQuarantine = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
+        itemToQuarantine.Status = InventoryItemStatus.Quarantined;
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ReservationBalanceException>(() =>
+            service.ApproveReservationAsync(Guid.NewGuid(), reservation.MaterialReservationId, reservation.RowVersion, userId));
+    }
+
+    [Fact]
+    public async Task ApproveReservationAsync_GenuineConcurrentApprovalsAtCapacity_ExactlyOneSucceeds()
+    {
+        // Seed a bundle at exactly QuantityOnHand = 1, with two Proposed reservations against it,
+        // then approve both concurrently from two independent DbContexts/transactions to prove the
+        // Serializable isolation guard actually prevents double-approval under real overlap —
+        // not just sequential calls sharing one DbContext.
+        await using var seedDb = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(seedDb);
+        var item = NewBundle(slotId, specId, userId, 1m);
+        seedDb.InventoryItems.Add(item);
+        await seedDb.SaveChangesAsync();
+        var seedService = new ReservationService(seedDb, new OperationLogGuard(seedDb), freshnessThresholdDays: 90);
+        var first = await seedService.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
+        var second = await seedService.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
+        var firstReservation = await seedDb.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.MaterialReservationId);
+        var secondReservation = await seedDb.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.MaterialReservationId);
+
+        await using var db1 = _fixture.CreateContext();
+        await using var db2 = _fixture.CreateContext();
+        var service1 = new ReservationService(db1, new OperationLogGuard(db1), freshnessThresholdDays: 90);
+        var service2 = new ReservationService(db2, new OperationLogGuard(db2), freshnessThresholdDays: 90);
+
+        var task1 = service1.ApproveReservationAsync(Guid.NewGuid(), firstReservation.MaterialReservationId, firstReservation.RowVersion, userId);
+        var task2 = service2.ApproveReservationAsync(Guid.NewGuid(), secondReservation.MaterialReservationId, secondReservation.RowVersion, userId);
+
+        Exception? ex1 = null, ex2 = null;
+        try { await task1; } catch (Exception ex) { ex1 = ex; }
+        try { await task2; } catch (Exception ex) { ex2 = ex; }
+
+        var failures = new[] { ex1, ex2 }.Where(e => e is not null).ToList();
+        var successCount = 2 - failures.Count;
+
+        // The point of this test is that the system doesn't corrupt data or hang — exactly one
+        // approval must win. Which exception the loser gets depends on SQL Server's lock timing:
+        // a clean balance rejection, a DbUpdateException/SqlException wrapping a deadlock or
+        // serialization failure, or EF Core's own InvalidOperationException wrapper around a
+        // transient SqlException (its "transient failure... consider EnableRetryOnFailure" message,
+        // thrown from transaction commit when no retrying execution strategy is configured). All of
+        // these mean the same thing here: the database rejected the losing concurrent transaction.
+        Assert.Equal(1, successCount);
+        Assert.Single(failures);
+        var failure = failures[0]!;
+        var isAcceptableConcurrencyFailure =
+            failure is ReservationBalanceException or DbUpdateException or SqlException
+            || failure.InnerException is DbUpdateException or SqlException
+            || (failure is InvalidOperationException && failure.Message.Contains("transient failure", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isAcceptableConcurrencyFailure,
+            $"Expected a balance/concurrency failure, got {failure.GetType().Name}: {failure.Message}" +
+            (failure.InnerException is not null ? $" (inner: {failure.InnerException.GetType().Name}: {failure.InnerException.Message})" : ""));
+
+        var itemAfter = await seedDb.InventoryItems.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
+        var approvedCount = await seedDb.MaterialReservations.CountAsync(x =>
+            x.InventoryItemId == item.InventoryItemId && x.Status == ReservationStatus.Approved);
+        Assert.Equal(1, approvedCount);
+        Assert.Equal(1m, itemAfter.QuantityOnHand); // balance itself is never mutated, only reservation counts
     }
 
     [Fact]
