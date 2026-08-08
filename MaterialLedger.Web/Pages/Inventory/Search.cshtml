@@ -1,0 +1,62 @@
+@page
+@model MaterialLedger.Web.Pages.Inventory.SearchModel
+@using MaterialLedger.Data.Models
+@{ Layout = "Shared/_Layout"; }
+
+@{
+    string GetStatusColor(InventoryItemStatus status) => status switch
+    {
+        InventoryItemStatus.Available => "#e6f4ea",
+        InventoryItemStatus.Reserved => "#fff4e5",
+        InventoryItemStatus.Quarantined => "#fdecea",
+        _ => ""
+    };
+}
+
+<h1>Search inventory</h1>
+<form method="get">
+    <label>Family <input asp-for="MaterialFamily" /></label>
+    <label>Grade <input asp-for="Grade" /></label>
+    <label>Finish <input asp-for="Finish" /></label>
+    <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
+    <label>Kind
+        <select asp-for="ItemKind">
+            <option value="">-- any --</option>
+            <option value="FullSheetBundle">Full sheet / bundle</option>
+            <option value="FullSheet">Single full sheet</option>
+            <option value="Drop">Drop</option>
+        </select>
+    </label>
+    <label>Min usable width (in) <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
+    <label>Min usable length (in) <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
+    <label>Location code <input asp-for="LocationCode" /></label>
+    <label><input asp-for="AvailableOnly" type="checkbox" /> Available only</label>
+    <button type="submit">Search</button>
+</form>
+
+<table>
+    <thead>
+        <tr><th>Item</th><th>Material</th><th>Kind</th><th>Qty</th><th>Usable size</th><th>Location</th><th>Last observed</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model.Results)
+    {
+        <tr style="@(r.IsStale ? "background:#fee" : $"background:{GetStatusColor(r.Status)}")">
+            <td>@r.PublicItemCode</td>
+            <td>@r.MaterialSpecDisplayName</td>
+            <td>@r.ItemKind</td>
+            <td>@r.AvailableQuantity of @r.QuantityOnHand</td>
+            <td>@(r.UsableWidthIn is not null ? $"{r.UsableWidthIn} x {r.UsableLengthIn}" : "-")</td>
+            <td>@r.LocationCode</td>
+            <td>@r.LastObservedAtUtc.ToString("u") by @r.LastObservedByDisplayName @(r.IsStale ? "(STALE)" : "")</td>
+            <td>@r.Status</td>
+            <td>
+            @if (Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined)
+            {
+                <a asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Reserve</a>
+            }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
