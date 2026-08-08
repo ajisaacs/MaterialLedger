@@ -159,6 +159,7 @@ public class MaterialExceptionServiceTests : IClassFixture<SqlServerTestDatabase
         Assert.NotNull(resolved.ResolvedAtUtc);
         var itemAfter = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
         Assert.Equal(InventoryItemStatus.Quarantined, itemAfter.Status); // resolving does not auto-revert item state
+        await service.ScanAsync();
     }
 
     [Fact]
@@ -176,6 +177,7 @@ public class MaterialExceptionServiceTests : IClassFixture<SqlServerTestDatabase
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.ResolveMaterialExceptionAsync(Guid.NewGuid(), exception.MaterialExceptionId, "second resolution", userId));
+        await service.ScanAsync();
     }
 
     [Fact]
@@ -190,6 +192,7 @@ public class MaterialExceptionServiceTests : IClassFixture<SqlServerTestDatabase
         await service.ScanAsync();
         var exception = await db.MaterialExceptions.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
         await service.ResolveMaterialExceptionAsync(Guid.NewGuid(), exception.MaterialExceptionId, "resolved", userId);
+        await service.ScanAsync();
 
         var open = await service.GetOpenExceptionsAsync();
         var resolved = await service.GetRecentlyResolvedAsync();
