@@ -1,0 +1,52 @@
+@* MaterialLedger.Web/Pages/Exceptions/Index.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Exceptions.IndexModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Exception queue</h1>
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+<h2>Open</h2>
+<table>
+    <thead><tr><th>Type</th><th>Item</th><th>Reservation</th><th>Opened</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var e in Model.OpenExceptions)
+    {
+        <tr>
+            <td>@e.ExceptionType</td>
+            <td>@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</td>
+            <td>@(e.MaterialReservationId is not null ? $"#{e.MaterialReservationId}" : "-")</td>
+            <td>@e.OpenedAtUtc.ToString("u")</td>
+            <td>
+            @if (Model.CanResolve)
+            {
+                <form method="post" action="?handler=Resolve" style="display:inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@e.MaterialExceptionId" />
+                    <input type="hidden" name="CorrelationId" value="@Model.CorrelationIdsByExceptionId[e.MaterialExceptionId]" />
+                    <input type="text" name="ResolutionNotes" placeholder="Resolution notes" />
+                    <button type="submit">Resolve</button>
+                </form>
+            }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<h2>Recently resolved</h2>
+<table>
+    <thead><tr><th>Type</th><th>Item</th><th>Status</th><th>Resolved</th></tr></thead>
+    <tbody>
+    @foreach (var e in Model.ResolvedExceptions)
+    {
+        <tr>
+            <td>@e.ExceptionType</td>
+            <td>@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</td>
+            <td><strong>FIXED</strong></td>
+            <td>@e.ResolvedAtUtc?.ToString("u") by @e.ResolvedByUser?.DisplayName</td>
+        </tr>
+    }
+    </tbody>
+</table>

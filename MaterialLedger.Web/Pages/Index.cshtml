@@ -6,6 +6,7 @@
     <li><a asp-page="/Locations/Index">Material map</a></li>
     <li><a asp-page="/Inventory/Search">Search inventory</a></li>
     <li><a asp-page="/Reservations/Index">Reservations</a></li>
+    <li><a asp-page="/Exceptions/Index">Exception queue</a></li>
     @if (User.IsInRole("Operator") || User.IsInRole("Manager"))
     {
         <li><a asp-page="/Closeout/Index">Closeout</a></li>
