@@ -94,6 +94,26 @@ public class CloseoutServiceTests : IClassFixture<SqlServerTestDatabaseFixture>
         var result = await service.MarkReservationAwaitingCloseoutAsync(Guid.NewGuid(), reservation.MaterialReservationId, reservation.RowVersion, userId);
 
         Assert.Equal(ReservationStatus.AwaitingCloseout, result.Status);
+        var itemAfter = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
+        Assert.Equal(InventoryItemStatus.AwaitingCloseout, itemAfter.Status);
+    }
+
+    [Fact]
+    public async Task MarkReservationAwaitingCloseoutAsync_Bundle_DoesNotChangeItemStatus()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, _, specId, lotId) = await SeedAsync(db);
+        var item = NewBundle(slotId, specId, userId, 3m, lotId);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var reservation = await ApprovedReservationForAsync(db, item.InventoryItemId, userId);
+        var service = new CloseoutService(db, new OperationLogGuard(db));
+
+        var result = await service.MarkReservationAwaitingCloseoutAsync(Guid.NewGuid(), reservation.MaterialReservationId, reservation.RowVersion, userId);
+
+        Assert.Equal(ReservationStatus.AwaitingCloseout, result.Status);
+        var itemAfter = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
+        Assert.Equal(InventoryItemStatus.Available, itemAfter.Status);
     }
 
     [Fact]

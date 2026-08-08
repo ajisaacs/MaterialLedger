@@ -67,6 +67,10 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
 
         reservation.Status = ReservationStatus.AwaitingCloseout;
 
+        var item = await db.InventoryItems.FirstAsync(x => x.InventoryItemId == reservation.InventoryItemId);
+        if (item.ItemKind is InventoryItemKind.Drop or InventoryItemKind.FullSheet)
+            item.Status = InventoryItemStatus.AwaitingCloseout;
+
         var result = new ReservationResult { MaterialReservationId = reservation.MaterialReservationId, Status = reservation.Status };
         operationLog.Record(correlationId, "MarkReservationAwaitingCloseout", payloadHash, JsonSerializer.Serialize(result), actorId);
 
