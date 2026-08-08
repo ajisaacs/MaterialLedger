@@ -1,6 +1,7 @@
 @* MaterialLedger.Web/Pages/Locations/Details.cshtml *@
 @page "{code}"
 @model MaterialLedger.Web.Pages.Locations.DetailsModel
+@using MaterialLedger.Data.Models
 @{ Layout = "Shared/_Layout"; }
 <h1>@Model.Rack!.DisplayName (@Model.Rack.LocationCode)</h1>
 <p>Storage: @Model.Rack.StorageMode — Slots confirmed: @(Model.Rack.CapacityConfirmed ? "Yes" : "No")</p>
@@ -24,7 +25,14 @@ else if (Model.Rack.CapacityConfirmed)
             <td>
             @foreach (var item in Model.ItemsBySlotCode[slot.LocationCode])
             {
-                <div>@item.PublicItemCode — @item.MaterialSpecDisplayName — @item.AvailableQuantity of @item.QuantityOnHand — @item.Status @(item.IsStale ? "(STALE)" : "")</div>
+                var statusStyle = item.Status switch
+                {
+                    InventoryItemStatus.Available => "background:#e6f4ea",
+                    InventoryItemStatus.Reserved => "background:#fff4e5",
+                    InventoryItemStatus.Quarantined => "background:#fdecea",
+                    _ => ""
+                };
+                <div style="@statusStyle">@item.PublicItemCode — @item.MaterialSpecDisplayName — @item.AvailableQuantity of @item.QuantityOnHand — @item.Status @(item.IsStale ? "(STALE)" : "")</div>
             }
             </td>
         </tr>
