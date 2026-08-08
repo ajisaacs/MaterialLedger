@@ -1,0 +1,61 @@
+@* MaterialLedger.Web/Pages/Closeout/Details.cshtml *@
+@page "{id:long}"
+@model MaterialLedger.Web.Pages.Closeout.DetailsModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Close material — reservation @Model.Reservation!.MaterialReservationId</h1>
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+<dl>
+    <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode — @Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName — @Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
+    <dt>Job / Drawing</dt><dd>@Model.Reservation.ShopOpsJobId @Model.Reservation.DrawingId @Model.Reservation.DrawingRevision</dd>
+    <dt>Equipment</dt><dd>@Model.Reservation.Equipment</dd>
+    <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} x {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})" : "-")</dd>
+    <dt>Status</dt><dd>@Model.Reservation.Status</dd>
+</dl>
+
+<form method="post" asp-page-handler="AllConsumed" asp-route-id="@Model.Reservation.MaterialReservationId">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="CorrelationId" />
+    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+    <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">All consumed / scrap remaining</button>
+</form>
+
+<form method="post" asp-page-handler="FullSheetReturned" asp-route-id="@Model.Reservation.MaterialReservationId">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="CorrelationId" />
+    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+    <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Full sheet returned</button>
+</form>
+
+<form method="post" asp-page-handler="UsableDropCreated" asp-route-id="@Model.Reservation.MaterialReservationId">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="CorrelationId" />
+    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+    <fieldset>
+        <legend>Usable rectangular drop remains</legend>
+        <label>Measured usable width (in) <input asp-for="MeasuredUsableWidthIn" type="number" step="0.001" /></label>
+        <label>Measured usable length (in) <input asp-for="MeasuredUsableLengthIn" type="number" step="0.001" /></label>
+        <label>Destination slot
+            <select asp-for="DestinationLocationId">
+                <option value="">-- select --</option>
+                @foreach (var loc in Model.DestinationChoices)
+                {
+                    <option value="@loc.InventoryLocationId">@loc.LocationCode — @loc.DisplayName</option>
+                }
+            </select>
+        </label>
+        <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Record usable drop</button>
+    </fieldset>
+</form>
+
+<form method="post" asp-page-handler="NeedsReview" asp-route-id="@Model.Reservation.MaterialReservationId">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="CorrelationId" />
+    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+    <label>Note <input asp-for="Notes" /></label>
+    <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Needs review / outcome unknown</button>
+</form>
+
+<p><a asp-page="Index">Back to closeout list</a></p>

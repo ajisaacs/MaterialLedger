@@ -6,6 +6,10 @@
     <li><a asp-page="/Locations/Index">Material map</a></li>
     <li><a asp-page="/Inventory/Search">Search inventory</a></li>
     <li><a asp-page="/Reservations/Index">Reservations</a></li>
+    @if (User.IsInRole("Operator") || User.IsInRole("Manager"))
+    {
+        <li><a asp-page="/Closeout/Index">Closeout</a></li>
+    }
     @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
     {
         <li><a asp-page="/Census/SelectSlot">Opening census</a></li>

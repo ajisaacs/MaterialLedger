@@ -1,0 +1,37 @@
+@* MaterialLedger.Web/Pages/Closeout/Index.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Closeout.IndexModel
+@using MaterialLedger.Data.Models
+@{ Layout = "Shared/_Layout"; }
+<h1>Closeout</h1>
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+<table>
+    <thead><tr><th>Item</th><th>Material</th><th>Job/Drawing</th><th>Equipment</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Reservations)
+    {
+        <tr>
+            <td>@r.InventoryItem?.PublicItemCode</td>
+            <td>@r.InventoryItem?.MaterialSpec?.DisplayName</td>
+            <td>@r.ShopOpsJobId @r.DrawingId @r.DrawingRevision</td>
+            <td>@r.Equipment</td>
+            <td>@r.Status</td>
+            <td style="white-space:nowrap">
+            @if (r.Status == ReservationStatus.Approved)
+            {
+                <form method="post" asp-page-handler="StartJob" asp-route-id="@r.MaterialReservationId" style="display:inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="correlationId" value="@Model.CorrelationIdsByReservationId[r.MaterialReservationId]" />
+                    <input type="hidden" name="expectedRowVersionBase64" value="@Convert.ToBase64String(r.RowVersion)" />
+                    <button type="submit" style="font-size:1.1em; padding:0.6em 1em;">Start job</button>
+                </form>
+            }
+            <a asp-page="Details" asp-route-id="@r.MaterialReservationId"><button type="button" style="font-size:1.1em; padding:0.6em 1em;">Close material</button></a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
