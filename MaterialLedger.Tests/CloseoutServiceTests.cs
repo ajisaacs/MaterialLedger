@@ -208,11 +208,11 @@ public class CloseoutServiceTests : IClassFixture<SqlServerTestDatabaseFixture>
         Assert.Equal(destinationSlotId, remnant.InventoryLocationId);
         Assert.Equal(lotId, remnant.SheetLotId);
         Assert.Equal(InventoryItemStatus.Available, remnant.Status);
-        var remnantTxn = await db.MaterialTransactions.SingleAsync(x => x.TransactionType == MaterialTransactionType.RemnantCreated);
+        var remnantTxn = await db.MaterialTransactions.SingleAsync(x => x.TransactionType == MaterialTransactionType.RemnantCreated && x.MaterialReservationId == reservation.MaterialReservationId);
         Assert.Equal(remnant.InventoryItemId, remnantTxn.InventoryItemId);
         Assert.Equal(item.InventoryItemId, remnantTxn.RelatedInventoryItemId);
         Assert.Equal(reservation.MaterialReservationId, remnantTxn.MaterialReservationId);
-        var consumeTxn = await db.MaterialTransactions.SingleAsync(x => x.TransactionType == MaterialTransactionType.Consumption);
+        var consumeTxn = await db.MaterialTransactions.SingleAsync(x => x.TransactionType == MaterialTransactionType.Consumption && x.MaterialReservationId == reservation.MaterialReservationId);
         var consumption = await db.ProductionConsumptions.SingleAsync(x => x.MaterialReservationId == reservation.MaterialReservationId);
         Assert.Equal(consumeTxn.MaterialTransactionId, consumption.PrimaryMaterialTransactionId);
     }
