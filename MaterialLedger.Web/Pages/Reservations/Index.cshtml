@@ -1,0 +1,22 @@
+@* MaterialLedger.Web/Pages/Reservations/Index.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Reservations.IndexModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Reservations</h1>
+<table>
+    <thead><tr><th>Item</th><th>Material</th><th>Job/Drawing</th><th>Equipment</th><th>Status</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Reservations)
+    {
+        <tr>
+            <td>@r.InventoryItem?.PublicItemCode</td>
+            <td>@r.InventoryItem?.MaterialSpec?.DisplayName</td>
+            <td>@r.ShopOpsJobId @r.DrawingId @r.DrawingRevision</td>
+            <td>@r.Equipment</td>
+            <td>@r.Status</td>
+            <td>@r.CreatedAtUtc.ToString("u")</td>
+            <td><a asp-page="Details" asp-route-id="@r.MaterialReservationId">View</a></td>
+        </tr>
+    }
+    </tbody>
+</table>

@@ -1,0 +1,41 @@
+@* MaterialLedger.Web/Pages/Reservations/Details.cshtml *@
+@page "{id:long}"
+@model MaterialLedger.Web.Pages.Reservations.DetailsModel
+@using MaterialLedger.Data.Models
+@{ Layout = "Shared/_Layout"; }
+<h1>Reservation @Model.Reservation!.MaterialReservationId</h1>
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+<dl>
+    <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode — @Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName — @Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
+    <dt>Job / Drawing</dt><dd>@Model.Reservation.ShopOpsJobId @Model.Reservation.DrawingId @Model.Reservation.DrawingRevision</dd>
+    <dt>Equipment</dt><dd>@Model.Reservation.Equipment</dd>
+    <dt>PEP nest</dt><dd>@Model.Reservation.PepNestYear @Model.Reservation.PepNestName</dd>
+    <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} x {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})" : "-")</dd>
+    <dt>Status</dt><dd>@Model.Reservation.Status</dd>
+    <dt>Created</dt><dd>@Model.Reservation.CreatedAtUtc.ToString("u") by @Model.Reservation.CreatedByUser?.DisplayName</dd>
+    <dt>Approved</dt><dd>@(Model.Reservation.ApprovedAtUtc is not null ? $"{Model.Reservation.ApprovedAtUtc:u} by {Model.Reservation.ApprovedByUser?.DisplayName}" : "-")</dd>
+</dl>
+
+@if (Model.CanAct && Model.Reservation.Status == ReservationStatus.Proposed)
+{
+    <form method="post" asp-page-handler="Approve" asp-route-id="@Model.Reservation.MaterialReservationId">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="CorrelationId" />
+        <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+        <button type="submit">Approve</button>
+    </form>
+}
+@if (Model.CanAct && (Model.Reservation.Status == ReservationStatus.Proposed || Model.Reservation.Status == ReservationStatus.Approved))
+{
+    <form method="post" asp-page-handler="Release" asp-route-id="@Model.Reservation.MaterialReservationId">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="CorrelationId" />
+        <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+        <label>Notes <input asp-for="ReleaseNotes" /></label>
+        <button type="submit">Release</button>
+    </form>
+}
+<p><a asp-page="Index">Back to reservations</a></p>
