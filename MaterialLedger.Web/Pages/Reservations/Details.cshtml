@@ -21,7 +21,7 @@
 
 @if (Model.CanAct && Model.Reservation.Status == ReservationStatus.Proposed)
 {
-    <form method="post" asp-page-handler="Approve" asp-route-id="@Model.Reservation.MaterialReservationId">
+    <form method="post" action="?handler=Approve">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="CorrelationId" />
         <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
@@ -30,7 +30,7 @@
 }
 @if (Model.CanAct && (Model.Reservation.Status == ReservationStatus.Proposed || Model.Reservation.Status == ReservationStatus.Approved))
 {
-    <form method="post" asp-page-handler="Release" asp-route-id="@Model.Reservation.MaterialReservationId">
+    <form method="post" action="?handler=Release">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="CorrelationId" />
         <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
