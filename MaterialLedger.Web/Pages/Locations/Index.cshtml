@@ -4,15 +4,19 @@
 @{ Layout = "Shared/_Layout"; }
 <h1>Material Map</h1>
 <table>
-    <thead><tr><th>Code</th><th>Rack</th><th>Storage</th><th>Slots confirmed</th></tr></thead>
+    <thead><tr><th>Code</th><th>Rack</th><th>Storage</th><th>Slots confirmed</th><th>Available</th><th>Reserved</th><th>Exceptions</th></tr></thead>
     <tbody>
     @foreach (var rack in Model.Racks)
     {
+        var summary = Model.Summaries.GetValueOrDefault(rack.LocationCode);
         <tr>
             <td>@rack.LocationCode</td>
             <td><a asp-page="Details" asp-route-code="@rack.LocationCode">@rack.DisplayName</a></td>
             <td>@rack.StorageMode</td>
             <td>@(rack.CapacityConfirmed ? "Yes" : "No")</td>
+            <td>@(summary?.AvailableItemCount ?? 0)</td>
+            <td>@(summary?.ReservedItemCount ?? 0)</td>
+            <td>@(summary?.ExceptionItemCount ?? 0)</td>
         </tr>
     }
     </tbody>

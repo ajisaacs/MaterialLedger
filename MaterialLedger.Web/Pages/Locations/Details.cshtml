@@ -13,7 +13,7 @@ else if (Model.Rack.CapacityConfirmed)
     <p><a asp-page="Labels" asp-route-code="@Model.Rack.LocationCode">Printable labels</a></p>
 }
 <table>
-    <thead><tr><th>Code</th><th>Name</th><th>Type</th></tr></thead>
+    <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Items</th></tr></thead>
     <tbody>
     @foreach (var slot in Model.Slots)
     {
@@ -21,6 +21,12 @@ else if (Model.Rack.CapacityConfirmed)
             <td>@slot.LocationCode</td>
             <td>@slot.DisplayName</td>
             <td>@slot.LocationType</td>
+            <td>
+            @foreach (var item in Model.ItemsBySlotCode[slot.LocationCode])
+            {
+                <div>@item.PublicItemCode — @item.MaterialSpecDisplayName — @item.AvailableQuantity of @item.QuantityOnHand — @item.Status @(item.IsStale ? "(STALE)" : "")</div>
+            }
+            </td>
         </tr>
     }
     </tbody>
