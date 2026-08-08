@@ -15,21 +15,21 @@
     <dt>Status</dt><dd>@Model.Reservation.Status</dd>
 </dl>
 
-<form method="post" asp-page-handler="AllConsumed" asp-route-id="@Model.Reservation.MaterialReservationId">
+<form method="post" action="?handler=AllConsumed">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="CorrelationId" />
     <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
     <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">All consumed / scrap remaining</button>
 </form>
 
-<form method="post" asp-page-handler="FullSheetReturned" asp-route-id="@Model.Reservation.MaterialReservationId">
+<form method="post" action="?handler=FullSheetReturned">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="CorrelationId" />
     <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
     <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Full sheet returned</button>
 </form>
 
-<form method="post" asp-page-handler="UsableDropCreated" asp-route-id="@Model.Reservation.MaterialReservationId">
+<form method="post" action="?handler=UsableDropCreated">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="CorrelationId" />
     <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
@@ -46,11 +46,12 @@
                 }
             </select>
         </label>
+        <label>Note <input asp-for="Notes" /></label>
         <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Record usable drop</button>
     </fieldset>
 </form>
 
-<form method="post" asp-page-handler="NeedsReview" asp-route-id="@Model.Reservation.MaterialReservationId">
+<form method="post" action="?handler=NeedsReview">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="CorrelationId" />
     <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
