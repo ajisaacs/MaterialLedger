@@ -25,7 +25,10 @@ receiving purchased sheet stock.
 
 - The spec's `Ordered`/`ExpectedArrivalDateUtc` pre-arrival tracking extension
   (`SheetLot` future-extension note, section 3) — this design covers material that has
-  physically arrived only.
+  physically arrived only. A due-date calendar of incoming material needs this
+  extension directly; it's deliberately deferred to its own follow-up design after
+  `ReceiveMaterial` ships, rather than folded in here, since the schema note already
+  confirms it can be added later without reworking anything in this design.
 - No changes to `Inventory/Search` beyond what it already displays for items with a
   `SheetLotId`.
 - No merging of a new receipt into an existing `InventoryItem` at the same location —
