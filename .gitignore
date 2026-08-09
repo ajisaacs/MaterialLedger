@@ -23,3 +23,6 @@ MaterialLedger.Web/keys/
 
 # Playwright MCP browser-session scratch output (console logs, page snapshots, screenshots).
 .playwright-mcp/
+
+# Local git worktrees used for isolated feature/plan work.
+.worktrees/
