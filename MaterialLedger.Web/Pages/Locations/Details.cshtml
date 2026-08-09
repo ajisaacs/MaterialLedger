@@ -28,7 +28,7 @@ else if (Model.Rack.CapacityConfirmed)
             {
                 var statusColor = InventoryStatusDisplay.BackgroundColor(item.Status);
                 var statusStyle = statusColor == "" ? "" : $"background:{statusColor}";
-                <div style="@statusStyle"><a asp-page="/Inventory/Search" asp-route-LocationCode="@slot.LocationCode">@item.PublicItemCode — @item.MaterialSpecDisplayName — @item.AvailableQuantity of @item.QuantityOnHand — @item.Status @(item.IsStale ? "(STALE)" : "")</a></div>
+                <div style="@statusStyle"><a asp-page="/Inventory/Search" asp-route-LocationCode="@slot.LocationCode" asp-route-AvailableOnly="false">@item.PublicItemCode — @item.MaterialSpecDisplayName — @item.AvailableQuantity of @item.QuantityOnHand — @item.Status @(item.IsStale ? "(STALE)" : "")</a></div>
             }
             </td>
         </tr>

@@ -29,6 +29,12 @@
     <button type="submit">Search</button>
 </form>
 
+@if (Model.Results.Count == 0)
+{
+    <p class="empty-state">No matching inventory items.</p>
+}
+else
+{
 <table>
     <thead>
         <tr><th>Item</th><th>Material</th><th>Kind</th><th>Qty</th><th>Usable size</th><th>Location</th><th>Last observed</th><th>Status</th><th></th></tr>
@@ -55,3 +61,4 @@
     }
     </tbody>
 </table>
+}
