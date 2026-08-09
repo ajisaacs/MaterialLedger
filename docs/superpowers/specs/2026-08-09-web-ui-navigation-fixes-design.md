@@ -16,7 +16,9 @@ Confirmed gaps:
    row. A user who lands on Reservations first has no way forward.
 2. `/Reservations/Create` (`Pages/Reservations/Create.cshtml.cs`) accepts an optional
    `{inventoryItemId:long?}` route parameter but has no item picker of its own. Reached
-   without an id, it renders a form bound to no item.
+   without an id, the missing route value binds to `0`, no matching `InventoryItem` is
+   found, and `OnGetAsync` returns `NotFound()` — a raw ASP.NET 404 page (confirmed by
+   navigating there directly as the `programmer` dev user).
 3. `/Reservations`, `/Closeout`, and `/Exceptions` render a bare table header with zero
    rows when there's no data — no distinguishing "empty" from "broken."
 4. `Locations/Details.cshtml` lists each slot's occupying item as plain text, with no
@@ -44,13 +46,14 @@ Reuse existing patterns rather than building new UI:
 "Search inventory to reserve material →" — pointing at `/Inventory/Search`. Present
 whether the list is empty or populated.
 
-`Pages/Reservations/Create.cshtml.cs`: in `OnGetAsync`, if `InventoryItemId` is null or
-the item can't be found, redirect to `/Inventory/Search` with a `TempData["Message"]`
-of "Select an item from Inventory Search to create a reservation." instead of rendering
-the page. `Pages/Inventory/Search.cshtml` reads and displays `TempData["Message"]` at
-the top of the page, if present, using a new `.info-banner` CSS rule in `app.css` —
-same shape/padding as the existing `.form-error` banner but neutral (blue/gray) coloring
-instead of red, since this is guidance, not an error.
+`Pages/Reservations/Create.cshtml.cs`: in `OnGetAsync`, if the item can't be found
+(covers both a bad id and the missing-id/`0` case), redirect to `/Inventory/Search`
+with a `TempData["Message"]` of "Select an item from Inventory Search to create a
+reservation." instead of returning `NotFound()`. `Pages/Inventory/Search.cshtml` reads
+and displays `TempData["Message"]` at the top of the page, if present, using a new
+`.info-banner` CSS rule in `app.css` — same shape/padding as the existing `.form-error`
+banner but neutral (blue/gray) coloring instead of red, since this is guidance, not an
+error.
 
 ### 2. Empty states
 
