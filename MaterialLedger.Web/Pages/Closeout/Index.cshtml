@@ -8,6 +8,12 @@
 {
     <p style="color:red">@Model.Error</p>
 }
+@if (Model.Reservations.Count == 0)
+{
+    <p class="empty-state">Nothing awaiting closeout.</p>
+}
+else
+{
 <table>
     <thead><tr><th>Item</th><th>Material</th><th>Job/Drawing</th><th>Equipment</th><th>Status</th><th></th></tr></thead>
     <tbody>
@@ -36,3 +42,4 @@
     }
     </tbody>
 </table>
+}

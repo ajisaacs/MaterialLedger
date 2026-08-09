@@ -8,6 +8,12 @@
     <p style="color:red">@Model.Error</p>
 }
 <h2>Open</h2>
+@if (Model.OpenExceptions.Count == 0)
+{
+    <p class="empty-state">Nothing needs attention.</p>
+}
+else
+{
 <table>
     <thead><tr><th>Type</th><th>Item</th><th>Reservation</th><th>Opened</th><th>Notes</th><th></th></tr></thead>
     <tbody>
@@ -35,8 +41,15 @@
     }
     </tbody>
 </table>
+}
 
 <h2>Recently resolved</h2>
+@if (Model.ResolvedExceptions.Count == 0)
+{
+    <p class="empty-state">Nothing recently resolved.</p>
+}
+else
+{
 <table>
     <thead><tr><th>Type</th><th>Item</th><th>Status</th><th>Resolved</th></tr></thead>
     <tbody>
@@ -51,3 +64,4 @@
     }
     </tbody>
 </table>
+}

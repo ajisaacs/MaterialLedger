@@ -3,6 +3,12 @@
 @model MaterialLedger.Web.Pages.Reservations.IndexModel
 @{ Layout = "Shared/_Layout"; }
 <h1>Reservations</h1>
+@if (Model.Reservations.Count == 0)
+{
+    <p class="empty-state">No open reservations.</p>
+}
+else
+{
 <table>
     <thead><tr><th>Item</th><th>Material</th><th>Job/Drawing</th><th>Equipment</th><th>Status</th><th>Created</th><th></th></tr></thead>
     <tbody>
@@ -20,3 +26,4 @@
     }
     </tbody>
 </table>
+}
