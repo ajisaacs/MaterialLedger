@@ -16,7 +16,7 @@
                 <p>Workspace</p>
                 <a asp-page="/Index">Overview</a><a asp-page="/Locations/Index">Material map</a><a asp-page="/Inventory/Search">Inventory</a>
                 <p>Operations</p>
-                <a asp-page="/Reservations/Index">Reservations</a><a asp-page="/Exceptions/Index">Exception queue</a>
+                <a asp-page="/Reservations/Index">Reservations</a><a asp-page="/Exceptions/Index">Attention needed</a>
                 @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Closeout</a> }
                 @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a asp-page="/Census/SelectSlot">Opening census</a> }
             </nav>

@@ -6,7 +6,7 @@
     <a class="action-card" asp-page="/Locations/Index"><span>01</span><h3>Material map</h3><p>Browse locations, slots, and material assignments.</p><b>Open map →</b></a>
     <a class="action-card" asp-page="/Inventory/Search"><span>02</span><h3>Search inventory</h3><p>Find usable material by specification, size, availability, or location.</p><b>Search stock →</b></a>
     <a class="action-card" asp-page="/Reservations/Index"><span>03</span><h3>Reservations</h3><p>Create and manage material held for production.</p><b>View reservations →</b></a>
-    <a class="action-card" asp-page="/Exceptions/Index"><span>04</span><h3>Exception queue</h3><p>Review items that require attention.</p><b>Review exceptions →</b></a>
+    <a class="action-card" asp-page="/Exceptions/Index"><span>04</span><h3>Attention needed</h3><p>Review items that require attention.</p><b>Review →</b></a>
     @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a class="action-card action-card-accent" asp-page="/Closeout/Index"><span>05</span><h3>Closeout</h3><p>Record consumption and complete material activity.</p><b>Start closeout →</b></a> }
     @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a class="action-card action-card-accent" asp-page="/Census/SelectSlot"><span>06</span><h3>Opening census</h3><p>Set the opening balance for a location.</p><b>Begin census →</b></a> }
 </div></section>
