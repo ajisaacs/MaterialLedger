@@ -20,3 +20,6 @@ MaterialLedger.Web/keys/
 # Subagent-driven-development scratch workspace (ledgers, briefs, review packages) — not part of
 # the shipped codebase.
 .superpowers/
+
+# Playwright MCP browser-session scratch output (console logs, page snapshots, screenshots).
+.playwright-mcp/

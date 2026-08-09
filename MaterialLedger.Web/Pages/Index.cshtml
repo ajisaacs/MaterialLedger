@@ -1,18 +1,12 @@
 @page
 @model MaterialLedger.Web.Pages.IndexModel
-@{ Layout = "Shared/_Layout"; }
-<h1>Material Ledger</h1>
-<ul>
-    <li><a asp-page="/Locations/Index">Material map</a></li>
-    <li><a asp-page="/Inventory/Search">Search inventory</a></li>
-    <li><a asp-page="/Reservations/Index">Reservations</a></li>
-    <li><a asp-page="/Exceptions/Index">Exception queue</a></li>
-    @if (User.IsInRole("Operator") || User.IsInRole("Manager"))
-    {
-        <li><a asp-page="/Closeout/Index">Closeout</a></li>
-    }
-    @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
-    {
-        <li><a asp-page="/Census/SelectSlot">Opening census</a></li>
-    }
-</ul>
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Overview"; }
+<section class="dashboard-hero"><div><p class="eyebrow">Shop floor control</p><h1>Material, where you need it.</h1><p>Track sheet inventory, reservations, and exceptions from one clear operational workspace.</p></div><span class="hero-monogram" aria-hidden="true">ML</span></section>
+<section class="dashboard-section"><div class="section-heading"><p class="eyebrow">Workspace</p><h2>Choose a task</h2></div><div class="action-grid">
+    <a class="action-card" asp-page="/Locations/Index"><span>01</span><h3>Material map</h3><p>Browse locations, slots, and material assignments.</p><b>Open map →</b></a>
+    <a class="action-card" asp-page="/Inventory/Search"><span>02</span><h3>Search inventory</h3><p>Find usable material by specification, size, availability, or location.</p><b>Search stock →</b></a>
+    <a class="action-card" asp-page="/Reservations/Index"><span>03</span><h3>Reservations</h3><p>Create and manage material held for production.</p><b>View reservations →</b></a>
+    <a class="action-card" asp-page="/Exceptions/Index"><span>04</span><h3>Exception queue</h3><p>Review items that require attention.</p><b>Review exceptions →</b></a>
+    @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a class="action-card action-card-accent" asp-page="/Closeout/Index"><span>05</span><h3>Closeout</h3><p>Record consumption and complete material activity.</p><b>Start closeout →</b></a> }
+    @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a class="action-card action-card-accent" asp-page="/Census/SelectSlot"><span>06</span><h3>Opening census</h3><p>Set the opening balance for a location.</p><b>Begin census →</b></a> }
+</div></section>

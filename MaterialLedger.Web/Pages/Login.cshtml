@@ -1,13 +1,4 @@
 @page
 @model MaterialLedger.Web.Pages.LoginModel
-<h1>Sign in</h1>
-@if (Model.Error is not null)
-{
-    <p style="color:red">@Model.Error</p>
-}
-<form method="post">
-    @Html.AntiForgeryToken()
-    <label>Username <input name="Username" autocomplete="username" /></label>
-    <label>Password <input name="Password" type="password" autocomplete="current-password" /></label>
-    <button type="submit">Sign in</button>
-</form>
+@{ ViewData["Title"] = "Sign in"; }
+<main class="login-page"><section class="login-intro"><a class="brand" href="/"><span class="brand-mark">ML</span><span>Material<small>Ledger</small></span></a><div><p class="eyebrow">Shop floor control</p><h1>Material, where you need it.</h1><p>Inventory visibility and material accountability for the production floor.</p></div></section><section class="login-panel"><p class="eyebrow">Welcome back</p><h2>Sign in to your workspace</h2>@if (Model.Error is not null) { <p class="form-error">@Model.Error</p> }<form method="post" class="stacked-form">@Html.AntiForgeryToken()<label>Username <input name="Username" autocomplete="username" /></label><label>Password <input name="Password" type="password" autocomplete="current-password" /></label><button type="submit">Sign in <span>→</span></button></form></section></main>
