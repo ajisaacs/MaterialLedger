@@ -50,12 +50,12 @@
 
     <fieldset>
         <legend>Receiving details</legend>
-        <label>Vendor <input asp-for="VendorName" /></label>
-        <label>PO number (required) <input asp-for="PurchaseOrderNumber" /></label>
-        <label>Receipt number <input asp-for="ReceiptNumber" /></label>
-        <label>Vendor part number <input asp-for="VendorPartNumber" /></label>
-        <label>Heat/lot number <input asp-for="HeatLotNumber" /></label>
-        <label>Cost per unit <input asp-for="CostPerUnit" type="number" step="0.01" /></label>
+        <label>Vendor <input asp-for="VendorName" maxlength="200" /></label>
+        <label>PO number (required) <input asp-for="PurchaseOrderNumber" maxlength="100" /></label>
+        <label>Receipt number <input asp-for="ReceiptNumber" maxlength="100" /></label>
+        <label>Vendor part number <input asp-for="VendorPartNumber" maxlength="100" /></label>
+        <label>Heat/lot number <input asp-for="HeatLotNumber" maxlength="100" /></label>
+        <label>Cost per unit <input asp-for="CostPerUnit" type="number" step="0.01" min="0" /></label>
     </fieldset>
 
     <label><input type="checkbox" asp-for="IsQuarantined" /> Damaged / questionable on arrival — quarantine (not available for reservation)</label>

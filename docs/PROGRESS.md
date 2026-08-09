@@ -58,17 +58,18 @@ Repo was 1 commit ahead of `origin/master`, not pushed, as of session start — 
 - Write services: `RecordOpeningBalance` (`MaterialLedger.Data/Census/OpeningBalanceService.cs`),
   `ConfirmLocationSlots` (`MaterialLedger.Data/Locations/LocationSlotService.cs`),
   `CreateReservation`/`ApproveReservation`/`ReleaseReservation`
-  (`MaterialLedger.Data/Reservations/ReservationService.cs`).
+  (`MaterialLedger.Data/Reservations/ReservationService.cs`),
+  `ReceiveMaterial` (`MaterialLedger.Data/Receiving/ReceiveMaterialService.cs`).
 - Read services: `MaterialLedger.Data/Inventory/InventoryQueryService.cs` (`SearchAsync`,
   `GetItemsAtLocationsAsync`, `GetRackSummariesAsync`, static `MaterialFreshness.IsStale`),
   `MaterialLedger.Data/Materials/MaterialSpecService.cs`.
 - Pages: `Login`/`Logout`, `Census/{SelectSlot,NewOpeningBalance,Success}`,
   `Locations/{Index,Details,ConfirmSlots,Labels}`, `Inventory/Search`,
-  `Reservations/{Index,Details,Create}`.
+  `Reservations/{Index,Details,Create}`, `Receiving/{NewReceipt,Success}`.
 - Still **not built by any phase so far** (present in spec's "controlled write surface" but not in
-  Phase 0–3's explicit task lists — no phase has scheduled them yet): `ReceiveMaterial`,
-  `TransferInventory`, `RecordAdjustment`, `SetAppUserPassword`, `ConfirmObservation`. Phase 4 does not
-  appear to need most of these either per spec section 7, but check before assuming.
+  Phase 0–3's explicit task lists — no phase has scheduled them yet): `TransferInventory`,
+  `RecordAdjustment`, `SetAppUserPassword`, `ConfirmObservation`. Phase 4 does not appear to need most
+  of these either per spec section 7, but check before assuming.
 
 ### Phase 3 scope (per spec section 7)
 
@@ -110,6 +111,29 @@ so Phase 4 doesn't have to re-derive them):
 - `CloseoutOverdueThresholdDays` default chosen as a judgment call (spec doesn't give a number,
   unlike the 90-day freshness default) — check `appsettings.json` for the value actually used and
   reconsider with REMCO if it proves noisy in the pilot.
+
+### Known follow-ups (ReceiveMaterial, recorded for whoever picks up the next phase)
+
+- (a) `SheetLot` provenance (vendor, PO number, receipt number, vendor part number,
+  heat/lot number, cost per unit) is captured on receipt by `ReceiveMaterialService` but
+  is not surfaced anywhere in the UI yet — `Inventory/Search` and every item-detail view
+  show nothing from `SheetLot` today. A future phase should add a read path for it
+  (`docs/superpowers/specs/2026-08-09-receive-material-design.md`'s Non-goals section was
+  corrected to state this plainly rather than implying `Inventory/Search` already shows
+  something for `SheetLotId` items).
+- (b) Marking a receipt "Quarantined" causes `MaterialExceptionService.ScanAsync` to open
+  a `QuarantinedMaterial` exception that reopens on every scan indefinitely, per the
+  existing Phase 3 design decision that resolving an exception never auto-reverts the
+  underlying item state. This is expected/known behavior today, not a bug — but it will
+  need a `ConfirmObservation`/`RecordAdjustment` procedure eventually to break the cycle
+  (same procedure already flagged as missing in the "not built by any phase so far" list
+  above).
+- (c) There is no duplicate-receipt guard — submitting the same physical delivery twice
+  creates two separate `SheetLot`/`InventoryItem` rows. This is correct per the design's
+  "every receipt is its own lot" rule (no merging into an existing `InventoryItem`), but
+  nothing warns the operator the way `Census/NewOpeningBalance` warns with its "already
+  recorded at this slot" list. A future pass could add a similar warning listing recent
+  receipts at the same location/PO.
 
 ## Session log
 
@@ -164,3 +188,25 @@ so Phase 4 doesn't have to re-derive them):
   Commits `d358abd`..`1ef7f68`. **Phase 3 (all 4 code/schema tasks) is now implementation-complete**;
   only Task 5 (grants file, no code) and Task 6 (manual live pilot) remain, followed by the final
   whole-branch review.
+- **2026-08-09 (ReceiveMaterial branch, worktree `receive-material`)**: Implemented and reviewed
+  `ReceiveMaterialService` (`MaterialLedger.Data/Receiving/ReceiveMaterialService.cs`) — write
+  procedure + 8 integration tests, same transactional/idempotency shape as `OpeningBalanceService` —
+  plus `docs/schema/material-permissions-v5.sql` (grants `SELECT, INSERT` on `material.SheetLots` to
+  `materialledger_app`; **not yet applied to the real Forge DB** — outstanding manual prerequisite,
+  same one-file-per-phase convention as v1–v4, before this feature will actually work against the live
+  database) and `Pages/Receiving/{NewReceipt,Success}`, reached via a new "Receive material" nav link
+  (reuses the shared `Census/SelectSlot` picker, per the approved design). Commits `7e9a296`..`158bc32`.
+  A consolidated final-review fix pass then addressed: this `PROGRESS.md` (this entry, the
+  write-services/pages list update, and the "Known follow-ups" subsection above), a corrected claim in
+  `docs/superpowers/specs/2026-08-09-receive-material-design.md`'s Non-goals section, the new
+  "Receive material" nav entry point in `Shared/_Layout.cshtml` plus a neutralized `Census/SelectSlot`
+  heading (no longer reads as census-only), named-argument construction of `ReceiveMaterialRequest` in
+  `NewReceipt.cshtml.cs` (was 15 positional args including five consecutive `string?` — transposition
+  risk with no test coverage), and `maxlength`/`min="0"` attributes on `NewReceipt.cshtml`'s new inputs
+  to match DB column limits and reject negative cost client-side. Commit `5cf9dc5` (approximate —
+  this is a self-referencing hash; the actual final commit hash may differ by one amend since writing
+  the hash into the file necessarily changes the commit it describes, check `git log -1` for the
+  precise value).
+  Full suite: 79/80 passing (one pre-existing, expected, environment-gated failure —
+  `MaterialTransactionPermissionsTests.MaterialledgerApp_CannotUpdateMaterialTransactions`, needs
+  `MATERIALLEDGER_TEST_APP_CONNECTION`, not set in this dev environment — not a regression).

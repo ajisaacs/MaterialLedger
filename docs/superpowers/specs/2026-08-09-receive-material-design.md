@@ -29,8 +29,9 @@ receiving purchased sheet stock.
   extension directly; it's deliberately deferred to its own follow-up design after
   `ReceiveMaterial` ships, rather than folded in here, since the schema note already
   confirms it can be added later without reworking anything in this design.
-- No changes to `Inventory/Search` beyond what it already displays for items with a
-  `SheetLotId`.
+- `Inventory/Search` displays nothing from `SheetLot` today, and this design doesn't
+  change that — vendor/PO/heat-lot/cost provenance is captured on receipt but has no
+  read path yet. Surfacing it is left as a future follow-up (see `docs/PROGRESS.md`).
 - No merging of a new receipt into an existing `InventoryItem` at the same location —
   every receipt is its own `SheetLot` + `InventoryItem`, so per-receipt vendor/PO/heat-lot
   provenance is never blended across sheets that arrived under different terms.

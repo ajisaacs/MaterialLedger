@@ -18,7 +18,7 @@
                 <p>Operations</p>
                 <a asp-page="/Reservations/Index">Reservations</a><a asp-page="/Exceptions/Index">Attention needed</a>
                 @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Closeout</a> }
-                @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a asp-page="/Census/SelectSlot">Opening census</a> }
+                @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a asp-page="/Census/SelectSlot">Opening census</a><a asp-page="/Census/SelectSlot">Receive material</a> }
             </nav>
             <div class="account"><span class="account-avatar">@User.Identity.Name?.Substring(0, 1).ToUpper()</span><div><strong>@User.Identity.Name</strong><small>@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</small></div><form method="post" action="/Logout">@Html.AntiForgeryToken()<button class="signout" type="submit">Sign out</button></form></div>
         </aside>

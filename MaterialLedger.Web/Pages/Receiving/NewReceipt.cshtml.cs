@@ -75,9 +75,22 @@ public class NewReceiptModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                     $"{MaterialFamily} {Grade} {ThicknessIn}in".Trim())).MaterialSpecId;
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var request = new ReceiveMaterialRequest(LocationId, specId, ItemKind, Quantity,
-                UsableWidthIn, UsableLengthIn, ShapeClassification, IsQuarantined,
-                VendorName, PurchaseOrderNumber, ReceiptNumber, VendorPartNumber, HeatLotNumber, CostPerUnit, Notes);
+            var request = new ReceiveMaterialRequest(
+                InventoryLocationId: LocationId,
+                MaterialSpecId: specId,
+                ItemKind: ItemKind,
+                Quantity: Quantity,
+                UsableWidthIn: UsableWidthIn,
+                UsableLengthIn: UsableLengthIn,
+                ShapeClassification: ShapeClassification,
+                IsQuarantined: IsQuarantined,
+                VendorName: VendorName,
+                PurchaseOrderNumber: PurchaseOrderNumber,
+                ReceiptNumber: ReceiptNumber,
+                VendorPartNumber: VendorPartNumber,
+                HeatLotNumber: HeatLotNumber,
+                CostPerUnit: CostPerUnit,
+                Notes: Notes);
 
             var result = await receiveMaterial.ReceiveMaterialAsync(CorrelationId, request, userId);
             return RedirectToPage("Success", new { code = result.PublicItemCode });
