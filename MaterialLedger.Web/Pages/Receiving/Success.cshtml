@@ -1,0 +1,7 @@
+@* MaterialLedger.Web/Pages/Receiving/Success.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Receiving.SuccessModel
+@{ Layout = "Shared/_Layout"; }
+<h1>Material received</h1>
+<p>Item code: <strong>@Model.Code</strong></p>
+<p><a asp-page="/Census/SelectSlot">Receive another item</a></p>
