@@ -22,6 +22,8 @@ Confirmed gaps:
 4. `Locations/Details.cshtml` lists each slot's occupying item as plain text, with no
    link back to Inventory Search or a reserve action, even though `Inventory/Search`
    already supports filtering by `LocationCode`.
+5. The label "Exception queue" reads like an error log rather than a worklist. Rename
+   the user-facing text to "Attention needed."
 
 ## Approach
 
@@ -65,6 +67,26 @@ exceptions." / "No recently resolved exceptions."
 `<a asp-page="/Inventory/Search" asp-route-LocationCode="@slot.LocationCode">`, so
 clicking it opens Inventory Search pre-filtered to that location.
 
+### 4. Rename "Exception queue" → "Attention needed"
+
+Text-only rename, three files:
+
+- `Pages/Shared/_Layout.cshtml`: nav link "Exception queue" → "Attention needed".
+- `Pages/Index.cshtml`: dashboard card heading "Exception queue" → "Attention needed";
+  CTA "Review exceptions →" → "Review →".
+- `Pages/Exceptions/Index.cshtml`: `<h1>Exception queue</h1>` → `<h1>Attention
+  needed</h1>`; empty-state copy from change #2 above uses "Nothing needs attention." /
+  "Nothing recently resolved." instead of "No open exceptions." / "No recently resolved
+  exceptions."
+- `Pages/Locations/Index.cshtml`: table column header "Exceptions" → "Attention" (same
+  underlying count, consistent label).
+
+Not renamed: the route (`/Exceptions`), the `Pages/Exceptions` folder and
+`MaterialLedger.Web.Pages.Exceptions` namespace, `MaterialException` /
+`MaterialExceptionService` / `MaterialExceptions` table, and any docs describing the
+scan mechanism. These are internal identifiers, not what a user sees, and renaming them
+would ripple into the data layer and tests for no user-facing benefit.
+
 ## Out of scope
 
 - No changes to `MaterialExceptionService`, `CloseoutService`, or any other data/service
@@ -89,3 +111,5 @@ clicking it opens Inventory Search pre-filtered to that location.
    - `/Closeout` and `/Exceptions` with empty data → empty-state messages render.
    - `/Locations/Details/{code}` → click an item's summary text → lands on
      `/Inventory/Search` filtered to that location code.
+   - Nav, dashboard card, page heading, and Material Map column all read "Attention
+     needed" / "Attention" instead of "Exception queue" / "Exceptions".
