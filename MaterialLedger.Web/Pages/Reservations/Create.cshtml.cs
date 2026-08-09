@@ -35,7 +35,10 @@ public class CreateModel(MaterialLedgerDbContext db, ReservationService reservat
         Item = await db.InventoryItems.Include(x => x.MaterialSpec).Include(x => x.InventoryLocation)
             .FirstOrDefaultAsync(x => x.InventoryItemId == inventoryItemId);
         if (Item is null)
-            return NotFound();
+        {
+            TempData["Message"] = "Select an item from Inventory Search to create a reservation.";
+            return RedirectToPage("/Inventory/Search");
+        }
         InventoryItemId = inventoryItemId;
         CorrelationId = Guid.NewGuid();
         return Page();

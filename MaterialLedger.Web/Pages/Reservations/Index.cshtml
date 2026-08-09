@@ -3,6 +3,7 @@
 @model MaterialLedger.Web.Pages.Reservations.IndexModel
 @{ Layout = "Shared/_Layout"; }
 <h1>Reservations</h1>
+<p><a asp-page="/Inventory/Search">Search inventory to reserve material →</a></p>
 @if (Model.Reservations.Count == 0)
 {
     <p class="empty-state">No open reservations.</p>

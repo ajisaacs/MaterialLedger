@@ -5,6 +5,10 @@
 @{ Layout = "Shared/_Layout"; }
 
 <h1>Search inventory</h1>
+@if (TempData["Message"] is string message)
+{
+    <p class="info-banner">@message</p>
+}
 <form method="get">
     <label>Family <input asp-for="MaterialFamily" /></label>
     <label>Grade <input asp-for="Grade" /></label>
