@@ -23,6 +23,7 @@ builder.Services.AddScoped<MaterialLedger.Data.Materials.MaterialSpecService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.PepMaterialMappingService>();
 builder.Services.AddScoped<MaterialLedger.Data.Census.OpeningBalanceService>();
 builder.Services.AddScoped<MaterialLedger.Data.Receiving.ReceiveMaterialService>();
+builder.Services.AddScoped<MaterialLedger.Data.PurchaseOrders.PurchaseOrderService>();
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.InventoryQueryService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
