@@ -4,6 +4,12 @@
 @{ Layout = "Shared/_Layout"; }
 <h1>Receive material — @Model.Location?.LocationCode</h1>
 
+@if (Model.PurchaseOrderLine is not null)
+{
+    <p>Receiving against PO <strong>@Model.PurchaseOrderLine.PurchaseOrder!.PurchaseOrderNumber</strong>, line @Model.PurchaseOrderLine.LineNumber —
+    @(Model.PurchaseOrderLine.QuantityOrdered - Model.PurchaseOrderLine.QuantityReceived) remaining of @Model.PurchaseOrderLine.QuantityOrdered ordered.</p>
+}
+
 @if (Model.Error is not null)
 {
     <p style="color:red">@Model.Error</p>
@@ -13,6 +19,7 @@
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="LocationId" />
     <input type="hidden" asp-for="CorrelationId" />
+    <input type="hidden" asp-for="PoLineId" />
 
     <fieldset>
         <legend>Material</legend>

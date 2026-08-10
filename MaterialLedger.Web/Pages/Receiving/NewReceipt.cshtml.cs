@@ -15,6 +15,7 @@ public class NewReceiptModel(MaterialLedgerDbContext db, ReceiveMaterialService 
 {
     [BindProperty] public long LocationId { get; set; }
     [BindProperty] public Guid CorrelationId { get; set; }
+    [BindProperty] public long? PoLineId { get; set; }
     [BindProperty] public long? ExistingMaterialSpecId { get; set; }
     [BindProperty] public InventoryItemKind ItemKind { get; set; } = InventoryItemKind.FullSheetBundle;
     [BindProperty] public decimal Quantity { get; set; }
@@ -31,17 +32,36 @@ public class NewReceiptModel(MaterialLedgerDbContext db, ReceiveMaterialService 
     [BindProperty] public string? Notes { get; set; }
 
     public InventoryLocation? Location { get; set; }
+    public PurchaseOrderLine? PurchaseOrderLine { get; set; }
     public List<MaterialSpec> AvailableSpecs { get; set; } = [];
     public string? Error { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(long locationId)
+    public async Task<IActionResult> OnGetAsync(long locationId, long? poLineId)
     {
         Location = await db.InventoryLocations.FindAsync(locationId);
         if (Location is null) return NotFound();
 
         LocationId = locationId;
+        PoLineId = poLineId;
         CorrelationId = Guid.NewGuid();
         AvailableSpecs = await LoadAvailableSpecsAsync();
+
+        if (poLineId is not null)
+        {
+            PurchaseOrderLine = await db.PurchaseOrderLines
+                .Include(x => x.PurchaseOrder)
+                .FirstOrDefaultAsync(x => x.PurchaseOrderLineId == poLineId);
+            if (PurchaseOrderLine is not null)
+            {
+                ExistingMaterialSpecId = PurchaseOrderLine.MaterialSpecId;
+                VendorName = PurchaseOrderLine.PurchaseOrder!.VendorName;
+                PurchaseOrderNumber = PurchaseOrderLine.PurchaseOrder.PurchaseOrderNumber;
+                VendorPartNumber = PurchaseOrderLine.VendorPartNumber;
+                CostPerUnit = PurchaseOrderLine.UnitPrice;
+                UsableWidthIn = PurchaseOrderLine.UsableWidthIn;
+                UsableLengthIn = PurchaseOrderLine.UsableLengthIn;
+            }
+        }
         return Page();
     }
 
@@ -49,6 +69,12 @@ public class NewReceiptModel(MaterialLedgerDbContext db, ReceiveMaterialService 
     {
         Location = await db.InventoryLocations.FindAsync(LocationId);
         AvailableSpecs = await LoadAvailableSpecsAsync();
+        if (PoLineId is not null)
+        {
+            PurchaseOrderLine = await db.PurchaseOrderLines
+                .Include(x => x.PurchaseOrder)
+                .FirstOrDefaultAsync(x => x.PurchaseOrderLineId == PoLineId);
+        }
 
         if (ExistingMaterialSpecId is null)
         {
@@ -80,7 +106,8 @@ public class NewReceiptModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                 VendorPartNumber: VendorPartNumber,
                 HeatLotNumber: HeatLotNumber,
                 CostPerUnit: CostPerUnit,
-                Notes: Notes);
+                Notes: Notes,
+                PurchaseOrderLineId: PoLineId);
 
             var result = await receiveMaterial.ReceiveMaterialAsync(CorrelationId, request, userId);
             return RedirectToPage("Success", new { code = result.PublicItemCode });

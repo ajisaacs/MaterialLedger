@@ -12,7 +12,7 @@
         <tr>
             <td>@slot.ParentInventoryLocation?.DisplayName</td>
             <td>@slot.LocationCode</td>
-            <td><a asp-page="NewReceipt" asp-route-locationId="@slot.InventoryLocationId">Receive delivery here</a></td>
+            <td><a asp-page="NewReceipt" asp-route-locationId="@slot.InventoryLocationId" asp-route-poLineId="@Model.PoLineId">Receive delivery here</a></td>
         </tr>
     }
     </tbody>
