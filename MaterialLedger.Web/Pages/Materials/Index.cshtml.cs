@@ -14,6 +14,7 @@ public class IndexModel(MaterialSpecService materialSpecs) : PageModel
     public List<MaterialSpec> AvailableSpecs { get; private set; } = [];
     public string? Error { get; private set; }
     public string? Success { get; private set; }
+    public bool ShowAddMaterialDialog { get; private set; }
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -22,6 +23,7 @@ public class IndexModel(MaterialSpecService materialSpecs) : PageModel
         if (string.IsNullOrWhiteSpace(NewMaterial.MaterialFamily) || NewMaterial.ThicknessIn <= 0)
         {
             Error = "Material family and a positive thickness are required.";
+            ShowAddMaterialDialog = true;
             await LoadAsync();
             return Page();
         }
@@ -39,6 +41,8 @@ public class IndexModel(MaterialSpecService materialSpecs) : PageModel
 
     private async Task LoadAsync() => AvailableSpecs = (await materialSpecs.SearchAsync(null)).ToList();
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    public static string? GaugeLabel(MaterialSpec spec) => GaugeTable.FindLabel(spec.MaterialFamily, spec.Grade, spec.ThicknessIn);
 }
 
 public class NewMaterialInput
