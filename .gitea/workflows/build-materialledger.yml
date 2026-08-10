@@ -1,0 +1,35 @@
+name: Build MaterialLedger image
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "MaterialLedger.Data/**"
+      - "MaterialLedger.Web/**"
+      - "MaterialLedger.Tests/**"
+      - "MaterialLedger.sln"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".gitea/workflows/build-materialledger.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Gitea container registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login git.thecozycat.net -u "${{ gitea.actor }}" --password-stdin
+
+      - name: Build image
+        run: |
+          docker build \
+            -t git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:latest \
+            -t git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:${{ gitea.sha }} \
+            .
+
+      - name: Push image
+        run: |
+          docker push git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:latest
+          docker push git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:${{ gitea.sha }}

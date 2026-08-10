@@ -1,0 +1,12 @@
+.git/
+.gitea/
+.vs/
+.superpowers/
+.worktrees/
+**/bin/
+**/obj/
+**/keys/
+keys/
+*.user
+*.suo
+Thumbs.db
