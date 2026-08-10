@@ -1,0 +1,75 @@
+@* MaterialLedger.Web/Pages/PurchaseOrders/Details.cshtml *@
+@page "{id:long}"
+@model MaterialLedger.Web.Pages.PurchaseOrders.DetailsModel
+@using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
+@{
+    Layout = "Shared/_Layout";
+    var status = PurchaseOrderStatusDisplay.DeriveStatus(Model.Order!.Lines);
+}
+<header class="page-heading">
+    <p class="eyebrow">Purchase orders</p>
+    <h1>@Model.Order.PurchaseOrderNumber — @Model.Order.VendorName</h1>
+    <p>Status: @PurchaseOrderStatusDisplay.Label(status) — Ordered @(Model.Order.OrderDate?.ToString("d") ?? "date not recorded")</p>
+</header>
+
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+
+<table>
+    <thead><tr><th>Line</th><th>Material</th><th>Vendor description</th><th>Ordered</th><th>Received</th><th>Remaining</th><th>Unit price</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var line in Model.Order.Lines.OrderBy(x => x.LineNumber))
+    {
+        <tr>
+            <td>@line.LineNumber</td>
+            <td>@line.MaterialSpec?.DisplayName</td>
+            <td>@line.VendorDescription</td>
+            <td>@DisplayFormat.Quantity(line.QuantityOrdered)</td>
+            <td>@DisplayFormat.Quantity(line.QuantityReceived)</td>
+            <td>@DisplayFormat.Quantity(line.QuantityOrdered - line.QuantityReceived)</td>
+            <td>@(line.UnitPrice?.ToString("0.00") ?? "—")</td>
+            <td>@line.Status</td>
+            <td>
+                @if (line.Status is PurchaseOrderLineStatus.Open or PurchaseOrderLineStatus.PartiallyReceived)
+                {
+                    <a asp-page="/Receiving/SelectLocation" asp-route-poLineId="@line.PurchaseOrderLineId">Receive</a>
+                    <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=CancelLine&amp;lineId=@line.PurchaseOrderLineId" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="CorrelationId" />
+                        <button type="submit">Cancel line</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+@if (status == PurchaseOrderStatus.Open)
+{
+    <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=CloseRemaining" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="CorrelationId" />
+        <button type="submit">Close remaining lines</button>
+    </form>
+}
+
+<section>
+    <h2>Vendor confirmation</h2>
+    <ul>
+    @foreach (var attachment in Model.Attachments)
+    {
+        <li><a asp-page="/PurchaseOrders/Details" asp-route-id="@Model.Order.PurchaseOrderId" asp-page-handler="DownloadAttachment" asp-route-attachmentId="@attachment.AttachmentId">Vendor confirmation</a> — uploaded @attachment.UploadedAtUtc.ToString("d")</li>
+    }
+    </ul>
+    <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=UploadAttachment" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <label>Upload confirmation PDF <input type="file" name="File" /></label>
+        <button type="submit">Upload</button>
+    </form>
+</section>
+
+<p><a asp-page="Index">Back to purchase orders</a></p>
