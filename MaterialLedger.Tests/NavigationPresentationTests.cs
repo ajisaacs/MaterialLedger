@@ -96,6 +96,14 @@ public sealed class NavigationPresentationTests
         Assert.Matches("@media \\(max-width: 1050px\\)[\\s\\S]*?table \\{[\\s\\S]*?overflow-x: auto", css);
     }
 
+    [Fact]
+    public void Shared_form_buttons_align_with_the_bottom_of_neighboring_stacked_fields()
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "app.css"));
+
+        Assert.Matches("button\\s*\\{[\\s\\S]*?vertical-align: bottom;", css);
+    }
+
     private static string RoleGateBlock(string source, string gateHeader)
     {
         var gateStart = source.IndexOf(gateHeader, StringComparison.Ordinal);
