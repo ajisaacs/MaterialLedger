@@ -13,7 +13,19 @@ public sealed class PepNestQueryService(HttpClient client)
         if (!string.IsNullOrWhiteSpace(status)) query.Add($"Status={Uri.EscapeDataString(status)}");
         if (!string.IsNullOrWhiteSpace(customer)) query.Add($"Customer={Uri.EscapeDataString(customer)}");
         var path = $"nests/{year}" + (query.Count == 0 ? string.Empty : "?" + string.Join("&", query));
-        return await client.GetFromJsonAsync<List<PepNestSummary>>(path, JsonOptions) ?? [];
+        var nests = await client.GetFromJsonAsync<List<PepNestSummary>>(path, JsonOptions) ?? [];
+        var materials = await client.GetFromJsonAsync<List<PepMaterialData>>("materials", JsonOptions) ?? [];
+        var materialNames = materials
+            .GroupBy(x => $"{x.Number}\u001f{x.Grade}", StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First().Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var nest in nests)
+        {
+            materialNames.TryGetValue($"{nest.MaterialNumber}\u001f{nest.MaterialGrade}", out var description);
+            nest.MaterialDescription = description;
+        }
+
+        return nests;
     }
 
     public async Task<PepNestDetails?> GetNestAsync(int year, string nestName)
@@ -36,6 +48,7 @@ public sealed class PepNestSummary
     public int MaterialNumber { get; init; }
     public string? MaterialGrade { get; init; }
     public string? Application { get; init; }
+    public string? MaterialDescription { get; set; }
 }
 
 public sealed class PepNestDetails
@@ -57,6 +70,14 @@ public sealed class PepMaterial
     public string? Grade { get; init; }
     public decimal Thickness { get; init; }
     public string? Description { get; init; }
+}
+
+public sealed class PepMaterialData
+{
+    public int Number { get; init; }
+    public string? Name { get; init; }
+    public string? Grade { get; init; }
+    public decimal Thickness { get; init; }
 }
 
 public sealed class PepNestPart { public string? Name { get; init; } public int QtyNested { get; init; } public int QtyRequired { get; init; } }

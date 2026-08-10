@@ -26,7 +26,7 @@ else
         {
             <tr>
                 <td>@nest.Name</td><td>@nest.Status</td><td>@nest.Customer</td>
-                <td>#@nest.MaterialNumber @nest.MaterialGrade</td><td>@nest.DateCreated.ToString("yyyy-MM-dd")</td>
+                <td>@nest.MaterialDescription, @nest.MaterialGrade</td><td>@nest.DateCreated.ToString("yyyy-MM-dd")</td>
                 <td><a asp-page="Details" asp-route-year="@Model.Year" asp-route-nestName="@nest.Name">View nest</a></td>
             </tr>
         }

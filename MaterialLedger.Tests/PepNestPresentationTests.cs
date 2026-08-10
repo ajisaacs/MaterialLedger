@@ -18,6 +18,18 @@ public sealed class PepNestPresentationTests
     }
 
     [Fact]
+    public void PEP_nest_browser_shows_newest_first_and_a_descriptive_material_with_grade()
+    {
+        var page = ReadPage("PepNests", "Index.cshtml");
+        var model = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "PepNests", "Index.cshtml.cs"));
+
+        Assert.Contains("OrderByDescending(x => x.DateCreated)", model);
+        Assert.Contains("@nest.MaterialDescription", page);
+        Assert.Contains("@nest.MaterialGrade", page);
+        Assert.DoesNotContain("#@nest.MaterialNumber", page);
+    }
+
+    [Fact]
     public void PEP_nest_details_shows_material_mapping_and_hands_off_to_a_material_hold()
     {
         var page = ReadPage("PepNests", "Details.cshtml");

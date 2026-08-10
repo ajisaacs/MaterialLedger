@@ -17,7 +17,7 @@ public class IndexModel(PepNestQueryService pepNests) : PageModel
     public async Task OnGetAsync()
     {
         if (Year is < 2000 or > 2100) { Error = "Enter a four-digit nest year."; return; }
-        try { Nests = await pepNests.GetNestsAsync(Year, Status, Customer); }
+        try { Nests = (await pepNests.GetNestsAsync(Year, Status, Customer)).OrderByDescending(x => x.DateCreated).ToList(); }
         catch (HttpRequestException) { Error = "PEP nests could not be reached. Try again after the PEP API is available."; }
     }
 }
