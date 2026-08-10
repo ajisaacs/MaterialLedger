@@ -3,32 +3,80 @@
 @using MaterialLedger.Data.Models
 @using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
+@{
+    var hasAdvancedFilters = !string.IsNullOrWhiteSpace(Model.Grade)
+        || !string.IsNullOrWhiteSpace(Model.Finish)
+        || Model.ItemKind is not null
+        || !string.IsNullOrWhiteSpace(Model.LocationCode);
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.MaterialFamily)
+        || Model.ThicknessIn is not null
+        || Model.MinUsableWidthIn is not null
+        || Model.MinUsableLengthIn is not null
+        || hasAdvancedFilters
+        || !Model.AvailableOnly;
+}
 
-<h1>Search inventory</h1>
+<header class="page-heading">
+    <p class="eyebrow">Work now</p>
+    <h1>Find material</h1>
+    <p>Search available stock and drops, then reserve the item for work.</p>
+</header>
 @if (TempData["Message"] is string message)
 {
     <p class="info-banner">@message</p>
 }
-<form method="get">
-    <label>Family <input asp-for="MaterialFamily" /></label>
-    <label>Grade <input asp-for="Grade" /></label>
-    <label>Finish <input asp-for="Finish" /></label>
-    <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
-    <label>Kind
-        <select asp-for="ItemKind">
-            <option value="">-- any --</option>
-            <option value="FullSheetBundle">Full sheet / bundle</option>
-            <option value="FullSheet">Single full sheet</option>
-            <option value="Drop">Drop</option>
-        </select>
-    </label>
-    <label>Min usable width (in) <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
-    <label>Min usable length (in) <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
-    <label>Location code <input asp-for="LocationCode" /></label>
-    <label><input asp-for="AvailableOnly" type="checkbox" /> Available only</label>
-    <button type="submit">Search</button>
-</form>
 
+<section class="inventory-search-bar" aria-label="Inventory search filters">
+    <form method="get" class="inventory-filter-form">
+        <div class="primary-filters">
+            <label>Material family <input asp-for="MaterialFamily" /></label>
+            <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
+            <fieldset class="dimension-filter">
+                <legend>Minimum usable size (in)</legend>
+                <label>Width <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
+                <span aria-hidden="true">×</span>
+                <label>Length <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
+            </fieldset>
+            <label class="available-toggle"><input asp-for="AvailableOnly" type="checkbox" /> Available only</label>
+            <button type="submit">Search</button>
+        </div>
+
+        <details class="advanced-filters" open="@(hasAdvancedFilters ? "open" : null)">
+            <summary>More filters</summary>
+            <div class="advanced-filter-fields">
+                <label>Grade <input asp-for="Grade" /></label>
+                <label>Finish <input asp-for="Finish" /></label>
+                <label>Kind
+                    <select asp-for="ItemKind">
+                        <option value="">-- any --</option>
+                        <option value="FullSheetBundle">Full sheet / bundle</option>
+                        <option value="FullSheet">Single full sheet</option>
+                        <option value="Drop">Drop</option>
+                    </select>
+                </label>
+                <label>Location code <input asp-for="LocationCode" /></label>
+            </div>
+        </details>
+    </form>
+
+    @if (hasActiveFilters)
+    {
+        <div class="active-filter-summary" aria-label="Applied filters">
+            <span>Applied</span>
+            @if (!string.IsNullOrWhiteSpace(Model.MaterialFamily)) { <span class="filter-chip">@Model.MaterialFamily</span> }
+            @if (Model.ThicknessIn is not null) { <span class="filter-chip">@Model.ThicknessIn in</span> }
+            @if (Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) { <span class="filter-chip">≥ @Model.MinUsableWidthIn × @Model.MinUsableLengthIn in</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.Grade)) { <span class="filter-chip">@Model.Grade</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.Finish)) { <span class="filter-chip">@Model.Finish</span> }
+            @if (Model.ItemKind is not null) { <span class="filter-chip">@Model.ItemKind</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.LocationCode)) { <span class="filter-chip">@Model.LocationCode</span> }
+            @if (!Model.AvailableOnly) { <span class="filter-chip">All inventory</span> }
+            <a asp-page="/Inventory/Search">Clear all</a>
+        </div>
+    }
+</section>
+
+<p class="result-count">@Model.Results.Count matching item@(Model.Results.Count == 1 ? "" : "s")</p>
 @if (Model.Results.Count == 0)
 {
     <p class="empty-state">No matching inventory items.</p>
