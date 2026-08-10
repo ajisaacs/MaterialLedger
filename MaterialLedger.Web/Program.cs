@@ -15,6 +15,7 @@ builder.Services.AddSingleton<PasswordHasher<MaterialLedger.Data.Models.AppUser>
 builder.Services.AddScoped<AppUserAuthenticator>();
 builder.Services.AddScoped<AppUserSeeder>();
 builder.Services.AddScoped<LocationSeeder>();
+builder.Services.AddScoped<MaterialSpecSeeder>();
 builder.Services.AddScoped<MaterialLedger.Data.Idempotency.OperationLogGuard>();
 builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationSlotService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.MaterialSpecService>();
@@ -66,6 +67,9 @@ using (var scope = app.Services.CreateScope())
 
     var locationSeeder = scope.ServiceProvider.GetRequiredService<LocationSeeder>();
     await locationSeeder.SeedAsync();
+
+    var materialSpecSeeder = scope.ServiceProvider.GetRequiredService<MaterialSpecSeeder>();
+    await materialSpecSeeder.SeedAsync();
 }
 
 if (!app.Environment.IsDevelopment())
