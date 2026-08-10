@@ -53,7 +53,26 @@
         <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode</dd>
         <dt>Material</dt><dd>@Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName</dd>
         <dt>Location</dt><dd>@Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
-        <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} × {Model.Reservation.ExpectedRemainderLengthIn} in (operator estimate)" : "No estimate recorded")</dd>
+        <dt>Expected usable drops</dt>
+        <dd>
+            @if (Model.Reservation.ExpectedRemnants.Count > 0)
+            {
+                <ul>
+                    @foreach (var remainder in Model.Reservation.ExpectedRemnants.OrderBy(x => x.Sequence))
+                    {
+                        <li>@remainder.WidthIn × @remainder.LengthIn in (operator estimate)</li>
+                    }
+                </ul>
+            }
+            else if (Model.Reservation.ExpectedRemainderWidthIn is not null)
+            {
+                @($"{Model.Reservation.ExpectedRemainderWidthIn} × {Model.Reservation.ExpectedRemainderLengthIn} in (operator estimate)")
+            }
+            else
+            {
+                @:No estimate recorded
+            }
+        </dd>
     </dl>
 </section>
 

@@ -90,6 +90,7 @@ public class DetailsModel(MaterialLedgerDbContext db, IReservationService reserv
         db.MaterialReservations
             .Include(x => x.InventoryItem)!.ThenInclude(x => x!.MaterialSpec)
             .Include(x => x.InventoryItem)!.ThenInclude(x => x!.InventoryLocation)
+            .Include(x => x.ExpectedRemnants)
             .Include(x => x.CreatedByUser)
             .Include(x => x.ApprovedByUser)
             .FirstOrDefaultAsync(x => x.MaterialReservationId == id);

@@ -81,6 +81,36 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
     }
 
     [Fact]
+    public async Task CreateReservationAsync_MultipleExpectedDrops_PersistsEachEstimateInSequence()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var item = NewDrop(slotId, specId, userId);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var request = RequestFor(item.InventoryItemId) with
+        {
+            ExpectedRemnants =
+            [
+                new ExpectedRemnantRequest(10m, 15m, ExpectedRemainderSource.Manual),
+                new ExpectedRemnantRequest(8m, 20m, ExpectedRemainderSource.Manual)
+            ]
+        };
+
+        var result = await service.CreateReservationAsync(Guid.NewGuid(), request, userId);
+
+        var reservation = await db.MaterialReservations
+            .Include(x => x.ExpectedRemnants)
+            .SingleAsync(x => x.MaterialReservationId == result.MaterialReservationId);
+        Assert.Collection(reservation.ExpectedRemnants.OrderBy(x => x.Sequence),
+            remainder => { Assert.Equal(1, remainder.Sequence); Assert.Equal(10m, remainder.WidthIn); Assert.Equal(15m, remainder.LengthIn); },
+            remainder => { Assert.Equal(2, remainder.Sequence); Assert.Equal(8m, remainder.WidthIn); Assert.Equal(20m, remainder.LengthIn); });
+        Assert.Equal(10m, reservation.ExpectedRemainderWidthIn);
+        Assert.Equal(15m, reservation.ExpectedRemainderLengthIn);
+    }
+
+    [Fact]
     public async Task CreateReservationAsync_QuarantinedItem_Throws()
     {
         await using var db = _fixture.CreateContext();

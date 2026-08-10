@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MaterialLedger.Data.Reservations;
 
+public record ExpectedRemnantRequest(decimal WidthIn, decimal LengthIn, ExpectedRemainderSource SourceType);
+
 public record CreateReservationRequest(
     long InventoryItemId,
     string? ShopOpsJobId,
@@ -21,7 +23,8 @@ public record CreateReservationRequest(
     string? LaserProgramRecordId,
     decimal? ExpectedRemainderWidthIn,
     decimal? ExpectedRemainderLengthIn,
-    ExpectedRemainderSource? ExpectedRemainderSourceType);
+    ExpectedRemainderSource? ExpectedRemainderSourceType,
+    IReadOnlyList<ExpectedRemnantRequest>? ExpectedRemnants = null);
 
 public class ReservationResult
 {
@@ -48,6 +51,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
     public async Task<ReservationResult> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy)
     {
+        ValidateExpectedRemnants(request);
         var payloadHash = HashPayload(request);
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -74,6 +78,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
                 $"Item '{item.PublicItemCode}' was last observed {item.LastObservedAtUtc:u}, past the {freshnessThresholdDays}-day freshness threshold, and cannot be reserved without a fresh observation.");
 
         var now = DateTime.UtcNow;
+        var expectedRemnants = GetExpectedRemnants(request);
         var reservation = new MaterialReservation
         {
             InventoryItemId = item.InventoryItemId,
@@ -88,9 +93,13 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
             Status = ReservationStatus.Proposed,
             CreatedAtUtc = now,
             CreatedBy = createdBy,
-            ExpectedRemainderWidthIn = request.ExpectedRemainderWidthIn,
-            ExpectedRemainderLengthIn = request.ExpectedRemainderLengthIn,
-            ExpectedRemainderSourceType = request.ExpectedRemainderSourceType
+            ExpectedRemainderWidthIn = expectedRemnants.FirstOrDefault()?.WidthIn,
+            ExpectedRemainderLengthIn = expectedRemnants.FirstOrDefault()?.LengthIn,
+            ExpectedRemainderSourceType = expectedRemnants.FirstOrDefault()?.SourceType,
+            ExpectedRemnants = expectedRemnants.Select((remainder, index) => new ExpectedRemnant
+            {
+                Sequence = index + 1, WidthIn = remainder.WidthIn, LengthIn = remainder.LengthIn, SourceType = remainder.SourceType
+            }).ToList()
         };
         db.MaterialReservations.Add(reservation);
         await db.SaveChangesAsync();
@@ -226,4 +235,20 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
     private static string HashPayload<T>(T payload) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload))));
+
+    private static IReadOnlyList<ExpectedRemnantRequest> GetExpectedRemnants(CreateReservationRequest request) =>
+        request.ExpectedRemnants is { Count: > 0 }
+            ? request.ExpectedRemnants
+            : request.ExpectedRemainderWidthIn is not null && request.ExpectedRemainderLengthIn is not null && request.ExpectedRemainderSourceType is not null
+                ? [new ExpectedRemnantRequest(request.ExpectedRemainderWidthIn.Value, request.ExpectedRemainderLengthIn.Value, request.ExpectedRemainderSourceType.Value)]
+                : [];
+
+    private static void ValidateExpectedRemnants(CreateReservationRequest request)
+    {
+        foreach (var remnant in GetExpectedRemnants(request))
+        {
+            if (remnant.WidthIn <= 0 || remnant.LengthIn <= 0)
+                throw new InvalidOperationException("Each expected drop requires a width and length greater than zero.");
+        }
+    }
 }

@@ -15,6 +15,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
     public DbSet<SheetLot> SheetLots => Set<SheetLot>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<MaterialReservation> MaterialReservations => Set<MaterialReservation>();
+    public DbSet<ExpectedRemnant> ExpectedRemnants => Set<ExpectedRemnant>();
     public DbSet<MaterialTransaction> MaterialTransactions => Set<MaterialTransaction>();
     public DbSet<ProductionConsumption> ProductionConsumptions => Set<ProductionConsumption>();
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
@@ -131,6 +132,18 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.HasOne(x => x.InventoryItem).WithMany().HasForeignKey(x => x.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.ApprovedByUser).WithMany().HasForeignKey(x => x.ApprovedBy).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ExpectedRemnant>(e =>
+        {
+            e.ToTable("ExpectedRemnants");
+            e.HasKey(x => x.ExpectedRemnantId);
+            e.HasIndex(x => new { x.MaterialReservationId, x.Sequence }).IsUnique();
+            e.Property(x => x.WidthIn).HasColumnType("decimal(10,3)");
+            e.Property(x => x.LengthIn).HasColumnType("decimal(10,3)");
+            e.Property(x => x.SourceType).HasConversion<string>().HasMaxLength(20);
+            e.HasOne(x => x.MaterialReservation).WithMany(x => x.ExpectedRemnants)
+                .HasForeignKey(x => x.MaterialReservationId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<MaterialTransaction>(e =>

@@ -34,7 +34,7 @@ public sealed class ReservationHoldPresentationTests
         Assert.Contains("@Model.Item?.PublicItemCode", page);
         Assert.Contains("@Model.Item?.MaterialSpecDisplayName", page);
         Assert.Contains("Available quantity", page);
-        Assert.Contains("@Model.Item?.AvailableQuantity", page);
+        Assert.Contains("DisplayFormat.Quantity(Model.Item.AvailableQuantity)", page);
         Assert.DoesNotContain("@Model.Item?.QuantityOnHand", page);
         Assert.Contains("Usable size", page);
         Assert.Contains("@Model.Item?.LocationCode", page);
@@ -48,8 +48,10 @@ public sealed class ReservationHoldPresentationTests
         var page = ReadPage("Reservations", "Create.cshtml");
 
         Assert.Contains("<legend>Equipment</legend>", page);
-        Assert.Contains("<legend>Expected remainder</legend>", page);
-        Assert.Contains("operator estimate", page);
+        Assert.Contains("<legend>Expected usable drops</legend>", page);
+        Assert.Contains("calculated usable drops", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("operator estimate", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("OpenNest integration", page, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("<details class=\"additional-traceability\">", page);
         Assert.Contains("<summary>Additional traceability</summary>", page);
         Assert.Contains("asp-for=\"ShopOpsJobId\"", page);
@@ -57,6 +59,17 @@ public sealed class ReservationHoldPresentationTests
         Assert.Contains("asp-for=\"PepNestYear\"", page);
         Assert.Contains("asp-for=\"PepNestName\"", page);
         Assert.Contains("asp-for=\"LaserProgramRecordId\"", page);
+    }
+
+    [Fact]
+    public void Hold_form_allows_multiple_expected_rectangular_remnants()
+    {
+        var page = ReadPage("Reservations", "Create.cshtml");
+
+        Assert.Contains("name=\"ExpectedRemnants[0].WidthIn\"", page);
+        Assert.Contains("name=\"ExpectedRemnants[0].LengthIn\"", page);
+        Assert.Contains("id=\"add-expected-remnant\"", page);
+        Assert.Contains("Add another expected drop", page);
     }
 
     [Fact]

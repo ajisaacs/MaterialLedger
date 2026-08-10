@@ -20,7 +20,26 @@
         <dt>Work reference</dt><dd>@Model.WorkReference</dd>
         <dt>Equipment</dt><dd>@Model.Reservation.Equipment</dd>
         <dt>Workflow status</dt><dd>@ReservationWorkflowDisplay.For(Model.Reservation.Status).Label</dd>
-        <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} x {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})" : "No estimate recorded")</dd>
+        <dt>Expected usable drops</dt>
+        <dd>
+            @if (Model.Reservation.ExpectedRemnants.Count > 0)
+            {
+                <ul>
+                    @foreach (var remainder in Model.Reservation.ExpectedRemnants.OrderBy(x => x.Sequence))
+                    {
+                        <li>@remainder.WidthIn × @remainder.LengthIn in (@remainder.SourceType)</li>
+                    }
+                </ul>
+            }
+            else if (Model.Reservation.ExpectedRemainderWidthIn is not null)
+            {
+                @($"{Model.Reservation.ExpectedRemainderWidthIn} × {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})")
+            }
+            else
+            {
+                @:No estimate recorded
+            }
+        </dd>
     </dl>
 
     <form method="post" action="?handler=Closeout" class="closeout-decision">

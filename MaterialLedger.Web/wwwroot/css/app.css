@@ -70,19 +70,20 @@ p {
   text-transform: uppercase;
 }
 .app-shell {
-  display: flex;
   min-height: 100vh;
 }
 .sidebar {
   background: var(--rail);
   color: #dce7e8;
   display: flex;
-  flex: 0 0 246px;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  left: 0;
+  overflow: hidden;
   padding: 1.5rem 1rem;
-  position: sticky;
+  position: fixed;
   top: 0;
+  width: 246px;
 }
 .brand {
   align-items: center;
@@ -124,7 +125,9 @@ p {
   text-transform: uppercase;
 }
 .primary-nav {
+  min-height: 0;
   margin-top: 1.35rem;
+  overflow-y: auto;
 }
 .primary-nav p {
   color: #78949a;
@@ -157,6 +160,7 @@ p {
   border-top: 1px solid var(--rail-line);
   display: flex;
   font-size: 0.75rem;
+  flex-shrink: 0;
   gap: 0.55rem;
   margin-top: auto;
   padding: 0.95rem 0.25rem 0;
@@ -188,6 +192,7 @@ p {
   padding: 0.2rem;
 }
 .workspace {
+  margin-left: 246px;
   min-width: 0;
   width: 100%;
 }
@@ -714,7 +719,10 @@ legend {
     grid-template-columns: 1fr;
   }
   .sidebar {
-    flex-basis: 215px;
+    width: 215px;
+  }
+  .workspace {
+    margin-left: 215px;
   }
 }
 @media (max-width: 720px) {
@@ -724,7 +732,12 @@ legend {
   .sidebar {
     height: auto;
     min-height: 0;
-    position: relative;
+    overflow: visible;
+    position: static;
+    width: auto;
+  }
+  .workspace {
+    margin-left: 0;
   }
   .primary-nav {
     display: flex;

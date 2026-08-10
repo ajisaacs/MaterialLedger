@@ -10,6 +10,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace MaterialLedger.Web.Pages.Reservations;
 
+public class ExpectedRemnantInput
+{
+    public decimal? WidthIn { get; set; }
+    public decimal? LengthIn { get; set; }
+}
+
 [Authorize(Policy = MaterialLedgerPolicies.RequireProgrammerOrManager)]
 public class CreateModel(InventoryQueryService inventoryQuery, ReservationService reservations) : PageModel
 {
@@ -25,6 +31,7 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
     [BindProperty] public bool HasManualEstimate { get; set; }
     [BindProperty] public decimal? ExpectedRemainderWidthIn { get; set; }
     [BindProperty] public decimal? ExpectedRemainderLengthIn { get; set; }
+    [BindProperty] public List<ExpectedRemnantInput> ExpectedRemnants { get; set; } = [new()];
 
     public InventoryItemSummary? Item { get; set; }
     public string? Error { get; set; }
@@ -51,12 +58,17 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var expectedRemnants = HasManualEstimate
+                ? ExpectedRemnants.Where(x => x.WidthIn is not null || x.LengthIn is not null)
+                    .Select(x => new ExpectedRemnantRequest(x.WidthIn ?? 0, x.LengthIn ?? 0, ExpectedRemainderSource.Manual)).ToList()
+                : [];
             var request = new CreateReservationRequest(
                 InventoryItemId, ShopOpsJobId, DrawingId, DrawingRevision, Equipment,
                 PepNestYear, PepNestName, LaserProgramRecordId,
                 HasManualEstimate ? ExpectedRemainderWidthIn : null,
                 HasManualEstimate ? ExpectedRemainderLengthIn : null,
-                HasManualEstimate ? ExpectedRemainderSource.Manual : null);
+                HasManualEstimate ? ExpectedRemainderSource.Manual : null,
+                expectedRemnants.Count > 0 ? expectedRemnants : null);
 
             var result = await reservations.CreateReservationAsync(CorrelationId, request, userId);
             return RedirectToPage("Details", new { id = result.MaterialReservationId });

@@ -23,7 +23,7 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
     public SchemaShapeTests(SqlServerTestDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task AllTwelveMaterialTables_Exist()
+    public async Task AllThirteenMaterialTables_Exist()
     {
         await using var db = _fixture.CreateContext();
         await using var connection = (SqlConnection)db.Database.GetDbConnection();
@@ -31,7 +31,7 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = 'material'";
         var count = (int)(await command.ExecuteScalarAsync())!;
-        Assert.Equal(12, count);
+        Assert.Equal(13, count);
     }
 
     [Fact]

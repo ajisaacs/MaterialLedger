@@ -108,6 +108,39 @@ namespace MaterialLedger.Data.Migrations
                     b.ToTable("Attachments", "material");
                 });
 
+            modelBuilder.Entity("MaterialLedger.Data.Models.ExpectedRemnant", b =>
+                {
+                    b.Property<long>("ExpectedRemnantId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ExpectedRemnantId"));
+
+                    b.Property<decimal>("LengthIn")
+                        .HasColumnType("decimal(10,3)");
+
+                    b.Property<long>("MaterialReservationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("WidthIn")
+                        .HasColumnType("decimal(10,3)");
+
+                    b.HasKey("ExpectedRemnantId");
+
+                    b.HasIndex("MaterialReservationId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("ExpectedRemnants", "material");
+                });
+
             modelBuilder.Entity("MaterialLedger.Data.Models.InventoryItem", b =>
                 {
                     b.Property<long>("InventoryItemId")
@@ -722,6 +755,17 @@ namespace MaterialLedger.Data.Migrations
                     b.Navigation("UploadedByUser");
                 });
 
+            modelBuilder.Entity("MaterialLedger.Data.Models.ExpectedRemnant", b =>
+                {
+                    b.HasOne("MaterialLedger.Data.Models.MaterialReservation", "MaterialReservation")
+                        .WithMany("ExpectedRemnants")
+                        .HasForeignKey("MaterialReservationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MaterialReservation");
+                });
+
             modelBuilder.Entity("MaterialLedger.Data.Models.InventoryItem", b =>
                 {
                     b.HasOne("MaterialLedger.Data.Models.InventoryLocation", "InventoryLocation")
@@ -935,6 +979,11 @@ namespace MaterialLedger.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("MaterialSpec");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.MaterialReservation", b =>
+                {
+                    b.Navigation("ExpectedRemnants");
                 });
 #pragma warning restore 612, 618
         }

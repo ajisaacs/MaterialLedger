@@ -73,6 +73,13 @@ public sealed class NavigationPresentationTests
         Assert.Contains("--rail-focus-ring: #7ee7f5", css);
         Assert.Contains("outline: 3px solid var(--focus-ring)", css);
         Assert.Contains(".sidebar :focus-visible", css);
+        Assert.Contains(".sidebar {", css);
+        Assert.Contains("height: 100vh", css);
+        Assert.Contains("position: fixed", css);
+        Assert.Contains(".primary-nav {", css);
+        Assert.Contains("overflow-y: auto", css);
+        Assert.Contains(".account {", css);
+        Assert.Contains("flex-shrink: 0", css);
         Assert.Contains("outline: 3px solid var(--rail-focus-ring)", css);
         Assert.Contains(".alert-success", css);
         Assert.Contains(".alert-error", css);

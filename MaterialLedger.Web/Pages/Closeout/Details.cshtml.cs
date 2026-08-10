@@ -94,6 +94,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
         Reservation = await db.MaterialReservations
             .Include(x => x.InventoryItem)!.ThenInclude(x => x!.MaterialSpec)
             .Include(x => x.InventoryItem)!.ThenInclude(x => x!.InventoryLocation)
+            .Include(x => x.ExpectedRemnants)
             .FirstOrDefaultAsync(x => x.MaterialReservationId == id);
         DestinationChoices = await db.InventoryLocations
             .Where(x => x.IsActive && DestinationChoiceTypes.Contains(x.LocationType))

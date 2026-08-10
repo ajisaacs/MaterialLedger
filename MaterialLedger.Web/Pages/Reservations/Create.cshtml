@@ -53,11 +53,21 @@
     </fieldset>
 
     <fieldset>
-        <legend>Expected remainder</legend>
-        <label><input asp-for="HasManualEstimate" type="checkbox" /> Record an operator estimate of the expected remainder</label>
-        <label>Expected width (in) <input asp-for="ExpectedRemainderWidthIn" type="number" step="0.001" /></label>
-        <label>Expected length (in) <input asp-for="ExpectedRemainderLengthIn" type="number" step="0.001" /></label>
-        <p><em>This is an operator estimate, not a calculated result. No OpenNest integration is connected.</em></p>
+        <legend>Expected usable drops</legend>
+        <label><input asp-for="HasManualEstimate" type="checkbox" /> Record calculated usable drops expected after this cut</label>
+        <div id="expected-remnant-list">
+            <div class="remnant-entry">
+                <label>Expected width (in) <input name="ExpectedRemnants[0].WidthIn" value="@Model.ExpectedRemnants[0].WidthIn" type="number" min="0.001" step="0.001" /></label>
+                <label>Expected length (in) <input name="ExpectedRemnants[0].LengthIn" value="@Model.ExpectedRemnants[0].LengthIn" type="number" min="0.001" step="0.001" /></label>
+            </div>
+        </div>
+        <button id="add-expected-remnant" type="button" class="button button-secondary">Add another expected drop</button>
+        <template id="expected-remnant-template">
+            <div class="remnant-entry">
+                <label>Expected width (in) <input name="ExpectedRemnants[__index__].WidthIn" type="number" min="0.001" step="0.001" /></label>
+                <label>Expected length (in) <input name="ExpectedRemnants[__index__].LengthIn" type="number" min="0.001" step="0.001" /></label>
+            </div>
+        </template>
     </fieldset>
 
     <details class="additional-traceability">
@@ -72,3 +82,15 @@
 
     <button type="submit">Hold material for work</button>
 </form>
+
+<script>
+    document.getElementById("add-expected-remnant")?.addEventListener("click", () => {
+        const list = document.getElementById("expected-remnant-list");
+        const template = document.getElementById("expected-remnant-template");
+        if (!list || !template) return;
+        const index = list.querySelectorAll(".remnant-entry").length;
+        const fragment = template.content.cloneNode(true);
+        fragment.querySelectorAll("[name]").forEach(input => input.name = input.name.replace("__index__", index));
+        list.appendChild(fragment);
+    });
+</script>

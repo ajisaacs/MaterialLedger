@@ -33,5 +33,17 @@ public class MaterialReservation
     public decimal? ExpectedRemainderWidthIn { get; set; }
     public decimal? ExpectedRemainderLengthIn { get; set; }
     public ExpectedRemainderSource? ExpectedRemainderSourceType { get; set; }
+    public List<ExpectedRemnant> ExpectedRemnants { get; set; } = [];
     public byte[] RowVersion { get; set; } = [];
+}
+
+public class ExpectedRemnant
+{
+    public long ExpectedRemnantId { get; set; }
+    public long MaterialReservationId { get; set; }
+    public MaterialReservation? MaterialReservation { get; set; }
+    public int Sequence { get; set; }
+    public decimal WidthIn { get; set; }
+    public decimal LengthIn { get; set; }
+    public ExpectedRemainderSource SourceType { get; set; }
 }
