@@ -18,6 +18,7 @@ builder.Services.AddScoped<LocationSeeder>();
 builder.Services.AddScoped<MaterialSpecSeeder>();
 builder.Services.AddScoped<MaterialLedger.Data.Idempotency.OperationLogGuard>();
 builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationSlotService>();
+builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.MaterialSpecService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.PepMaterialMappingService>();
 builder.Services.AddScoped<MaterialLedger.Data.Census.OpeningBalanceService>();

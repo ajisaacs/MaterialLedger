@@ -1,0 +1,68 @@
+@* MaterialLedger.Web/Pages/Locations/Create.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.Locations.CreateModel
+@using MaterialLedger.Data.Models
+@{ Layout = "Shared/_Layout"; }
+<header class="page-heading">
+    <p class="eyebrow">Inventory setup</p>
+    <h1>Add location</h1>
+    <p>Create a new storage Area or Rack. Slots within a Rack are added afterward via Confirm Slots.</p>
+</header>
+
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="CorrelationId" />
+
+    <fieldset>
+        <legend>Location details</legend>
+        <label>Location code <input asp-for="LocationCode" placeholder="e.g. L3-ROLL" autocomplete="off" /></label>
+        <label>Display name <input asp-for="DisplayName" placeholder="e.g. Third Roll-Out Rack" autocomplete="off" /></label>
+        <label>Location type
+            <select asp-for="LocationType" id="location-type">
+                <option value="@InventoryLocationType.Area">Area</option>
+                <option value="@InventoryLocationType.Rack">Rack</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <fieldset id="rack-fields">
+        <legend>Rack details</legend>
+        <label>Parent area
+            <select asp-for="ParentInventoryLocationId" id="parent-area">
+                <option value="">-- none --</option>
+                @foreach (var area in Model.AvailableAreas)
+                {
+                    <option value="@area.InventoryLocationId">@area.DisplayName</option>
+                }
+            </select>
+        </label>
+        <label>Storage mode
+            <select asp-for="StorageMode">
+                <option value="@InventoryStorageMode.RolloutShelf">Roll-out shelf</option>
+                <option value="@InventoryStorageMode.VerticalDropBay">Vertical drop bay</option>
+                <option value="@InventoryStorageMode.FloorStaging">Floor staging</option>
+                <option value="@InventoryStorageMode.Other">Other</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <button type="submit">Add location</button>
+</form>
+
+<script>
+    const locationType = document.getElementById("location-type");
+    const rackFields = document.getElementById("rack-fields");
+
+    function syncRackFieldsVisibility() {
+        const isRack = locationType.value === "@InventoryLocationType.Rack";
+        rackFields.style.display = isRack ? "" : "none";
+    }
+
+    locationType.addEventListener("change", syncRackFieldsVisibility);
+    syncRackFieldsVisibility();
+</script>
