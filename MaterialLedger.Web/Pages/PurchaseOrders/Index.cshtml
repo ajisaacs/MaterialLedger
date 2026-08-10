@@ -1,0 +1,29 @@
+@* MaterialLedger.Web/Pages/PurchaseOrders/Index.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.PurchaseOrders.IndexModel
+@using MaterialLedger.Web.Shared
+@{ Layout = "Shared/_Layout"; }
+<header class="page-heading">
+    <p class="eyebrow">Inventory setup</p>
+    <h1>Purchase orders</h1>
+    <p><a asp-page="Create">Order material →</a></p>
+</header>
+<p>
+    <a asp-page="Index" asp-route-statusFilter="Open">Open</a>
+    | <a asp-page="Index" asp-route-statusFilter="All">All</a>
+</p>
+<table>
+    <thead><tr><th>PO #</th><th>Vendor</th><th>Order date</th><th>Lines</th><th>Status</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.Orders)
+    {
+        <tr>
+            <td><a asp-page="Details" asp-route-id="@row.Order.PurchaseOrderId">@row.Order.PurchaseOrderNumber</a></td>
+            <td>@row.Order.VendorName</td>
+            <td>@(row.Order.OrderDate?.ToString("d") ?? "—")</td>
+            <td>@row.Order.Lines.Count</td>
+            <td>@PurchaseOrderStatusDisplay.Label(row.Status)</td>
+        </tr>
+    }
+    </tbody>
+</table>
