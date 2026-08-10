@@ -37,7 +37,7 @@
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="NewSheet.CorrelationId" />
             <label>Rack
-                <select id="new-sheet-rack">
+                <select id="new-sheet-rack" required>
                     <option value="">Choose rack</option>
                     @foreach (var rack in Model.MaterialLocations.Select(x => x.ParentInventoryLocation).OfType<InventoryLocation>().DistinctBy(x => x.InventoryLocationId).OrderBy(x => x.SortOrder))
                     {

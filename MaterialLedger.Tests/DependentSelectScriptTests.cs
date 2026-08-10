@@ -12,6 +12,7 @@ public sealed class DependentSelectScriptTests
         Assert.Contains("function initDependentSelect(trigger, dependent, datasetKey)", script);
         Assert.Contains("dependent.appendChild(option)", script);
         Assert.Contains("dependent.disabled = !trigger.value", script);
+        Assert.Contains("option.remove()", script);
         Assert.DoesNotContain("option.hidden", script);
     }
 
