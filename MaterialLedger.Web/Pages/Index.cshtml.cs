@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using MaterialLedger.Data;
 using MaterialLedger.Data.Census;
-using MaterialLedger.Data.Materials;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Web.Pages.Shared;
 using MaterialLedger.Web.Services;
@@ -16,8 +15,7 @@ namespace MaterialLedger.Web.Pages;
 public class IndexModel(
     WorkQueueQueryService workQueue,
     MaterialLedgerDbContext db,
-    OpeningBalanceService openingBalance,
-    MaterialSpecService materialSpecs) : PageModel
+    OpeningBalanceService openingBalance) : PageModel
 {
     public WorkQueueSummary Summary { get; private set; } = new()
     {
@@ -56,35 +54,26 @@ public class IndexModel(
             return Page();
         }
 
-        if (NewSheet.ExistingMaterialSpecId is null
-            && (string.IsNullOrWhiteSpace(NewSheet.MaterialFamily) || NewSheet.ThicknessIn <= 0))
+        if (NewSheet.ExistingMaterialSpecId is null)
         {
-            NewSheetError = "Select an existing material or enter a family and thickness for a new one.";
+            NewSheetError = "Choose a material and thickness from the catalog.";
             return Page();
         }
 
-        if (NewSheet.ExistingMaterialSpecId is not null
-            && AvailableSpecs.All(x => x.MaterialSpecId != NewSheet.ExistingMaterialSpecId))
+        if (AvailableSpecs.All(x => x.MaterialSpecId != NewSheet.ExistingMaterialSpecId))
         {
-            NewSheetError = "The selected existing material is no longer available. Please choose another.";
+            NewSheetError = "The selected material is no longer available. Please choose another.";
             return Page();
         }
 
         try
         {
-            var materialSpecId = NewSheet.ExistingMaterialSpecId
-                ?? (await materialSpecs.GetOrCreateAsync(
-                    NewSheet.MaterialFamily,
-                    NewSheet.Grade,
-                    NewSheet.Finish,
-                    NewSheet.ThicknessIn,
-                    $"{NewSheet.MaterialFamily} {NewSheet.Grade} {NewSheet.ThicknessIn}in".Trim())).MaterialSpecId;
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var result = await openingBalance.RecordOpeningBalanceAsync(
                 NewSheet.CorrelationId,
                 new OpeningBalanceRequest(
                     NewSheet.LocationId,
-                    materialSpecId,
+                    NewSheet.ExistingMaterialSpecId.Value,
                     InventoryItemKind.FullSheet,
                     1,
                     NewSheet.UsableWidthIn,
@@ -109,7 +98,11 @@ public class IndexModel(
     private async Task LoadNewSheetOptionsAsync()
     {
         MaterialLocations = await ActiveMaterialSlotQuery.Create(db).ToListAsync();
-        AvailableSpecs = (await materialSpecs.SearchAsync(null)).ToList();
+        AvailableSpecs = await db.MaterialSpecs
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.MaterialFamily).ThenBy(x => x.Grade).ThenBy(x => x.Finish).ThenBy(x => x.ThicknessIn)
+            .ToListAsync();
     }
 }
 
@@ -118,10 +111,6 @@ public class NewSheetInput
     public long LocationId { get; set; }
     public Guid CorrelationId { get; set; } = Guid.NewGuid();
     public long? ExistingMaterialSpecId { get; set; }
-    public string MaterialFamily { get; set; } = string.Empty;
-    public string? Grade { get; set; }
-    public string? Finish { get; set; }
-    public decimal ThicknessIn { get; set; }
     public decimal? UsableWidthIn { get; set; }
     public decimal? UsableLengthIn { get; set; }
     public bool IsQuarantined { get; set; }

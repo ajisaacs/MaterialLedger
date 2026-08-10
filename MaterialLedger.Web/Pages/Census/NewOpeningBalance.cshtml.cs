@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using MaterialLedger.Data;
 using MaterialLedger.Data.Census;
-using MaterialLedger.Data.Materials;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -12,15 +11,11 @@ using Microsoft.EntityFrameworkCore;
 namespace MaterialLedger.Web.Pages.Census;
 
 [Authorize(Policy = MaterialLedgerPolicies.RequireProgrammerOrManager)]
-public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceService openingBalance, MaterialSpecService materialSpecs) : PageModel
+public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceService openingBalance) : PageModel
 {
     [BindProperty] public long LocationId { get; set; }
     [BindProperty] public Guid CorrelationId { get; set; }
     [BindProperty] public long? ExistingMaterialSpecId { get; set; }
-    [BindProperty] public string MaterialFamily { get; set; } = string.Empty;
-    [BindProperty] public string? Grade { get; set; }
-    [BindProperty] public string? Finish { get; set; }
-    [BindProperty] public decimal ThicknessIn { get; set; }
     [BindProperty] public InventoryItemKind ItemKind { get; set; } = InventoryItemKind.FullSheetBundle;
     [BindProperty] public decimal Quantity { get; set; }
     [BindProperty] public decimal? UsableWidthIn { get; set; }
@@ -37,13 +32,12 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
     public async Task<IActionResult> OnGetAsync(long locationId, long? copyFromItemId)
     {
         Location = await db.InventoryLocations.FindAsync(locationId);
-        if (Location is null)
-            return NotFound();
+        if (Location is null) return NotFound();
 
         LocationId = locationId;
         CorrelationId = Guid.NewGuid();
         ExistingActiveItems = (await openingBalance.GetActiveItemsAtLocationAsync(locationId)).ToList();
-        AvailableSpecs = (await materialSpecs.SearchAsync(null)).ToList();
+        AvailableSpecs = await LoadAvailableSpecsAsync();
 
         if (copyFromItemId is not null)
         {
@@ -55,8 +49,6 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
                 UsableWidthIn = prior.UsableWidthIn;
                 UsableLengthIn = prior.UsableLengthIn;
                 ShapeClassification = prior.ShapeClassification;
-                // Quantity is intentionally left at its default (0) — the operator must confirm a
-                // real count, never inherit the prior item's quantity (spec section 4A).
             }
         }
 
@@ -67,30 +59,25 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
     {
         Location = await db.InventoryLocations.FindAsync(LocationId);
         ExistingActiveItems = (await openingBalance.GetActiveItemsAtLocationAsync(LocationId)).ToList();
-        AvailableSpecs = (await materialSpecs.SearchAsync(null)).ToList();
+        AvailableSpecs = await LoadAvailableSpecsAsync();
 
-        if (ExistingMaterialSpecId is null && (string.IsNullOrWhiteSpace(MaterialFamily) || ThicknessIn <= 0))
+        if (ExistingMaterialSpecId is null)
         {
-            Error = "Select an existing material or enter a family and thickness for a new one.";
+            Error = "Choose a material and thickness from the catalog.";
             return Page();
         }
 
-        if (ExistingMaterialSpecId is not null && AvailableSpecs.All(s => s.MaterialSpecId != ExistingMaterialSpecId))
+        if (AvailableSpecs.All(s => s.MaterialSpecId != ExistingMaterialSpecId))
         {
-            Error = "The selected existing material is no longer available. Please choose another.";
+            Error = "The selected material is no longer available. Please choose another.";
             return Page();
         }
 
         try
         {
-            var specId = ExistingMaterialSpecId
-                ?? (await materialSpecs.GetOrCreateAsync(MaterialFamily, Grade, Finish, ThicknessIn,
-                    $"{MaterialFamily} {Grade} {ThicknessIn}in".Trim())).MaterialSpecId;
-
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var request = new OpeningBalanceRequest(LocationId, specId, ItemKind, Quantity,
+            var request = new OpeningBalanceRequest(LocationId, ExistingMaterialSpecId.Value, ItemKind, Quantity,
                 UsableWidthIn, UsableLengthIn, ShapeClassification, IsQuarantined, Notes);
-
             var result = await openingBalance.RecordOpeningBalanceAsync(CorrelationId, request, userId);
             return RedirectToPage("Success", new { code = result.PublicItemCode });
         }
@@ -103,4 +90,10 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
             return Page();
         }
     }
+
+    private Task<List<MaterialSpec>> LoadAvailableSpecsAsync() => db.MaterialSpecs
+        .AsNoTracking()
+        .Where(x => x.IsActive)
+        .OrderBy(x => x.MaterialFamily).ThenBy(x => x.Grade).ThenBy(x => x.Finish).ThenBy(x => x.ThicknessIn)
+        .ToListAsync();
 }

@@ -33,20 +33,26 @@
 
     <fieldset>
         <legend>Material</legend>
-        <label>Existing spec
-            <select asp-for="ExistingMaterialSpecId">
-                <option value="">-- new material --</option>
-                @foreach (var spec in Model.AvailableSpecs)
+        <label>Material family / grade / finish
+            <select id="opening-balance-material" required>
+                <option value="">Choose material</option>
+                @foreach (var material in Model.AvailableSpecs.GroupBy(spec => $"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}"))
                 {
-                    <option value="@spec.MaterialSpecId">@spec.DisplayName</option>
+                    var spec = material.First();
+                    <option value="@material.Key">@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</option>
                 }
             </select>
         </label>
-        <p>Or enter a new material:</p>
-        <label>Family <input asp-for="MaterialFamily" /></label>
-        <label>Grade <input asp-for="Grade" /></label>
-        <label>Finish <input asp-for="Finish" /></label>
-        <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
+        <label>Thickness
+            <select asp-for="ExistingMaterialSpecId" id="opening-balance-thickness" required disabled>
+                <option value="">Choose thickness</option>
+                @foreach (var spec in Model.AvailableSpecs)
+                {
+                    <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.ThicknessIn.ToString("0.####") in</option>
+                }
+            </select>
+        </label>
+        <p>Need a material that is not listed? <a asp-page="/Materials/Index">Add it to the material catalog</a>.</p>
     </fieldset>
 
     <fieldset>
@@ -71,3 +77,23 @@
 
     <button type="submit">Save opening balance</button>
 </form>
+<script>
+    (() => {
+        const material = document.getElementById('opening-balance-material');
+        const thickness = document.getElementById('opening-balance-thickness');
+        const selected = thickness.options[thickness.selectedIndex];
+        if (selected?.dataset.materialKey) material.value = selected.dataset.materialKey;
+        const filterThicknesses = reset => {
+            for (const option of thickness.options) {
+                if (!option.value) continue;
+                const matches = option.dataset.materialKey === material.value;
+                option.hidden = !matches;
+                option.disabled = !matches;
+            }
+            thickness.disabled = !material.value;
+            if (reset) thickness.value = '';
+        };
+        material.addEventListener('change', () => filterThicknesses(true));
+        filterThicknesses(false);
+    })();
+</script>

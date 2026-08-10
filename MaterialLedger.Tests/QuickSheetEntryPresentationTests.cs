@@ -15,9 +15,13 @@ public sealed class QuickSheetEntryPresentationTests
         Assert.Contains("action=\"?handler=AddSheet\"", page);
         Assert.Contains("asp-for=\"NewSheet.LocationId\"", page);
         Assert.Contains("Model.MaterialLocations", page);
+        Assert.Contains("Material family / grade / finish", page);
+        Assert.Contains("Thickness", page);
+        Assert.Contains("data-material-key", page);
         Assert.Contains("asp-for=\"NewSheet.ExistingMaterialSpecId\"", page);
-        Assert.Contains("asp-for=\"NewSheet.MaterialFamily\"", page);
-        Assert.Contains("asp-for=\"NewSheet.ThicknessIn\"", page);
+        Assert.Contains("Materials/Index", page);
+        Assert.DoesNotContain("asp-for=\"NewSheet.MaterialFamily\"", page);
+        Assert.DoesNotContain("asp-for=\"NewSheet.ThicknessIn\"", page);
         Assert.Contains("asp-for=\"NewSheet.UsableWidthIn\"", page);
         Assert.Contains("asp-for=\"NewSheet.UsableLengthIn\"", page);
     }

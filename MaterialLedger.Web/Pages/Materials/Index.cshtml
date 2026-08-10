@@ -1,0 +1,38 @@
+@page
+@model MaterialLedger.Web.Pages.Materials.IndexModel
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Material catalog"; }
+
+<h1>Material catalog</h1>
+<p>Add a catalog material before recording a received or counted sheet.</p>
+
+@if (Model.Error is not null)
+{
+    <p class="form-error" role="alert">@Model.Error</p>
+}
+@if (Model.Success is not null)
+{
+    <p role="status">@Model.Success</p>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <fieldset>
+        <legend>Add material</legend>
+        <label>Material family <input asp-for="NewMaterial.MaterialFamily" required maxlength="100" /></label>
+        <label>Grade <input asp-for="NewMaterial.Grade" maxlength="100" /></label>
+        <label>Finish <input asp-for="NewMaterial.Finish" maxlength="100" /></label>
+        <label>Thickness (in) <input asp-for="NewMaterial.ThicknessIn" type="number" step="0.0001" min="0.0001" required /></label>
+    </fieldset>
+    <button type="submit">Add material</button>
+</form>
+
+<h2>Active materials</h2>
+<table>
+    <thead><tr><th>Material</th><th>Thickness</th></tr></thead>
+    <tbody>
+    @foreach (var spec in Model.AvailableSpecs)
+    {
+        <tr><td>@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</td><td>@spec.ThicknessIn.ToString("0.####") in</td></tr>
+    }
+    </tbody>
+</table>
