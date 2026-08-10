@@ -20,8 +20,8 @@
 
     <fieldset>
         <legend>Location details</legend>
-        <label>Location code <input asp-for="LocationCode" placeholder="e.g. L3-ROLL" autocomplete="off" /></label>
-        <label>Display name <input asp-for="DisplayName" placeholder="e.g. Third Roll-Out Rack" autocomplete="off" /></label>
+        <label>Location code <input asp-for="LocationCode" placeholder="e.g. L3-ROLL" autocomplete="off" maxlength="80" /></label>
+        <label>Display name <input asp-for="DisplayName" placeholder="e.g. Third Roll-Out Rack" autocomplete="off" maxlength="160" /></label>
         <label>Location type
             <select asp-for="LocationType" id="location-type">
                 <option value="@InventoryLocationType.Area">Area</option>
@@ -61,6 +61,9 @@
     function syncRackFieldsVisibility() {
         const isRack = locationType.value === "@InventoryLocationType.Rack";
         rackFields.style.display = isRack ? "" : "none";
+        if (!isRack) {
+            document.getElementById("parent-area").value = "";
+        }
     }
 
     locationType.addEventListener("change", syncRackFieldsVisibility);

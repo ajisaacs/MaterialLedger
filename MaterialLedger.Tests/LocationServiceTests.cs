@@ -89,6 +89,30 @@ public class LocationServiceTests : IClassFixture<SqlServerTestDatabaseFixture>
     }
 
     [Fact]
+    public async Task CreateLocationAsync_CodeExceedsMaxLength_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var userId = await SeedUserAsync(db);
+        var service = new LocationService(db, new OperationLogGuard(db));
+        var overLengthCode = new string('A', 81);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateLocationAsync(Guid.NewGuid(),
+            new CreateLocationRequest(overLengthCode, "Name", InventoryLocationType.Area, InventoryStorageMode.Other, null), userId));
+    }
+
+    [Fact]
+    public async Task CreateLocationAsync_DisplayNameExceedsMaxLength_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var userId = await SeedUserAsync(db);
+        var service = new LocationService(db, new OperationLogGuard(db));
+        var overLengthName = new string('B', 161);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateLocationAsync(Guid.NewGuid(),
+            new CreateLocationRequest("LONG-NAME", overLengthName, InventoryLocationType.Area, InventoryStorageMode.Other, null), userId));
+    }
+
+    [Fact]
     public async Task CreateLocationAsync_DuplicateCode_Throws()
     {
         await using var db = _fixture.CreateContext();

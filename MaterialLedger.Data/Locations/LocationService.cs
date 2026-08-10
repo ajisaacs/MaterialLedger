@@ -17,6 +17,9 @@ public record CreateLocationRequest(
 
 public class LocationService(MaterialLedgerDbContext db, OperationLogGuard operationLog)
 {
+    private const int LocationCodeMaxLength = 80;
+    private const int DisplayNameMaxLength = 160;
+
     public async Task<InventoryLocation> CreateLocationAsync(
         Guid correlationId, CreateLocationRequest request, int executedBy)
     {
@@ -25,6 +28,8 @@ public class LocationService(MaterialLedgerDbContext db, OperationLogGuard opera
 
         if (string.IsNullOrWhiteSpace(request.DisplayName))
             throw new InvalidOperationException("Display name is required.");
+        if (request.DisplayName.Trim().Length > DisplayNameMaxLength)
+            throw new InvalidOperationException($"Display name cannot exceed {DisplayNameMaxLength} characters.");
 
         if (request.LocationType is not (InventoryLocationType.Area or InventoryLocationType.Rack))
             throw new InvalidOperationException($"Location type '{request.LocationType}' cannot be created directly — only Area and Rack are supported here.");
@@ -94,6 +99,8 @@ public class LocationService(MaterialLedgerDbContext db, OperationLogGuard opera
     {
         if (normalizedCode.Length == 0)
             throw new InvalidOperationException("Location code is required.");
+        if (normalizedCode.Length > LocationCodeMaxLength)
+            throw new InvalidOperationException($"Location code cannot exceed {LocationCodeMaxLength} characters.");
         if (!normalizedCode.All(c => IsValidCodeCharacter(c)))
             throw new InvalidOperationException("Location code may only contain letters, numbers, and hyphens.");
     }
