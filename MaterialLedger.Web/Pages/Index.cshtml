@@ -1,12 +1,40 @@
 @page
 @model MaterialLedger.Web.Pages.IndexModel
-@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Overview"; }
-<section class="dashboard-hero"><div><p class="eyebrow">Shop floor control</p><h1>Material, where you need it.</h1><p>Track sheet inventory, reservations, and exceptions from one clear operational workspace.</p></div><span class="hero-monogram" aria-hidden="true">ML</span></section>
-<section class="dashboard-section"><div class="section-heading"><p class="eyebrow">Workspace</p><h2>Choose a task</h2></div><div class="action-grid">
-    <a class="action-card" asp-page="/Locations/Index"><span>01</span><h3>Material map</h3><p>Browse locations, slots, and material assignments.</p><b>Open map →</b></a>
-    <a class="action-card" asp-page="/Inventory/Search"><span>02</span><h3>Search inventory</h3><p>Find usable material by specification, size, availability, or location.</p><b>Search stock →</b></a>
-    <a class="action-card" asp-page="/Reservations/Index"><span>03</span><h3>Reservations</h3><p>Create and manage material held for production.</p><b>View reservations →</b></a>
-    <a class="action-card" asp-page="/Exceptions/Index"><span>04</span><h3>Attention needed</h3><p>Review items that require attention.</p><b>Review →</b></a>
-    @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a class="action-card action-card-accent" asp-page="/Closeout/Index"><span>05</span><h3>Closeout</h3><p>Record consumption and complete material activity.</p><b>Start closeout →</b></a> }
-    @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a class="action-card action-card-accent" asp-page="/Census/SelectSlot"><span>06</span><h3>Opening census</h3><p>Set the opening balance for a location.</p><b>Begin census →</b></a> }
-</div></section>
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Material control"; }
+
+<section class="control-header">
+    <div>
+        <p class="eyebrow">Material control</p>
+        <h1>Run the material workflow.</h1>
+        <p>Receive stock, find a usable sheet, reserve it to production, and close it out when the work is complete.</p>
+    </div>
+    <a class="button button-primary" asp-page="/Inventory/Search">Find material <span aria-hidden="true">→</span></a>
+</section>
+
+<section class="summary-grid" aria-label="Current material status">
+    <a class="summary-card" asp-page="/Inventory/Search" asp-route-AvailableOnly="true"><span>Available material</span><strong>@Model.Summary.AvailableMaterial</strong><small>items ready to allocate</small></a>
+    <a class="summary-card" asp-page="/Reservations/Index"><span>Active reservations</span><strong>@Model.Summary.ActiveReservations</strong><small>material held for work</small></a>
+    <a class="summary-card @(Model.Summary.AwaitingCloseout > 0 ? "summary-card-warning" : "")" asp-page="/Closeout/Index"><span>Awaiting closeout</span><strong>@Model.Summary.AwaitingCloseout</strong><small>cut activity to confirm</small></a>
+    <a class="summary-card @(Model.Summary.AttentionNeeded > 0 ? "summary-card-alert" : "")" asp-page="/Exceptions/Index"><span>Attention needed</span><strong>@Model.Summary.AttentionNeeded</strong><small>items requiring review</small></a>
+</section>
+
+<section class="workflow-section">
+    <div class="section-heading"><div><p class="eyebrow">Primary workflow</p><h2>What needs to happen now?</h2></div><p>Use these four actions in the same order material moves through the shop.</p></div>
+    <div class="workflow-grid">
+        @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+        {
+            <a class="workflow-card workflow-card-primary" asp-page="/Census/SelectSlot"><span class="workflow-number">01</span><h3>Receive material</h3><p>Choose a slot, record the delivery, and establish accountable stock.</p><b>Choose receiving slot <span aria-hidden="true">→</span></b></a>
+        }
+        <a class="workflow-card" asp-page="/Inventory/Search"><span class="workflow-number">02</span><h3>Find stock</h3><p>Search usable sheets and drops by material, size, availability, or location.</p><b>Search inventory <span aria-hidden="true">→</span></b></a>
+        <a class="workflow-card" asp-page="/Reservations/Index"><span class="workflow-number">03</span><h3>Reserve material</h3><p>Hold a specific item for a job, drawing, nest, or production operation.</p><b>Open reservations <span aria-hidden="true">→</span></b></a>
+        @if (User.IsInRole("Operator") || User.IsInRole("Manager"))
+        {
+            <a class="workflow-card workflow-card-closeout" asp-page="/Closeout/Index"><span class="workflow-number">04</span><h3>Close out cut</h3><p>Confirm consumption, return a full sheet, or record a usable remnant.</p><b>Start closeout <span aria-hidden="true">→</span></b></a>
+        }
+    </div>
+</section>
+
+<section class="support-row">
+    <div><p class="eyebrow">Supporting work</p><h2>Keep the floor organized.</h2></div>
+    <div class="support-links"><a asp-page="/Locations/Index">Material map <span>Locations and slots</span></a><a asp-page="/Exceptions/Index">Attention queue <span>Resolve inventory issues</span></a>@if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a asp-page="/Census/SelectSlot">Opening census <span>Establish a counted balance</span></a> }</div>
+</section>
