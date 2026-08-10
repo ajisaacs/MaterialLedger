@@ -1,3 +1,4 @@
+using System.Globalization;
 using MaterialLedger.Data.Materials;
 
 namespace MaterialLedger.Web.Services;
@@ -45,7 +46,7 @@ public class MaterialSpecSeeder(MaterialSpecService materialSpecService)
     private static IEnumerable<SeedSpec> ForMaterial(string family, string? grade, string? finish, GaugeEntry[] gauges) =>
         gauges.Select(g => new SeedSpec(
             family, grade, finish, g.ThicknessIn,
-            $"{family} {grade}{(finish is null ? "" : " " + finish)} — {g.Label} ({g.ThicknessIn:0.0000}\")"));
+            ((FormattableString)$"{family} {grade}{(finish is null ? "" : " " + finish)} — {g.Label} ({g.ThicknessIn:0.0000}\")").ToString(CultureInfo.InvariantCulture)));
 
     private static readonly SeedSpec[] SeedSpecs =
     [
