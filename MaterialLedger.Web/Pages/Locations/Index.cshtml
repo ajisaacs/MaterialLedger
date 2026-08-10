@@ -6,6 +6,10 @@
     <p class="eyebrow">Inventory setup</p>
     <h1>Material locations</h1>
     <p>See confirmed storage locations and the material currently assigned to them.</p>
+    @if (Model.CanAddLocation)
+    {
+        <p><a asp-page="Create">Add location →</a></p>
+    }
 </header>
 <table>
     <thead><tr><th>Code</th><th>Rack</th><th>Storage</th><th>Slots confirmed</th><th>Available</th><th>Reserved</th><th>Attention</th></tr></thead>

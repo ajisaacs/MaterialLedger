@@ -12,6 +12,7 @@ public class IndexModel(MaterialLedgerDbContext db, InventoryQueryService invent
 {
     public List<InventoryLocation> Racks { get; set; } = [];
     public Dictionary<string, LocationSummary> Summaries { get; set; } = [];
+    public bool CanAddLocation { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -20,5 +21,6 @@ public class IndexModel(MaterialLedgerDbContext db, InventoryQueryService invent
             .OrderBy(x => x.SortOrder)
             .ToListAsync();
         Summaries = (await inventoryQuery.GetRackSummariesAsync()).ToDictionary(x => x.LocationCode);
+        CanAddLocation = User.IsInRole("Programmer") || User.IsInRole("Manager");
     }
 }
