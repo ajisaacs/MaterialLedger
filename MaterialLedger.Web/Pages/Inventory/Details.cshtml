@@ -1,0 +1,40 @@
+@* MaterialLedger.Web/Pages/Inventory/Details.cshtml *@
+@page "{id:long}"
+@model MaterialLedger.Web.Pages.Inventory.DetailsModel
+@using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
+@{ Layout = "Shared/_Layout"; }
+
+<header class="page-heading">
+    <p class="eyebrow">Inventory item</p>
+    <h1>@Model.Item!.PublicItemCode</h1>
+    <p>@Model.Item.MaterialSpecDisplayName</p>
+</header>
+
+<section aria-label="Item details">
+    <dl class="detail-grid">
+        <dt>Kind</dt><dd>@Model.Item.ItemKind</dd>
+        <dt>Status</dt>
+        <dd><span class="inventory-status inventory-status-@Model.Item.Status.ToString().ToLowerInvariant() @(Model.Item.IsStale ? "inventory-status-stale" : "")">@Model.Item.Status@(Model.Item.IsStale ? " — review before use" : "")</span></dd>
+        <dt>Quantity</dt><dd>@DisplayFormat.Quantity(Model.Item.AvailableQuantity) of @DisplayFormat.Quantity(Model.Item.QuantityOnHand)</dd>
+        <dt>Usable size</dt><dd>@(Model.Item.UsableWidthIn is not null ? $"{Model.Item.UsableWidthIn} x {Model.Item.UsableLengthIn} in" : "-")</dd>
+        <dt>Location</dt><dd><a asp-page="/Inventory/Search" asp-route-LocationCode="@Model.Item.LocationCode" asp-route-AvailableOnly="false">@Model.Item.LocationCode</a></dd>
+        <dt>Last observed</dt><dd>@Model.Item.LastObservedAtUtc.ToString("u") by @Model.Item.LastObservedByDisplayName</dd>
+        @if (Model.Item.ItemKind == InventoryItemKind.Drop)
+        {
+            <dt>Cut from</dt>
+            <dd>
+                @if (Model.SourceSheet is not null)
+                {
+                    <text><a asp-page="Details" asp-route-id="@Model.SourceSheet.InventoryItemId">@Model.SourceSheet.PublicItemCode</a> — @Model.SourceSheet.MaterialSpecDisplayName</text>
+                }
+                else
+                {
+                    @:Not recorded
+                }
+            </dd>
+        }
+    </dl>
+</section>
+
+<p><a asp-page="/Inventory/Search">Back to search</a></p>

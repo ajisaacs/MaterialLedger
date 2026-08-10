@@ -186,6 +186,20 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                 }).FirstOrDefaultAsync();
     }
 
+    /// <summary>
+    /// Looks up the sheet a drop was cut from via the RemnantCreated transaction recorded at
+    /// closeout time — InventoryItem carries no direct parent-item column, so this is the only
+    /// path back to the source sheet.
+    /// </summary>
+    public async Task<InventoryItemSummary?> GetSourceSheetAsync(long inventoryItemId)
+    {
+        var sourceItemId = await db.MaterialTransactions
+            .Where(t => t.TransactionType == MaterialTransactionType.RemnantCreated && t.InventoryItemId == inventoryItemId)
+            .Select(t => t.RelatedInventoryItemId)
+            .FirstOrDefaultAsync();
+        return sourceItemId is null ? null : await GetItemSummaryAsync(sourceItemId.Value);
+    }
+
     public async Task<IReadOnlyList<InventoryItemSummary>> SearchAsync(InventoryFilter filter)
     {
         // Compute active reservation counts as a separate query, materialized to dictionary.

@@ -68,7 +68,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
                 MeasuredUsableWidthIn, MeasuredUsableLengthIn, DestinationLocationId, Notes,
                 recordedRemnants.Count > 0 ? recordedRemnants : null);
             var result = await closeout.CloseoutConsumptionAsync(CorrelationId, request, userId);
-            return RedirectToPage("Success", new { id, remnantCode = result.RemnantPublicItemCode, Status, Equipment });
+            return RedirectToPage("Success", new { id, remnantCode = result.RemnantPublicItemCode, remnantItemId = result.RemnantInventoryItemId, Status, Equipment });
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or InvalidOperationException
             or ReservationConcurrencyException or OperationConflictException or DbUpdateException)

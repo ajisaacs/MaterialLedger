@@ -5,7 +5,17 @@
 <h1>Reservation @Model.ReservationId closed out</h1>
 @if (Model.RemnantCode is not null)
 {
-    <p>New drop item code: <strong>@Model.RemnantCode</strong></p>
+    <p>
+        New drop item code:
+        @if (Model.RemnantItemId is not null)
+        {
+            <a asp-page="/Inventory/Details" asp-route-id="@Model.RemnantItemId"><strong>@Model.RemnantCode</strong></a>
+        }
+        else
+        {
+            <strong>@Model.RemnantCode</strong>
+        }
+    </p>
     <p>QR payload for a printed label: <code>@Model.RemnantCode</code></p>
 }
 <p><a asp-page="Index" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Back to closeout list</a></p>

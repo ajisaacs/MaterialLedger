@@ -29,6 +29,8 @@ public class CloseoutResult
     public required ReservationStatus Status { get; init; }
     public string? RemnantPublicItemCode { get; init; }
     public IReadOnlyList<string> RemnantPublicItemCodes { get; init; } = [];
+    public long? RemnantInventoryItemId { get; init; }
+    public IReadOnlyList<long> RemnantInventoryItemIds { get; init; } = [];
 }
 
 public interface ICloseoutService
@@ -117,7 +119,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
 
         var item = await db.InventoryItems.FirstAsync(x => x.InventoryItemId == reservation.InventoryItemId);
         var now = DateTime.UtcNow;
-        var remnantCodes = new List<string>();
+        var remnants = new List<InventoryItem>();
 
         switch (request.Outcome)
         {
@@ -164,7 +166,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
                 await db.SaveChangesAsync();
 
                 foreach (var remnant in GetRemnants(request))
-                    remnantCodes.Add(await CreateRemnantAsync(item, reservation.MaterialReservationId, remnant, now, confirmedBy, request.Notes));
+                    remnants.Add(await CreateRemnantAsync(item, reservation.MaterialReservationId, remnant, now, confirmedBy, request.Notes));
 
                 db.ProductionConsumptions.Add(NewProductionConsumption(reservation.MaterialReservationId, consumeTxn.MaterialTransactionId, request.Outcome, 1m, now, confirmedBy, request.Notes));
                 reservation.Status = ReservationStatus.ClosedConsumed;
@@ -207,8 +209,10 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
         {
             MaterialReservationId = reservation.MaterialReservationId,
             Status = reservation.Status,
-            RemnantPublicItemCode = remnantCodes.FirstOrDefault(),
-            RemnantPublicItemCodes = remnantCodes
+            RemnantPublicItemCode = remnants.FirstOrDefault()?.PublicItemCode,
+            RemnantPublicItemCodes = remnants.Select(x => x.PublicItemCode).ToList(),
+            RemnantInventoryItemId = remnants.FirstOrDefault()?.InventoryItemId,
+            RemnantInventoryItemIds = remnants.Select(x => x.InventoryItemId).ToList()
         };
         operationLog.Record(correlationId, "CloseoutConsumption", payloadHash, JsonSerializer.Serialize(result), confirmedBy);
 
@@ -242,7 +246,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
         Notes = notes
     };
 
-    private async Task<string> CreateRemnantAsync(InventoryItem sourceItem, long reservationId, UsableDropRequest request, DateTime now, int actorId, string? notes)
+    private async Task<InventoryItem> CreateRemnantAsync(InventoryItem sourceItem, long reservationId, UsableDropRequest request, DateTime now, int actorId, string? notes)
     {
         var destination = await db.InventoryLocations.FirstOrDefaultAsync(x => x.InventoryLocationId == request.DestinationLocationId)
             ?? throw new InvalidOperationException($"Destination location {request.DestinationLocationId} does not exist.");
@@ -272,7 +276,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
             Notes = notes, SourceSystem = MaterialTransactionSourceSystem.OperatorUI
         });
         await db.SaveChangesAsync();
-        return code;
+        return remnant;
     }
 
     private static IReadOnlyList<UsableDropRequest> GetRemnants(CloseoutConsumptionRequest request) =>

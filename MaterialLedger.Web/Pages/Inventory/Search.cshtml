@@ -91,7 +91,7 @@ else
     @foreach (var r in Model.Results)
     {
         <tr>
-            <td>@r.PublicItemCode</td>
+            <td><a asp-page="Details" asp-route-id="@r.InventoryItemId">@r.PublicItemCode</a></td>
             <td>@r.MaterialSpecDisplayName</td>
             <td>@r.ItemKind</td>
             <td>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</td>
