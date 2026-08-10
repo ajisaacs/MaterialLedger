@@ -36,5 +36,32 @@ public sealed class QuickSheetEntryPresentationTests
         Assert.Contains("MaterialLocations", pageModel);
     }
 
+    [Fact]
+    public void Add_sheet_dialog_splits_location_into_a_rack_select_and_a_dependent_slot_select()
+    {
+        var page = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Index.cshtml"));
+
+        Assert.Contains("id=\"new-sheet-rack\"", page);
+        Assert.Contains("Choose rack", page);
+        Assert.Contains("id=\"new-sheet-slot\"", page);
+        Assert.Contains("Choose slot", page);
+        Assert.Contains("data-rack-id=\"@location.ParentInventoryLocationId\"", page);
+        Assert.Contains("asp-for=\"NewSheet.LocationId\" id=\"new-sheet-slot\"", page);
+        Assert.DoesNotContain("Choose confirmed rack slot", page);
+        Assert.DoesNotContain("@location.ParentInventoryLocation?.DisplayName — @location.LocationCode", page);
+    }
+
+    [Fact]
+    public void Add_sheet_dialog_wires_both_dependent_selects_through_the_shared_script()
+    {
+        var page = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Index.cshtml"));
+
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(document.getElementById('new-sheet-material'), document.getElementById('new-sheet-thickness'), 'materialKey')", page);
+        Assert.Contains("initDependentSelect(document.getElementById('new-sheet-rack'), document.getElementById('new-sheet-slot'), 'rackId')", page);
+        Assert.DoesNotContain("option.hidden", page);
+        Assert.DoesNotContain("filterThicknesses", page);
+    }
+
     private static string RepositoryRoot => Path.GetFullPath("../../../../", AppContext.BaseDirectory);
 }

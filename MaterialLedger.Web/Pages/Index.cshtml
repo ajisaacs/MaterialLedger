@@ -35,12 +35,21 @@
         <form method="post" action="?handler=AddSheet" class="sheet-entry-form">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="NewSheet.CorrelationId" />
-            <label>Location
-                <select asp-for="NewSheet.LocationId" required>
-                    <option value="">Choose confirmed rack slot</option>
+            <label>Rack
+                <select id="new-sheet-rack">
+                    <option value="">Choose rack</option>
+                    @foreach (var rack in Model.MaterialLocations.Select(x => x.ParentInventoryLocation).Where(x => x is not null).DistinctBy(x => x!.InventoryLocationId).OrderBy(x => x!.SortOrder))
+                    {
+                        <option value="@rack!.InventoryLocationId">@rack.DisplayName</option>
+                    }
+                </select>
+            </label>
+            <label>Slot
+                <select asp-for="NewSheet.LocationId" id="new-sheet-slot" required disabled>
+                    <option value="">Choose slot</option>
                     @foreach (var location in Model.MaterialLocations)
                     {
-                        <option value="@location.InventoryLocationId">@location.ParentInventoryLocation?.DisplayName — @location.LocationCode</option>
+                        <option value="@location.InventoryLocationId" data-rack-id="@location.ParentInventoryLocationId">@location.LocationCode</option>
                     }
                 </select>
             </label>
@@ -80,25 +89,10 @@
             <div class="dialog-actions"><button type="submit">Add sheet</button><button type="button" class="button-secondary" onclick="document.getElementById('add-sheet-dialog').close()">Cancel</button></div>
         </form>
     </dialog>
+    <script src="~/js/dependent-select.js" asp-append-version="true"></script>
     <script>
-        (() => {
-            const material = document.getElementById('new-sheet-material');
-            const thickness = document.getElementById('new-sheet-thickness');
-            const selected = thickness.options[thickness.selectedIndex];
-            if (selected?.dataset.materialKey) material.value = selected.dataset.materialKey;
-            const filterThicknesses = (resetSelection) => {
-                for (const option of thickness.options) {
-                    if (!option.value) continue;
-                    const matches = option.dataset.materialKey === material.value;
-                    option.hidden = !matches;
-                    option.disabled = !matches;
-                }
-                thickness.disabled = !material.value;
-                if (resetSelection) thickness.value = '';
-            };
-            material.addEventListener('change', () => filterThicknesses(true));
-            filterThicknesses(false);
-        })();
+        initDependentSelect(document.getElementById('new-sheet-material'), document.getElementById('new-sheet-thickness'), 'materialKey');
+        initDependentSelect(document.getElementById('new-sheet-rack'), document.getElementById('new-sheet-slot'), 'rackId');
     </script>
     @if (Model.ShowAddSheetDialog)
     {
