@@ -26,3 +26,8 @@ MaterialLedger.Web/keys/
 
 # Local git worktrees used for isolated feature/plan work.
 .worktrees/
+
+# Local attachment storage (see AttachmentStorageService / Storage:AttachmentsPath) — uploaded
+# files, not source; default relative path used when Storage:AttachmentsPath is not configured.
+App_Data/
+MaterialLedger.Web/App_Data/

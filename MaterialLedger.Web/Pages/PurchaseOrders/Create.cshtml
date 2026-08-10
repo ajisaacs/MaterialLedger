@@ -50,7 +50,7 @@
             </label>
             <label>Vendor description <input asp-for="Lines[i].VendorDescription" maxlength="200" /></label>
             <label>Vendor part number <input asp-for="Lines[i].VendorPartNumber" maxlength="100" /></label>
-            <label>Quantity ordered <input asp-for="Lines[i].QuantityOrdered" type="number" step="1" min="1" /></label>
+            <label>Quantity ordered <input asp-for="Lines[i].QuantityOrdered" type="number" step="1" min="0" /></label>
             <label>Unit price <input asp-for="Lines[i].UnitPrice" type="number" step="0.01" min="0" /></label>
             <label>Usable width (in) <input asp-for="Lines[i].UsableWidthIn" type="number" step="0.001" /></label>
             <label>Usable length (in) <input asp-for="Lines[i].UsableLengthIn" type="number" step="0.001" /></label>
