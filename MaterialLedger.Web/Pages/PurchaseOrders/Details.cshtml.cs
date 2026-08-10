@@ -88,6 +88,8 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
         if (attachment is null) return NotFound();
 
         var path = attachmentStorage.GetFullPath(attachment);
+        if (!System.IO.File.Exists(path)) return NotFound();
+
         var downloadFileName = $"{Order!.PurchaseOrderNumber}-confirmation{Path.GetExtension(attachment.StoragePath)}";
         return PhysicalFile(path, attachment.ContentType ?? "application/octet-stream", downloadFileName);
     }

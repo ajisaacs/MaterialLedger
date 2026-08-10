@@ -31,7 +31,7 @@
             <td>@DisplayFormat.Quantity(line.QuantityReceived)</td>
             <td>@DisplayFormat.Quantity(line.QuantityOrdered - line.QuantityReceived)</td>
             <td>@(line.UnitPrice?.ToString("0.00") ?? "—")</td>
-            <td>@line.Status</td>
+            <td>@PurchaseOrderStatusDisplay.Label(line.Status)</td>
             <td>
                 @if (line.Status is PurchaseOrderLineStatus.Open or PurchaseOrderLineStatus.PartiallyReceived)
                 {

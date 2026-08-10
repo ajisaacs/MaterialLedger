@@ -70,6 +70,9 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
         {
             purchaseOrderLine = await db.PurchaseOrderLines.FindAsync(request.PurchaseOrderLineId.Value)
                 ?? throw new InvalidOperationException($"Purchase order line {request.PurchaseOrderLineId} does not exist.");
+            if (purchaseOrderLine.MaterialSpecId != request.MaterialSpecId)
+                throw new InvalidOperationException(
+                    $"Purchase order line {purchaseOrderLine.PurchaseOrderLineId} was ordered for a different material — receive it without a PO line, or correct the material.");
             if (purchaseOrderLine.Status is PurchaseOrderLineStatus.Cancelled or PurchaseOrderLineStatus.Received)
                 throw new InvalidOperationException(
                     $"Purchase order line {purchaseOrderLine.PurchaseOrderLineId} is {purchaseOrderLine.Status} and cannot receive more material.");

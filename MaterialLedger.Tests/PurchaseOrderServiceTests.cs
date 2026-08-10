@@ -170,4 +170,28 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
         Assert.Equal(PurchaseOrderLineStatus.Cancelled, (await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == partialLineId)).Status);
         Assert.Equal(PurchaseOrderLineStatus.Received, (await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == receivedLineId)).Status);
     }
+
+    [Fact]
+    public async Task CreatePurchaseOrderAsync_RejectsOverLengthNotes()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+        var request = MakeRequest(specId) with { Notes = new string('x', 1001) };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreatePurchaseOrderAsync(Guid.NewGuid(), request, userId));
+    }
+
+    [Fact]
+    public async Task CreatePurchaseOrderAsync_RetryWithSameCorrelationId_DifferentPayload_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+        var correlationId = Guid.NewGuid();
+        await service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, poNumber: "46318"), userId);
+
+        await Assert.ThrowsAsync<MaterialLedger.Data.Idempotency.OperationConflictException>(
+            () => service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, poNumber: "DIFFERENT-PO"), userId));
+    }
 }

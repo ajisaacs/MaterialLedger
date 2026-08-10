@@ -22,4 +22,13 @@ public static class PurchaseOrderStatusDisplay
         PurchaseOrderStatus.Cancelled => "Cancelled",
         _ => "Unknown"
     };
+
+    public static string Label(PurchaseOrderLineStatus status) => status switch
+    {
+        PurchaseOrderLineStatus.Open => "Open",
+        PurchaseOrderLineStatus.PartiallyReceived => "Partly received",
+        PurchaseOrderLineStatus.Received => "Received",
+        PurchaseOrderLineStatus.Cancelled => "Cancelled",
+        _ => "Unknown"
+    };
 }

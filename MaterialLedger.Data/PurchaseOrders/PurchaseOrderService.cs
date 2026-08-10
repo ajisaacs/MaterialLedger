@@ -146,14 +146,24 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
     {
         if (string.IsNullOrWhiteSpace(request.VendorName))
             throw new ArgumentException("Vendor name is required.", nameof(request));
+        if (request.VendorName.Trim().Length > 200)
+            throw new ArgumentException("Vendor name cannot exceed 200 characters.", nameof(request));
         if (string.IsNullOrWhiteSpace(request.PurchaseOrderNumber))
             throw new ArgumentException("Purchase order number is required.", nameof(request));
+        if (request.PurchaseOrderNumber.Trim().Length > 100)
+            throw new ArgumentException("Purchase order number cannot exceed 100 characters.", nameof(request));
+        if (request.Notes?.Length > 1000)
+            throw new ArgumentException("Notes cannot exceed 1000 characters.", nameof(request));
         if (request.Lines.Count == 0)
             throw new ArgumentException("A purchase order must have at least one line.", nameof(request));
         foreach (var line in request.Lines)
         {
             if (line.QuantityOrdered < 1 || line.QuantityOrdered != decimal.Truncate(line.QuantityOrdered))
                 throw new ArgumentException("Each line's ordered quantity must be a whole number of at least 1.", nameof(request));
+            if (line.VendorDescription?.Length > 200)
+                throw new ArgumentException("Vendor description cannot exceed 200 characters.", nameof(request));
+            if (line.VendorPartNumber?.Length > 100)
+                throw new ArgumentException("Vendor part number cannot exceed 100 characters.", nameof(request));
         }
     }
 

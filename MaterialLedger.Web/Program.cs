@@ -24,9 +24,15 @@ builder.Services.AddScoped<MaterialLedger.Data.Materials.PepMaterialMappingServi
 builder.Services.AddScoped<MaterialLedger.Data.Census.OpeningBalanceService>();
 builder.Services.AddScoped<MaterialLedger.Data.Receiving.ReceiveMaterialService>();
 builder.Services.AddScoped<MaterialLedger.Data.PurchaseOrders.PurchaseOrderService>();
-builder.Services.AddScoped(sp => new MaterialLedger.Data.Attachments.AttachmentStorageService(
-    sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
-    builder.Configuration["Storage:AttachmentsPath"] ?? "App_Data/attachments"));
+builder.Services.AddScoped(sp =>
+{
+    var configuredPath = builder.Configuration["Storage:AttachmentsPath"];
+    var attachmentsPath = string.IsNullOrWhiteSpace(configuredPath)
+        ? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "attachments")
+        : Path.IsPathRooted(configuredPath) ? configuredPath : Path.Combine(builder.Environment.ContentRootPath, configuredPath);
+    return new MaterialLedger.Data.Attachments.AttachmentStorageService(
+        sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(), attachmentsPath);
+});
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.InventoryQueryService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));

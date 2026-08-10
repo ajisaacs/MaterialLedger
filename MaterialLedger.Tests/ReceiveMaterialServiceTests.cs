@@ -240,4 +240,36 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId));
     }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_MaterialSpecMismatch_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var guid = Guid.NewGuid().ToString("N");
+        var otherSpec = new MaterialSpec { MaterialFamily = $"Other-{guid}"[..30], Grade = $"Grade-{guid}"[..30], ThicknessIn = 0.375m, DisplayName = "Other Material", IsActive = true };
+        db.Add(otherSpec);
+        await db.SaveChangesAsync();
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, quantityOrdered: 5m, userId);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var request = MakeRequest(locationId, otherSpec.MaterialSpecId, quantity: 1m) with { PurchaseOrderLineId = lineId };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId));
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_AgainstAlreadyReceivedPurchaseOrderLine_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, quantityOrdered: 3m, userId);
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        line.QuantityReceived = 3m;
+        line.Status = PurchaseOrderLineStatus.Received;
+        await db.SaveChangesAsync();
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var request = MakeRequest(locationId, specId, quantity: 1m) with { PurchaseOrderLineId = lineId };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId));
+    }
 }
