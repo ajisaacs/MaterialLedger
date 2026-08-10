@@ -64,6 +64,15 @@ public sealed class NavigationPresentationTests
     }
 
     [Fact]
+    public void Fixed_sidebar_reserves_its_width_from_the_workspace_without_page_level_horizontal_overflow()
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "app.css"));
+
+        Assert.Matches("\\.workspace\\s*\\{[\\s\\S]*?margin-left: 246px;[\\s\\S]*?width: calc\\(100% - 246px\\);", css);
+        Assert.Matches("@media \\(max-width: 1050px\\)[\\s\\S]*?\\.workspace\\s*\\{[\\s\\S]*?margin-left: 215px;[\\s\\S]*?width: calc\\(100% - 215px\\);", css);
+    }
+
+    [Fact]
     public void Shared_styles_prioritize_feedback_keyboard_focus_and_tables_with_a_persistent_sidebar()
     {
         var css = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "app.css"));

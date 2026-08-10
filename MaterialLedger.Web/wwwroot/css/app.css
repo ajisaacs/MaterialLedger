@@ -194,7 +194,7 @@ p {
 .workspace {
   margin-left: 246px;
   min-width: 0;
-  width: 100%;
+  width: calc(100% - 246px);
 }
 .content {
   margin: 0 auto;
@@ -723,6 +723,7 @@ legend {
   }
   .workspace {
     margin-left: 215px;
+    width: calc(100% - 215px);
   }
 }
 @media (max-width: 720px) {
@@ -738,6 +739,7 @@ legend {
   }
   .workspace {
     margin-left: 0;
+    width: 100%;
   }
   .primary-nav {
     display: flex;
