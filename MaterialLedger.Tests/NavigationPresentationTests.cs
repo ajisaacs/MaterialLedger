@@ -16,6 +16,7 @@ public sealed class NavigationPresentationTests
         Assert.Contains("<a asp-page=\"/Receiving/SelectLocation\">Receive delivery</a>", layout);
         Assert.Contains("<a asp-page=\"/Census/SelectSlot\">Count existing material</a>", layout);
         Assert.Contains("<a asp-page=\"/Locations/Index\">Material locations</a>", layout);
+        Assert.Contains("<a asp-page=\"/PurchaseOrders/Index\">Order material</a>", layout);
         Assert.Contains("<a asp-page=\"/Exceptions/Index\">Attention needed</a>", layout);
         Assert.DoesNotContain("disabled", layout);
     }
@@ -33,13 +34,16 @@ public sealed class NavigationPresentationTests
             "@if (User.IsInRole(\"Programmer\") || User.IsInRole(\"Manager\"))");
         const string closeoutLink = "<a asp-page=\"/Closeout/Index\">Record cut result</a>";
         const string receivingLink = "<a asp-page=\"/Receiving/SelectLocation\">Receive delivery</a>";
+        const string orderMaterialLink = "<a asp-page=\"/PurchaseOrders/Index\">Order material</a>";
         const string censusLink = "<a asp-page=\"/Census/SelectSlot\">Count existing material</a>";
 
         Assert.Equal(1, CountOccurrences(layout, closeoutLink));
         Assert.Equal(1, CountOccurrences(layout, receivingLink));
+        Assert.Equal(1, CountOccurrences(layout, orderMaterialLink));
         Assert.Equal(1, CountOccurrences(layout, censusLink));
         Assert.Contains(closeoutLink, operatorManagerGate);
         Assert.Contains(receivingLink, programmerManagerGate);
+        Assert.Contains(orderMaterialLink, programmerManagerGate);
         Assert.Contains(censusLink, programmerManagerGate);
     }
 
