@@ -38,7 +38,7 @@
 
 <section aria-label="Hold workflow">
     <h2>Current workflow</h2>
-    <dl>
+    <dl class="detail-grid">
         <dt>Workflow status</dt><dd><span class="workflow-status @workflow.CssClass">@workflow.Label</span></dd>
         <dt>Work reference</dt><dd>@workReference</dd>
         <dt>Equipment</dt><dd>@(Model.Reservation.Equipment?.ToString() ?? "Unassigned")</dd>
@@ -49,7 +49,7 @@
 
 <section aria-label="Held material">
     <h2>Held material</h2>
-    <dl>
+    <dl class="detail-grid">
         <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode</dd>
         <dt>Material</dt><dd>@Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName</dd>
         <dt>Location</dt><dd>@Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
@@ -78,7 +78,7 @@
 
 <details class="additional-traceability">
     <summary>Additional traceability</summary>
-    <dl>
+    <dl class="detail-grid">
         <dt>Technical status</dt><dd>@Model.Reservation.Status</dd>
         <dt>ShopOps job ID</dt><dd>@(Model.Reservation.ShopOpsJobId ?? "Not recorded")</dd>
         <dt>Drawing ID</dt><dd>@(Model.Reservation.DrawingId ?? "Not recorded")</dd>
