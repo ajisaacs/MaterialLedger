@@ -1,0 +1,88 @@
+@* MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.PurchaseOrders.CreateModel
+@{ Layout = "Shared/_Layout"; }
+<header class="page-heading">
+    <p class="eyebrow">Inventory setup</p>
+    <h1>Order material</h1>
+    <p>Record a purchase order so it can be tracked and received against.</p>
+</header>
+
+@if (Model.Error is not null)
+{
+    <p style="color:red">@Model.Error</p>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="CorrelationId" />
+
+    <fieldset>
+        <legend>Order details</legend>
+        <label>Vendor <input asp-for="VendorName" maxlength="200" /></label>
+        <label>PO number <input asp-for="PurchaseOrderNumber" maxlength="100" /></label>
+        <label>Order date <input asp-for="OrderDate" type="date" /></label>
+        <label>Notes <textarea asp-for="Notes"></textarea></label>
+    </fieldset>
+
+    @for (var i = 0; i < Model.Lines.Count; i++)
+    {
+        <fieldset class="po-line" style="@(i > 0 ? "display:none" : "")">
+            <legend>Line @(i + 1)</legend>
+            <label>Material family / grade / finish
+                <select class="po-line-material" required>
+                    <option value="">Choose material</option>
+                    @foreach (var material in Model.AvailableSpecs.GroupBy(spec => $"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}"))
+                    {
+                        var spec = material.First();
+                        <option value="@material.Key">@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</option>
+                    }
+                </select>
+            </label>
+            <label>Thickness
+                <select asp-for="Lines[i].ExistingMaterialSpecId" class="po-line-thickness" disabled>
+                    <option value="">Choose thickness</option>
+                    @foreach (var spec in Model.AvailableSpecs)
+                    {
+                        <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.DisplayName</option>
+                    }
+                </select>
+            </label>
+            <label>Vendor description <input asp-for="Lines[i].VendorDescription" maxlength="200" /></label>
+            <label>Vendor part number <input asp-for="Lines[i].VendorPartNumber" maxlength="100" /></label>
+            <label>Quantity ordered <input asp-for="Lines[i].QuantityOrdered" type="number" step="1" min="0" /></label>
+            <label>Unit price <input asp-for="Lines[i].UnitPrice" type="number" step="0.01" min="0" /></label>
+            <label>Usable width (in) <input asp-for="Lines[i].UsableWidthIn" type="number" step="0.001" /></label>
+            <label>Usable length (in) <input asp-for="Lines[i].UsableLengthIn" type="number" step="0.001" /></label>
+            <label>Quoted delivery date <input asp-for="Lines[i].QuotedDeliveryDate" type="date" /></label>
+        </fieldset>
+    }
+    <button type="button" id="add-line">Add another line</button>
+    <p>Need a material that is not listed? <a asp-page="/Materials/Index">Add it to the material catalog</a>.</p>
+
+    <button type="submit">Create purchase order</button>
+</form>
+<script>
+    document.querySelectorAll('.po-line').forEach(row => {
+        const material = row.querySelector('.po-line-material');
+        const thickness = row.querySelector('.po-line-thickness');
+        const filterThicknesses = reset => {
+            for (const option of thickness.options) {
+                if (!option.value) continue;
+                const matches = option.dataset.materialKey === material.value;
+                option.hidden = !matches;
+                option.disabled = !matches;
+            }
+            thickness.disabled = !material.value;
+            if (reset) thickness.value = '';
+        };
+        material.addEventListener('change', () => filterThicknesses(true));
+        filterThicknesses(false);
+    });
+
+    const lines = Array.from(document.querySelectorAll('.po-line'));
+    document.getElementById('add-line').addEventListener('click', () => {
+        const next = lines.find(row => row.style.display === 'none');
+        if (next) next.style.display = '';
+    });
+</script>
