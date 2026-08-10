@@ -19,12 +19,18 @@ builder.Services.AddScoped<MaterialSpecSeeder>();
 builder.Services.AddScoped<MaterialLedger.Data.Idempotency.OperationLogGuard>();
 builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationSlotService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.MaterialSpecService>();
+builder.Services.AddScoped<MaterialLedger.Data.Materials.PepMaterialMappingService>();
 builder.Services.AddScoped<MaterialLedger.Data.Census.OpeningBalanceService>();
 builder.Services.AddScoped<MaterialLedger.Data.Receiving.ReceiveMaterialService>();
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.InventoryQueryService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
 builder.Services.AddScoped<WorkQueueQueryService>();
+builder.Services.AddHttpClient<PepNestQueryService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["PepApi:BaseUrl"] ?? "http://10.10.100.134:8085/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Reservations.ReservationService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>(),

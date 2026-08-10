@@ -8,6 +8,7 @@
     <p class="eyebrow">Cutting workflow</p>
     <h1>Hold material for work</h1>
     <p>Record the work context that is known now. Additional identifiers stay available without blocking the hold.</p>
+    @if (!string.IsNullOrWhiteSpace(Model.PepNestName)) { <p role="status">Creating a material hold from PEP nest <strong>@Model.PepNestName</strong>.</p> }
 </header>
 
 <section aria-label="Selected material">

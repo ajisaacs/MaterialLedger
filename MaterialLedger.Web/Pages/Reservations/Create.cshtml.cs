@@ -27,7 +27,7 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
     public InventoryItemSummary? Item { get; set; }
     public string? Error { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(long inventoryItemId)
+    public async Task<IActionResult> OnGetAsync(long inventoryItemId, int? pepNestYear = null, string? pepNestName = null, int? pepMaterialNumber = null)
     {
         Item = await inventoryQuery.GetItemSummaryAsync(inventoryItemId);
         if (Item is null)
@@ -36,6 +36,8 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
             return RedirectToPage("/Inventory/Search");
         }
         InventoryItemId = inventoryItemId;
+        PepNestYear = pepNestYear;
+        PepNestName = pepNestName;
         CorrelationId = Guid.NewGuid();
         return Page();
     }

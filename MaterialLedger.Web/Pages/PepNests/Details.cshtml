@@ -1,0 +1,82 @@
+@page "{year:int}/{nestName}"
+@model MaterialLedger.Web.Pages.PepNests.DetailsModel
+@using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "PEP nest"; }
+
+<a asp-page="Index" asp-route-year="@RouteData.Values["year"]">← Back to PEP nests</a>
+@if (Model.Nest is null)
+{
+    <p class="form-error" role="alert">@Model.Error</p>
+}
+else
+{
+    <header class="page-heading">
+        <p class="eyebrow">PEP nest</p>
+        <h1>@Model.Nest.Name</h1>
+        <p>@Model.Nest.Status · Customer @Model.Nest.Customer · Created @Model.Nest.DateCreated.ToString("yyyy-MM-dd")</p>
+    </header>
+
+    <section>
+        <h2>PEP material</h2>
+        <dl>
+            <dt>Material number</dt><dd>#@Model.Nest.Material?.Number</dd>
+            <dt>Grade</dt><dd>@Model.Nest.Material?.Grade</dd>
+            <dt>Thickness</dt><dd>@Model.Nest.Material?.Thickness.ToString("0.####") in</dd>
+            <dt>Description</dt><dd>@Model.Nest.Material?.Description</dd>
+        </dl>
+    </section>
+
+    @if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
+    @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+    {
+        <section>
+            <h2>Map to Material Ledger catalog</h2>
+            <p>The selected catalog material is the approved Material Ledger equivalent for PEP material #@Model.Nest.Material?.Number.</p>
+            <form method="post" action="?handler=Map">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="CorrelationId" value="@Guid.NewGuid()" />
+                <label>Material Ledger catalog material
+                    <select asp-for="MaterialSpecId">
+                        <option value="">-- select material --</option>
+                        @foreach (var material in Model.MaterialSpecs) { <option value="@material.MaterialSpecId">@material.DisplayName</option> }
+                    </select>
+                </label>
+                <button type="submit">Save PEP material map</button>
+            </form>
+            @if (Model.Mapping?.MaterialSpec is not null) { <p role="status">Mapped to @Model.Mapping.MaterialSpec.DisplayName.</p> }
+        </section>
+    }
+
+    <section>
+        <h2>On-hand material for this nest</h2>
+        @if (Model.Mapping?.MaterialSpec is null)
+        {
+            <p>Map this PEP material to the Material Ledger catalog before selecting on-hand material.</p>
+        }
+        else if (Model.AvailableItems.Count == 0)
+        {
+            <p>No current, available Material Ledger items match @Model.Mapping.MaterialSpec.DisplayName.</p>
+        }
+        else
+        {
+            <table>
+                <thead><tr><th>Item</th><th>Available</th><th>Usable size</th><th>Location</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.AvailableItems)
+                {
+                    <tr><td>@item.PublicItemCode</td><td>@DisplayFormat.Quantity(item.AvailableQuantity)</td><td>@item.UsableWidthIn × @item.UsableLengthIn in</td><td>@item.LocationCode</td>
+                        <td><a asp-page="/Reservations/Create" asp-route-inventoryItemId="@item.InventoryItemId" asp-route-pepNestYear="@RouteData.Values["year"]" asp-route-pepNestName="@Model.Nest.Name" asp-route-pepMaterialNumber="@Model.Nest.Material?.Number">Create material hold</a></td></tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section>
+        <h2>Parts</h2>
+        <table><thead><tr><th>Part</th><th>Nested</th><th>Required</th></tr></thead><tbody>
+        @foreach (var part in Model.Nest.Parts) { <tr><td>@part.Name</td><td>@part.QtyNested</td><td>@part.QtyRequired</td></tr> }
+        </tbody></table>
+    </section>
+}
