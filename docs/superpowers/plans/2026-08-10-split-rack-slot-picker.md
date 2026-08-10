@@ -2,31 +2,111 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Split the single flat "Location" dropdown in the Index page's "Add a sheet" dialog into two dependent Rack/Slot selects, and fix the material→thickness dependent-select filter (used in four dialogs) so it actually removes non-matching options from the dropdown instead of unreliably toggling `hidden`/`disabled`.
+**Goal:** Split the single flat "Location" dropdown in the Index page's "Add a sheet" dialog into two dependent Rack/Slot selects, and fix the material→thickness dependent-select filter (used in four dialogs) so it actually removes non-matching options from the dropdown instead of unreliably toggling `hidden`/`disabled` — by extracting the filtering behavior into one shared static script instead of continuing to duplicate it per page.
 
-**Architecture:** Pure Razor + vanilla-JS UI change, no backend/model changes. Each affected page keeps its existing bound field and server-side validation; only the `<select>` markup and its `<script>` block change. The rack/slot select is new (built with the same detach/re-append filtering technique that the thickness fix introduces), and the thickness filter in all four dialogs is rewritten to use that same technique. This repo tests Razor page presentation by reading the `.cshtml`/`.cshtml.cs` source as text and asserting on substrings (see `MaterialLedger.Tests/QuickSheetEntryPresentationTests.cs`, `ReceivingEntryPresentationTests.cs`) — there is no JS test runner or Playwright harness in the repo, so this plan follows that same source-assertion convention for the scripted tasks, plus a final manual/browser verification task.
+**Architecture:** Pure Razor + vanilla-JS UI change, no backend/model changes. A new shared static asset, `wwwroot/js/dependent-select.js`, exposes one function, `initDependentSelect(trigger, dependent, datasetKey)`, implementing the corrected detach/re-append filtering technique. Each of the four dialogs (`Index.cshtml`, `Census/NewOpeningBalance.cshtml`, `PurchaseOrders/Create.cshtml`, `Receiving/NewReceipt.cshtml`) loads that script and replaces its inline ~15-line filter IIFE with a one-line call. `Index.cshtml` additionally splits its Location field into a Rack select and a Slot select, wired through the same shared function. This repo tests Razor page presentation by reading the `.cshtml`/`.cshtml.cs`/`.js` source as text and asserting on substrings (see `MaterialLedger.Tests/QuickSheetEntryPresentationTests.cs`, `ReceivingEntryPresentationTests.cs`) — there is no JS test runner or Playwright harness in the repo, so this plan follows that same source-assertion convention for the scripted tasks, plus a final manual/browser verification task.
 
-**Tech Stack:** ASP.NET Core Razor Pages (.NET 8), vanilla JS (no framework/build step), xUnit for tests.
+**Tech Stack:** ASP.NET Core Razor Pages (.NET 8), vanilla JS (no framework/build step), xUnit for tests. Static files are already served (`Program.cs` calls `app.UseStaticFiles()`); `wwwroot/css/app.css` is the existing precedent for a shared static asset loaded via `~/`.
 
 ## Global Constraints
 
 - No backend/C# model changes: `IndexModel.MaterialLocations`, `LoadNewSheetOptionsAsync`, `OnPostAddSheetAsync` validation, and the bound fields on all four pages (`NewSheet.LocationId`, `ExistingMaterialSpecId`, `Lines[i].ExistingMaterialSpecId`) stay exactly as they are today.
 - Placeholder text: "Choose confirmed rack slot" → "Choose rack" (new rack select) / "Choose slot" (slot select).
 - No changes to `Receiving/SelectLocation.cshtml` or `Census/SelectSlot.cshtml` (out of scope — those are tables, not dropdowns).
-- The corrected filter technique (detach/re-append `<option>` elements, not `hidden`/`disabled` toggling) is used in all five places it's needed: the new rack/slot select, and the four existing material/thickness selects (Index "Add a sheet", `Census/NewOpeningBalance.cshtml`, `PurchaseOrders/Create.cshtml`, `Receiving/NewReceipt.cshtml`).
+- The filtering fix is implemented exactly once, in `wwwroot/js/dependent-select.js`, and consumed identically by all five dependent-select pairs (the new rack/slot pair, plus the four existing material/thickness pairs). No page keeps its own copy of the filter logic — this duplication was explicitly reviewed and rejected in favor of the shared file (see spec's "Second problem" section).
+- Each page loads the shared script the same way `Pages/Shared/_Layout.cshtml:7` loads `app.css`: `<script src="~/js/dependent-select.js" asp-append-version="true"></script>`.
 - Spec: `docs/superpowers/specs/2026-08-10-split-rack-slot-picker-design.md`
 
 ---
 
-### Task 1: Split rack/slot picker and fix thickness filter in Index.cshtml ("Add a sheet" dialog)
+### Task 1: Create the shared dependent-select filter script
+
+**Files:**
+- Create: `MaterialLedger.Web/wwwroot/js/dependent-select.js`
+- Test: Create `MaterialLedger.Tests/DependentSelectScriptTests.cs`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: `initDependentSelect(trigger, dependent, datasetKey)` — a global JS function. `trigger`/`dependent` are `<select>` DOM elements (not ids — callers resolve their own elements). `datasetKey` is the camelCase dataset property name the dependent's filterable `<option>`s carry (e.g. `'materialKey'` for `data-material-key`, `'rackId'` for `data-rack-id`). Tasks 2-5 all call this function.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `MaterialLedger.Tests/DependentSelectScriptTests.cs`:
+
+```csharp
+using Xunit;
+
+namespace MaterialLedger.Tests;
+
+public sealed class DependentSelectScriptTests
+{
+    [Fact]
+    public void Shared_script_defines_a_reusable_dependent_select_filter()
+    {
+        var script = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "js", "dependent-select.js"));
+
+        Assert.Contains("function initDependentSelect(trigger, dependent, datasetKey)", script);
+        Assert.Contains("dependent.appendChild(option)", script);
+        Assert.Contains("dependent.disabled = !trigger.value", script);
+        Assert.DoesNotContain("option.hidden", script);
+    }
+
+    private static string RepositoryRoot => Path.GetFullPath("../../../../", AppContext.BaseDirectory);
+}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectScriptTests"`
+Expected: FAIL (the file doesn't exist yet — `File.ReadAllText` throws `FileNotFoundException`).
+
+- [ ] **Step 3: Create the shared script**
+
+Create `MaterialLedger.Web/wwwroot/js/dependent-select.js`:
+
+```js
+function initDependentSelect(trigger, dependent, datasetKey) {
+    const allOptions = Array.from(dependent.options).filter(option => option.dataset[datasetKey] !== undefined);
+    const selected = allOptions.find(option => option.value === dependent.value);
+    if (selected) trigger.value = selected.dataset[datasetKey];
+    const filter = resetSelection => {
+        const previousValue = dependent.value;
+        allOptions.forEach(option => option.remove());
+        for (const option of allOptions) {
+            if (option.dataset[datasetKey] === trigger.value) dependent.appendChild(option);
+        }
+        dependent.disabled = !trigger.value;
+        dependent.value = resetSelection ? '' : previousValue;
+    };
+    trigger.addEventListener('change', () => filter(true));
+    filter(false);
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectScriptTests"`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add MaterialLedger.Web/wwwroot/js/dependent-select.js MaterialLedger.Tests/DependentSelectScriptTests.cs
+git commit -m "feat: add shared dependent-select filter script"
+```
+
+---
+
+### Task 2: Split rack/slot picker and wire Index.cshtml to the shared script
 
 **Files:**
 - Modify: `MaterialLedger.Web/Pages/Index.cshtml:38-46` (Location field) and `:83-102` (script block)
 - Test: `MaterialLedger.Tests/QuickSheetEntryPresentationTests.cs`
 
 **Interfaces:**
+- Consumes: `initDependentSelect(trigger, dependent, datasetKey)` from Task 1, loaded via `<script src="~/js/dependent-select.js" asp-append-version="true"></script>`.
 - Consumes: `Model.MaterialLocations` (`List<InventoryLocation>`, unchanged — from `MaterialLedger.Web/Pages/Index.cshtml.cs:31,100`), `InventoryLocation.ParentInventoryLocation` (`InventoryLocation?`), `.InventoryLocationId` (`long`), `.LocationCode` (`string`), `.DisplayName` (`string`), `.SortOrder` (`int`).
-- Produces: nothing consumed by later tasks — this task is self-contained (Tasks 2-4 touch different files).
+- Produces: nothing consumed by later tasks — Tasks 3-5 touch different files.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -49,16 +129,15 @@ Add two new `[Fact]` methods to `MaterialLedger.Tests/QuickSheetEntryPresentatio
     }
 
     [Fact]
-    public void Add_sheet_dialog_filters_dependent_selects_by_detaching_options_instead_of_hiding_them()
+    public void Add_sheet_dialog_wires_both_dependent_selects_through_the_shared_script()
     {
         var page = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Index.cshtml"));
 
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(document.getElementById('new-sheet-material'), document.getElementById('new-sheet-thickness'), 'materialKey')", page);
+        Assert.Contains("initDependentSelect(document.getElementById('new-sheet-rack'), document.getElementById('new-sheet-slot'), 'rackId')", page);
         Assert.DoesNotContain("option.hidden", page);
-        Assert.Contains("allThicknessOptions", page);
-        Assert.Contains("thickness.appendChild(option)", page);
-        Assert.Contains("allSlotOptions", page);
-        Assert.Contains("slot.appendChild(option)", page);
-        Assert.Contains("filterSlots", page);
+        Assert.DoesNotContain("filterThicknesses", page);
     }
 ```
 
@@ -106,7 +185,7 @@ with:
             </label>
 ```
 
-- [ ] **Step 4: Rewrite the script block to fix thickness filtering and add slot filtering**
+- [ ] **Step 4: Replace the script block to use the shared filter**
 
 In the same file, replace the `<script>` block (around line 83-102):
 
@@ -136,43 +215,10 @@ In the same file, replace the `<script>` block (around line 83-102):
 with:
 
 ```html
+    <script src="~/js/dependent-select.js" asp-append-version="true"></script>
     <script>
-        (() => {
-            const material = document.getElementById('new-sheet-material');
-            const thickness = document.getElementById('new-sheet-thickness');
-            const allThicknessOptions = Array.from(thickness.querySelectorAll('option[data-material-key]'));
-            const selectedThickness = allThicknessOptions.find(option => option.value === thickness.value);
-            if (selectedThickness?.dataset.materialKey) material.value = selectedThickness.dataset.materialKey;
-            const filterThicknesses = resetSelection => {
-                const previousValue = thickness.value;
-                thickness.querySelectorAll('option[data-material-key]').forEach(option => option.remove());
-                for (const option of allThicknessOptions) {
-                    if (option.dataset.materialKey === material.value) thickness.appendChild(option);
-                }
-                thickness.disabled = !material.value;
-                thickness.value = resetSelection ? '' : previousValue;
-            };
-            material.addEventListener('change', () => filterThicknesses(true));
-            filterThicknesses(false);
-        })();
-        (() => {
-            const rack = document.getElementById('new-sheet-rack');
-            const slot = document.getElementById('new-sheet-slot');
-            const allSlotOptions = Array.from(slot.querySelectorAll('option[data-rack-id]'));
-            const selectedSlot = allSlotOptions.find(option => option.value === slot.value);
-            if (selectedSlot?.dataset.rackId) rack.value = selectedSlot.dataset.rackId;
-            const filterSlots = resetSelection => {
-                const previousValue = slot.value;
-                slot.querySelectorAll('option[data-rack-id]').forEach(option => option.remove());
-                for (const option of allSlotOptions) {
-                    if (option.dataset.rackId === rack.value) slot.appendChild(option);
-                }
-                slot.disabled = !rack.value;
-                slot.value = resetSelection ? '' : previousValue;
-            };
-            rack.addEventListener('change', () => filterSlots(true));
-            filterSlots(false);
-        })();
+        initDependentSelect(document.getElementById('new-sheet-material'), document.getElementById('new-sheet-thickness'), 'materialKey');
+        initDependentSelect(document.getElementById('new-sheet-rack'), document.getElementById('new-sheet-slot'), 'rackId');
     </script>
 ```
 
@@ -190,40 +236,41 @@ Expected: build succeeds (0 errors). `DistinctBy` requires no extra `@using` —
 
 ```bash
 git add MaterialLedger.Web/Pages/Index.cshtml MaterialLedger.Tests/QuickSheetEntryPresentationTests.cs
-git commit -m "feat: split rack/slot picker and fix thickness filter in Add-a-sheet dialog"
+git commit -m "feat: split rack/slot picker in Add-a-sheet dialog and wire it to the shared filter script"
 ```
 
 ---
 
-### Task 2: Fix thickness filter technique in Census/NewOpeningBalance.cshtml
+### Task 3: Wire Census/NewOpeningBalance.cshtml to the shared script
 
 **Files:**
 - Modify: `MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml:80-99`
-- Test: Create `MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs`
+- Test: Create `MaterialLedger.Tests/DependentSelectPagePresentationTests.cs`
 
 **Interfaces:**
-- Consumes: nothing from Task 1.
-- Produces: `DependentSelectFilteringPresentationTests` class and its `ReadPage(params string[])` / `RepositoryRoot` helpers — Tasks 3 and 4 add more `[Fact]` methods to this same file.
+- Consumes: `initDependentSelect(trigger, dependent, datasetKey)` from Task 1.
+- Produces: `DependentSelectPagePresentationTests` class and its `ReadPage(params string[])` / `RepositoryRoot` helpers — Tasks 4 and 5 add more `[Fact]` methods to this same file.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs`:
+Create `MaterialLedger.Tests/DependentSelectPagePresentationTests.cs`:
 
 ```csharp
 using Xunit;
 
 namespace MaterialLedger.Tests;
 
-public sealed class DependentSelectFilteringPresentationTests
+public sealed class DependentSelectPagePresentationTests
 {
     [Fact]
-    public void Opening_balance_page_filters_thicknesses_by_detaching_options_instead_of_hiding_them()
+    public void Opening_balance_page_wires_its_dependent_select_through_the_shared_script()
     {
         var page = ReadPage("Census", "NewOpeningBalance.cshtml");
 
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(document.getElementById('opening-balance-material'), document.getElementById('opening-balance-thickness'), 'materialKey')", page);
         Assert.DoesNotContain("option.hidden", page);
-        Assert.Contains("allThicknessOptions", page);
-        Assert.Contains("thickness.appendChild(option)", page);
+        Assert.DoesNotContain("filterThicknesses", page);
     }
 
     private static string ReadPage(params string[] pathSegments) => File.ReadAllText(
@@ -235,10 +282,10 @@ public sealed class DependentSelectFilteringPresentationTests
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectFilteringPresentationTests"`
-Expected: FAIL (old `option.hidden` script still in place).
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectPagePresentationTests"`
+Expected: FAIL (old inline script still in place).
 
-- [ ] **Step 3: Rewrite the script block**
+- [ ] **Step 3: Replace the script block**
 
 In `MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml`, replace the `<script>` block (around line 80-99):
 
@@ -268,74 +315,60 @@ In `MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml`, replace the `<scr
 with:
 
 ```html
+<script src="~/js/dependent-select.js" asp-append-version="true"></script>
 <script>
-    (() => {
-        const material = document.getElementById('opening-balance-material');
-        const thickness = document.getElementById('opening-balance-thickness');
-        const allThicknessOptions = Array.from(thickness.querySelectorAll('option[data-material-key]'));
-        const selectedThickness = allThicknessOptions.find(option => option.value === thickness.value);
-        if (selectedThickness?.dataset.materialKey) material.value = selectedThickness.dataset.materialKey;
-        const filterThicknesses = reset => {
-            const previousValue = thickness.value;
-            thickness.querySelectorAll('option[data-material-key]').forEach(option => option.remove());
-            for (const option of allThicknessOptions) {
-                if (option.dataset.materialKey === material.value) thickness.appendChild(option);
-            }
-            thickness.disabled = !material.value;
-            thickness.value = reset ? '' : previousValue;
-        };
-        material.addEventListener('change', () => filterThicknesses(true));
-        filterThicknesses(false);
-    })();
+    initDependentSelect(document.getElementById('opening-balance-material'), document.getElementById('opening-balance-thickness'), 'materialKey');
 </script>
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectFilteringPresentationTests"`
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectPagePresentationTests"`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs
+git add MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml MaterialLedger.Tests/DependentSelectPagePresentationTests.cs
 git commit -m "fix: hide filtered-out thicknesses on the opening balance page"
 ```
 
 ---
 
-### Task 3: Fix thickness filter technique in PurchaseOrders/Create.cshtml
+### Task 4: Wire PurchaseOrders/Create.cshtml to the shared script
 
 **Files:**
 - Modify: `MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml:65-90`
-- Test: `MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs` (add a method)
+- Test: `MaterialLedger.Tests/DependentSelectPagePresentationTests.cs` (add a method)
 
 **Interfaces:**
-- Consumes: `DependentSelectFilteringPresentationTests`'s `ReadPage` helper from Task 2.
+- Consumes: `initDependentSelect(trigger, dependent, datasetKey)` from Task 1; `DependentSelectPagePresentationTests`'s `ReadPage` helper from Task 3.
 - Produces: nothing consumed by later tasks.
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs` (inside the existing class, alongside the Task 2 method):
+Add to `MaterialLedger.Tests/DependentSelectPagePresentationTests.cs` (inside the existing class, alongside the Task 3 method):
 
 ```csharp
     [Fact]
-    public void Purchase_order_lines_filter_thicknesses_by_detaching_options_instead_of_hiding_them()
+    public void Purchase_order_lines_wire_their_dependent_selects_through_the_shared_script()
     {
         var page = ReadPage("PurchaseOrders", "Create.cshtml");
 
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(row.querySelector('.po-line-material'), row.querySelector('.po-line-thickness'), 'materialKey')", page);
         Assert.DoesNotContain("option.hidden", page);
-        Assert.Contains("allThicknessOptions", page);
-        Assert.Contains("thickness.appendChild(option)", page);
+        Assert.DoesNotContain("filterThicknesses", page);
+        Assert.Contains("document.getElementById('add-line').addEventListener('click'", page);
     }
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectFilteringPresentationTests"`
-Expected: the new test FAILs; the Task 2 test still PASSes.
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectPagePresentationTests"`
+Expected: the new test FAILs; the Task 3 test still PASSes.
 
-- [ ] **Step 3: Rewrite the script block**
+- [ ] **Step 3: Replace the script block**
 
 In `MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml`, replace the `<script>` block (around line 65-90):
 
@@ -371,24 +404,10 @@ In `MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml`, replace the `<script
 with:
 
 ```html
+<script src="~/js/dependent-select.js" asp-append-version="true"></script>
 <script>
     document.querySelectorAll('.po-line').forEach(row => {
-        const material = row.querySelector('.po-line-material');
-        const thickness = row.querySelector('.po-line-thickness');
-        const allThicknessOptions = Array.from(thickness.querySelectorAll('option[data-material-key]'));
-        const selectedThickness = allThicknessOptions.find(option => option.value === thickness.value);
-        if (selectedThickness?.dataset.materialKey) material.value = selectedThickness.dataset.materialKey;
-        const filterThicknesses = reset => {
-            const previousValue = thickness.value;
-            thickness.querySelectorAll('option[data-material-key]').forEach(option => option.remove());
-            for (const option of allThicknessOptions) {
-                if (option.dataset.materialKey === material.value) thickness.appendChild(option);
-            }
-            thickness.disabled = !material.value;
-            thickness.value = reset ? '' : previousValue;
-        };
-        material.addEventListener('change', () => filterThicknesses(true));
-        filterThicknesses(false);
+        initDependentSelect(row.querySelector('.po-line-material'), row.querySelector('.po-line-thickness'), 'materialKey');
     });
 
     const lines = Array.from(document.querySelectorAll('.po-line'));
@@ -401,50 +420,51 @@ with:
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectFilteringPresentationTests"`
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectPagePresentationTests"`
 Expected: both tests in the file PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs
+git add MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml MaterialLedger.Tests/DependentSelectPagePresentationTests.cs
 git commit -m "fix: hide filtered-out thicknesses on purchase order lines"
 ```
 
 ---
 
-### Task 4: Fix thickness filter technique in Receiving/NewReceipt.cshtml
+### Task 5: Wire Receiving/NewReceipt.cshtml to the shared script
 
 **Files:**
 - Modify: `MaterialLedger.Web/Pages/Receiving/NewReceipt.cshtml:79-98`
-- Test: `MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs` (add a method)
+- Test: `MaterialLedger.Tests/DependentSelectPagePresentationTests.cs` (add a method)
 
 **Interfaces:**
-- Consumes: `DependentSelectFilteringPresentationTests`'s `ReadPage` helper from Task 2.
+- Consumes: `initDependentSelect(trigger, dependent, datasetKey)` from Task 1; `DependentSelectPagePresentationTests`'s `ReadPage` helper from Task 3.
 - Produces: nothing consumed by later tasks.
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs`:
+Add to `MaterialLedger.Tests/DependentSelectPagePresentationTests.cs`:
 
 ```csharp
     [Fact]
-    public void Receiving_page_filters_thicknesses_by_detaching_options_instead_of_hiding_them()
+    public void Receiving_page_wires_its_dependent_select_through_the_shared_script()
     {
         var page = ReadPage("Receiving", "NewReceipt.cshtml");
 
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(document.getElementById('receipt-material'), document.getElementById('receipt-thickness'), 'materialKey')", page);
         Assert.DoesNotContain("option.hidden", page);
-        Assert.Contains("allThicknessOptions", page);
-        Assert.Contains("thickness.appendChild(option)", page);
+        Assert.DoesNotContain("filterThicknesses", page);
     }
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectFilteringPresentationTests"`
-Expected: the new test FAILs; the Task 2 and Task 3 tests still PASS.
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectPagePresentationTests"`
+Expected: the new test FAILs; the Task 3 and Task 4 tests still PASS.
 
-- [ ] **Step 3: Rewrite the script block**
+- [ ] **Step 3: Replace the script block**
 
 In `MaterialLedger.Web/Pages/Receiving/NewReceipt.cshtml`, replace the `<script>` block (around line 79-98):
 
@@ -474,54 +494,38 @@ In `MaterialLedger.Web/Pages/Receiving/NewReceipt.cshtml`, replace the `<script>
 with:
 
 ```html
+<script src="~/js/dependent-select.js" asp-append-version="true"></script>
 <script>
-    (() => {
-        const material = document.getElementById('receipt-material');
-        const thickness = document.getElementById('receipt-thickness');
-        const allThicknessOptions = Array.from(thickness.querySelectorAll('option[data-material-key]'));
-        const selectedThickness = allThicknessOptions.find(option => option.value === thickness.value);
-        if (selectedThickness?.dataset.materialKey) material.value = selectedThickness.dataset.materialKey;
-        const filterThicknesses = reset => {
-            const previousValue = thickness.value;
-            thickness.querySelectorAll('option[data-material-key]').forEach(option => option.remove());
-            for (const option of allThicknessOptions) {
-                if (option.dataset.materialKey === material.value) thickness.appendChild(option);
-            }
-            thickness.disabled = !material.value;
-            thickness.value = reset ? '' : previousValue;
-        };
-        material.addEventListener('change', () => filterThicknesses(true));
-        filterThicknesses(false);
-    })();
+    initDependentSelect(document.getElementById('receipt-material'), document.getElementById('receipt-thickness'), 'materialKey');
 </script>
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectFilteringPresentationTests"`
+Run: `dotnet test MaterialLedger.Tests --filter "FullyQualifiedName~DependentSelectPagePresentationTests"`
 Expected: all three tests in the file PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add MaterialLedger.Web/Pages/Receiving/NewReceipt.cshtml MaterialLedger.Tests/DependentSelectFilteringPresentationTests.cs
+git add MaterialLedger.Web/Pages/Receiving/NewReceipt.cshtml MaterialLedger.Tests/DependentSelectPagePresentationTests.cs
 git commit -m "fix: hide filtered-out thicknesses when receiving material"
 ```
 
 ---
 
-### Task 5: Full test suite check and browser verification
+### Task 6: Full test suite check and browser verification
 
 **Files:** none (verification only).
 
 **Interfaces:**
-- Consumes: the completed changes from Tasks 1-4.
+- Consumes: the completed changes from Tasks 1-5.
 - Produces: nothing (terminal task).
 
 - [ ] **Step 1: Run the full automated test suite**
 
 Run: `dotnet test`
-Expected: all tests pass, including the pre-existing `QuickSheetEntryPresentationTests` and the new `DependentSelectFilteringPresentationTests`.
+Expected: all tests pass, including the pre-existing `QuickSheetEntryPresentationTests`, and the new `DependentSelectScriptTests` and `DependentSelectPagePresentationTests`. (A pre-existing, unrelated test — `MaterialTransactionPermissionsTests.MaterialledgerApp_CannotUpdateMaterialTransactions` — fails without a live-database connection string configured via `MATERIALLEDGER_TEST_APP_CONNECTION`; that failure is expected and out of scope.)
 
 - [ ] **Step 2: Start the dev server and verify in a real browser**
 
@@ -532,6 +536,7 @@ Per project convention (see the `run` skill and `webapp-testing` skill), launch 
 - **`/Census/NewOpeningBalance`:** same material/thickness check as above.
 - **`/PurchaseOrders/Create`:** same check on the first PO line, then click "Add another line" and confirm the second line's material/thickness selects filter independently of the first.
 - **`/Receiving/NewReceipt`:** same material/thickness check as above.
+- **Browser console:** confirm no JavaScript errors on any of the four pages (e.g. `dependent-select.js` failing to load would show as a 404 and a `ReferenceError: initDependentSelect is not defined`).
 
 - [ ] **Step 3: Report results**
 
