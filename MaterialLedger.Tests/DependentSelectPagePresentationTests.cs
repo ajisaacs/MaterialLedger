@@ -15,6 +15,18 @@ public sealed class DependentSelectPagePresentationTests
         Assert.DoesNotContain("filterThicknesses", page);
     }
 
+    [Fact]
+    public void Purchase_order_lines_wire_their_dependent_selects_through_the_shared_script()
+    {
+        var page = ReadPage("PurchaseOrders", "Create.cshtml");
+
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(row.querySelector('.po-line-material'), row.querySelector('.po-line-thickness'), 'materialKey')", page);
+        Assert.DoesNotContain("option.hidden", page);
+        Assert.DoesNotContain("filterThicknesses", page);
+        Assert.Contains("document.getElementById('add-line').addEventListener('click'", page);
+    }
+
     private static string ReadPage(params string[] pathSegments) => File.ReadAllText(
         Path.Combine(new[] { RepositoryRoot, "MaterialLedger.Web", "Pages" }.Concat(pathSegments).ToArray()));
 
