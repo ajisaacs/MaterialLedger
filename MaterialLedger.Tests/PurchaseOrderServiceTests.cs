@@ -94,4 +94,80 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
         var count = await db.PurchaseOrders.CountAsync(x => x.PurchaseOrderNumber == "46318");
         Assert.Equal(1, count);
     }
+
+    private async Task<long> SeedLineAsync(MaterialLedgerDbContext db, int userId, long specId, decimal quantityOrdered, decimal quantityReceived = 0)
+    {
+        var order = new PurchaseOrder
+        {
+            VendorName = "Acme Steel", PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
+            CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId
+        };
+        db.PurchaseOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        var status = quantityReceived == 0 ? PurchaseOrderLineStatus.Open
+            : quantityReceived >= quantityOrdered ? PurchaseOrderLineStatus.Received
+            : PurchaseOrderLineStatus.PartiallyReceived;
+        var line = new PurchaseOrderLine
+        {
+            PurchaseOrderId = order.PurchaseOrderId, LineNumber = 1, MaterialSpecId = specId,
+            QuantityOrdered = quantityOrdered, QuantityReceived = quantityReceived, Status = status
+        };
+        db.PurchaseOrderLines.Add(line);
+        await db.SaveChangesAsync();
+        return line.PurchaseOrderLineId;
+    }
+
+    [Fact]
+    public async Task CancelLineAsync_OpenLine_SetsCancelled()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 5m);
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await service.CancelLineAsync(Guid.NewGuid(), lineId, userId);
+
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        Assert.Equal(PurchaseOrderLineStatus.Cancelled, line.Status);
+    }
+
+    [Fact]
+    public async Task CancelLineAsync_AlreadyReceivedLine_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 5m, quantityReceived: 5m);
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CancelLineAsync(Guid.NewGuid(), lineId, userId));
+    }
+
+    [Fact]
+    public async Task CloseRemainingAsync_CancelsOnlyNonReceivedLines()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var openLineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 5m);
+        var partialLineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 5m, quantityReceived: 2m);
+        var receivedLineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 5m, quantityReceived: 5m);
+        var openLine = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == openLineId);
+        var purchaseOrderId = openLine.PurchaseOrderId;
+        // move the other two lines onto the same order so CloseRemaining sees all three
+        var partialLine = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == partialLineId);
+        partialLine.PurchaseOrderId = purchaseOrderId;
+        partialLine.LineNumber = 2;
+        var receivedLine = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == receivedLineId);
+        receivedLine.PurchaseOrderId = purchaseOrderId;
+        receivedLine.LineNumber = 3;
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        var cancelledCount = await service.CloseRemainingAsync(Guid.NewGuid(), purchaseOrderId, userId);
+
+        Assert.Equal(2, cancelledCount);
+        Assert.Equal(PurchaseOrderLineStatus.Cancelled, (await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == openLineId)).Status);
+        Assert.Equal(PurchaseOrderLineStatus.Cancelled, (await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == partialLineId)).Status);
+        Assert.Equal(PurchaseOrderLineStatus.Received, (await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == receivedLineId)).Status);
+    }
 }

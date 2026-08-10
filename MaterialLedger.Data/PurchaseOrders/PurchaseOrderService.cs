@@ -82,6 +82,66 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
         return order.PurchaseOrderId;
     }
 
+    public async Task<int> CancelLineAsync(Guid correlationId, long purchaseOrderLineId, int cancelledBy)
+    {
+        var payloadHash = HashPayload(new { purchaseOrderLineId });
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var outcome = await operationLog.CheckAsync(correlationId, "CancelPurchaseOrderLine", payloadHash);
+        if (outcome.Kind == OperationLogOutcomeKind.Replay)
+        {
+            var replayCount = JsonSerializer.Deserialize<int>(outcome.ResultSummary!);
+            await transaction.CommitAsync();
+            return replayCount;
+        }
+
+        var line = await db.PurchaseOrderLines.FindAsync(purchaseOrderLineId)
+            ?? throw new InvalidOperationException($"Purchase order line {purchaseOrderLineId} does not exist.");
+        CancelLineCore(line);
+        await db.SaveChangesAsync();
+
+        operationLog.Record(correlationId, "CancelPurchaseOrderLine", payloadHash, JsonSerializer.Serialize(1), cancelledBy);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return 1;
+    }
+
+    public async Task<int> CloseRemainingAsync(Guid correlationId, long purchaseOrderId, int closedBy)
+    {
+        var payloadHash = HashPayload(new { purchaseOrderId });
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var outcome = await operationLog.CheckAsync(correlationId, "ClosePurchaseOrderRemaining", payloadHash);
+        if (outcome.Kind == OperationLogOutcomeKind.Replay)
+        {
+            var replayCount = JsonSerializer.Deserialize<int>(outcome.ResultSummary!);
+            await transaction.CommitAsync();
+            return replayCount;
+        }
+
+        var openLines = await db.PurchaseOrderLines
+            .Where(x => x.PurchaseOrderId == purchaseOrderId
+                && (x.Status == PurchaseOrderLineStatus.Open || x.Status == PurchaseOrderLineStatus.PartiallyReceived))
+            .ToListAsync();
+        foreach (var line in openLines)
+            CancelLineCore(line);
+        await db.SaveChangesAsync();
+
+        operationLog.Record(correlationId, "ClosePurchaseOrderRemaining", payloadHash, JsonSerializer.Serialize(openLines.Count), closedBy);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return openLines.Count;
+    }
+
+    private static void CancelLineCore(PurchaseOrderLine line)
+    {
+        if (line.Status == PurchaseOrderLineStatus.Received)
+            throw new InvalidOperationException($"Purchase order line {line.PurchaseOrderLineId} is already fully received and cannot be cancelled.");
+        line.Status = PurchaseOrderLineStatus.Cancelled;
+    }
+
     private static void Validate(CreatePurchaseOrderRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.VendorName))
