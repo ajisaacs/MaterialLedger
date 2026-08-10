@@ -11,31 +11,58 @@ Split the single flat select into two dependent selects, mirroring the existing 
 1. **Rack select** (`id="new-sheet-rack"`, unbound — UI filter only) — one option per distinct `ParentInventoryLocation` found in `Model.MaterialLocations`, ordered by the rack's `SortOrder`. Label reads "Rack".
 2. **Slot select** (`id="new-sheet-slot"`, bound via `asp-for="NewSheet.LocationId"`) — starts `disabled`. Iterates the existing `Model.MaterialLocations` list unchanged; each `<option>` gets `data-rack-id="@location.ParentInventoryLocationId"` and its text becomes just `@location.LocationCode` (the rack name no longer needs repeating since it's already chosen separately). Label reads "Slot".
 
-JS behavior (adapted from the material/thickness filter script already in `Index.cshtml`, using the corrected detach/re-append technique described below rather than its old hidden/disabled toggle):
-- On rack change: rebuild the slot select's options to only those whose `data-rack-id` matches the selected rack, reset the slot select's value, and disable the slot select whenever no rack is chosen.
-- On page load, if the slot select already has a value (e.g. after a failed POST redisplays the form), pre-select the matching rack and run the filter without resetting the slot value — same pattern the material/thickness script uses via `thickness.options[thickness.selectedIndex]`.
+The filtering behavior (choosing the trigger select narrows the dependent select to matching options, disables the dependent select until a trigger value is chosen, and restores a prior selection on redisplay) is implemented once, in a shared script — see below — rather than written per-page.
 
 ## Second problem: dependent selects don't actually hide filtered-out options
 
-This app has four dependent Material family → Thickness selects, all using an identical script (`Index.cshtml`'s "Add a sheet" dialog, `Census/NewOpeningBalance.cshtml`, `PurchaseOrders/Create.cshtml`'s PO lines, `Receiving/NewReceipt.cshtml`). Each one filters by toggling `option.hidden = !matches` (plus `option.disabled`) on the thickness `<option>` elements. `hidden` on `<option>` inside a `<select>` has inconsistent browser support, so non-matching thicknesses can still show up in the dropdown (disabled/grayed but visible) instead of being removed from the list — which is the bug being reported.
+This app has four dependent Material family → Thickness selects (`Index.cshtml`'s "Add a sheet" dialog, `Census/NewOpeningBalance.cshtml`, `PurchaseOrders/Create.cshtml`'s PO lines, `Receiving/NewReceipt.cshtml`), each with its own copy-pasted inline script. Every copy filters by toggling `option.hidden = !matches` (plus `option.disabled`) on the thickness `<option>` elements. `hidden` on `<option>` inside a `<select>` has inconsistent browser support, so non-matching thicknesses can still show up in the dropdown (disabled/grayed but visible) instead of being removed from the list — which is the bug being reported.
 
-**Fix:** replace the hide/disable toggle with actually detaching non-matching `<option>` elements from the DOM and re-appending only the matching ones, in all four occurrences of this script. This is unambiguous cross-browser (an element not in the DOM cannot render in the dropdown) and keeps the same `data-material-key` matching logic and overall structure — only the filtering mechanics change:
+**Fix:** extract the filtering behavior into one shared, reusable script instead of fixing (and continuing to duplicate) the same logic five times over — the four existing material/thickness pairs plus the new rack/slot pair make this the right moment to de-duplicate rather than copy-paste a fifth variant.
 
-- On page load, capture the full set of thickness `<option>` elements (excluding the placeholder) once, in original order.
-- `filterThicknesses(reset)`: remove all non-placeholder `<option>`s currently in the select, then re-append (from the captured set, in original order) only those whose `data-material-key` matches the selected material. Keep the select's `disabled` state tied to whether a material is chosen. On `reset`, clear the value; otherwise try to restore the previously selected value (it will naturally be blank if that option got filtered out).
+### Shared script: `wwwroot/js/dependent-select.js`
 
-The new rack/slot select from the section above will use this corrected technique from the start (not the old hidden/disabled toggle), so it doesn't inherit the same bug.
+A single global function, loaded as a static asset (this app already serves `wwwroot/css/app.css` the same way — see `Pages/Shared/_Layout.cshtml:7` — and `Program.cs` already calls `app.UseStaticFiles()`):
+
+```js
+function initDependentSelect(trigger, dependent, datasetKey) {
+    const allOptions = Array.from(dependent.options).filter(option => option.dataset[datasetKey] !== undefined);
+    const selected = allOptions.find(option => option.value === dependent.value);
+    if (selected) trigger.value = selected.dataset[datasetKey];
+    const filter = resetSelection => {
+        const previousValue = dependent.value;
+        allOptions.forEach(option => option.remove());
+        for (const option of allOptions) {
+            if (option.dataset[datasetKey] === trigger.value) dependent.appendChild(option);
+        }
+        dependent.disabled = !trigger.value;
+        dependent.value = resetSelection ? '' : previousValue;
+    };
+    trigger.addEventListener('change', () => filter(true));
+    filter(false);
+}
+```
+
+- `trigger` / `dependent` are the two `<select>` elements (not ids — callers resolve their own elements, since `PurchaseOrders/Create.cshtml` has per-row selects reached via `row.querySelector`, not `getElementById`).
+- `datasetKey` is the camelCase dataset property the dependent's `<option>`s carry (e.g. `'materialKey'` for `data-material-key`, `'rackId'` for `data-rack-id`) — this is what makes the one function cover both the material→thickness and rack→slot cases.
+- The detach/re-append technique is the same fix described above: an element not in the DOM cannot render in the dropdown, unlike a merely-`hidden` one.
+
+Each page loads the script (`<script src="~/js/dependent-select.js" asp-append-version="true"></script>`, matching the existing `app.css` link's convention) and calls `initDependentSelect(...)` once per dependent pair, replacing what used to be a ~15-line inline IIFE with a one-line call:
+
+- Index.cshtml: `initDependentSelect(material, thickness, 'materialKey')` and `initDependentSelect(rack, slot, 'rackId')`
+- Census/NewOpeningBalance.cshtml, Receiving/NewReceipt.cshtml: one `initDependentSelect(material, thickness, 'materialKey')` call each
+- PurchaseOrders/Create.cshtml: one `initDependentSelect(...)` call per `.po-line` row, inside the existing `document.querySelectorAll('.po-line').forEach(row => ...)` loop; the unrelated "Add another line" button logic in the same script block is untouched
 
 ## Non-goals / no backend changes
 
 - `IndexModel.MaterialLocations`, `LoadNewSheetOptionsAsync`, and `OnPostAddSheetAsync`'s validation (`MaterialLocations.All(x => x.InventoryLocationId != NewSheet.LocationId)`) are unchanged — they already operate on the slot's `InventoryLocationId`, which is exactly what the (still bound) slot select posts.
 - Placeholder option text changes from "Choose confirmed rack slot" to "Choose rack" / "Choose slot" on the respective selects.
 - No changes to `Receiving/SelectLocation.cshtml` or `Census/SelectSlot.cshtml` — those already present rack/slot as a table, not a dropdown, and are out of scope.
-- The thickness-filter fix touches only the `<script>` blocks in the four affected pages — the bound field (`ExistingMaterialSpecId` / `Lines[i].ExistingMaterialSpecId`), the C# models, and the server-side validation in each page are unchanged.
+- No bundler/build step is introduced — `wwwroot/js/dependent-select.js` is a plain static file served as-is, same as `wwwroot/css/app.css`.
+- The bound fields (`NewSheet.LocationId`, `ExistingMaterialSpecId` / `Lines[i].ExistingMaterialSpecId`), the C# models, and the server-side validation on each page are unchanged.
 
 ## Testing
 
-Pure Razor/JS UI change; `NewSheet.LocationId` posts the same value shape as before, so no new C# logic needs unit tests. Verify manually in the browser:
+Pure Razor/JS UI change; posted values are unchanged, so no new C# logic needs unit tests. Verify manually in the browser:
 - Dialog opens with rack select populated and slot select disabled.
 - Choosing a rack enables the slot select and filters it to that rack's slots only.
 - Switching racks resets the slot selection.
