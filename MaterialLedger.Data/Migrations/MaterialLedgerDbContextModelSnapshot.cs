@@ -792,7 +792,7 @@ namespace MaterialLedger.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityOrdered", "[QuantityOrdered] = FLOOR([QuantityOrdered]) AND [QuantityOrdered] >= 1");
 
-                            t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] <= [QuantityOrdered]");
+                            t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] = FLOOR([QuantityReceived]) AND [QuantityReceived] <= [QuantityOrdered]");
                         });
                 });
 

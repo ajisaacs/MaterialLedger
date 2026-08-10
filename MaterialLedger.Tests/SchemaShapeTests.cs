@@ -71,4 +71,36 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
 
         await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => db.SaveChangesAsync());
     }
+
+    [Fact]
+    public async Task PurchaseOrderLine_RejectsFractionalQuantityReceived()
+    {
+        await using var db = _fixture.CreateContext();
+        var user = new AppUser { Username = $"t_{Guid.NewGuid():N}", DisplayName = "T", Role = AppUserRole.Manager, IsActive = true, PasswordHash = "x" };
+        var spec = new MaterialSpec { MaterialFamily = "Carbon Steel", Grade = $"A36-{Guid.NewGuid():N}", ThicknessIn = 0.25m, DisplayName = "A36 1/4in", IsActive = true };
+        db.AddRange(user, spec);
+        await db.SaveChangesAsync();
+
+        var po = new PurchaseOrder
+        {
+            VendorName = "Test Vendor",
+            PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}",
+            CreatedAtUtc = DateTime.UtcNow,
+            CreatedBy = user.AppUserId
+        };
+        db.PurchaseOrders.Add(po);
+        await db.SaveChangesAsync();
+
+        db.PurchaseOrderLines.Add(new PurchaseOrderLine
+        {
+            PurchaseOrderId = po.PurchaseOrderId,
+            LineNumber = 1,
+            MaterialSpecId = spec.MaterialSpecId,
+            QuantityOrdered = 3m,
+            QuantityReceived = 1.5m, // invalid: quantity received must be a whole number
+            Status = PurchaseOrderLineStatus.PartiallyReceived
+        });
+
+        await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => db.SaveChangesAsync());
+    }
 }

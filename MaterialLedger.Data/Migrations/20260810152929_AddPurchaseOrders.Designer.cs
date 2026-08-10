@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaterialLedger.Data.Migrations
 {
     [DbContext(typeof(MaterialLedgerDbContext))]
-    [Migration("20260810152158_AddPurchaseOrders")]
+    [Migration("20260810152929_AddPurchaseOrders")]
     partial class AddPurchaseOrders
     {
         /// <inheritdoc />
@@ -795,7 +795,7 @@ namespace MaterialLedger.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityOrdered", "[QuantityOrdered] = FLOOR([QuantityOrdered]) AND [QuantityOrdered] >= 1");
 
-                            t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] <= [QuantityOrdered]");
+                            t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] = FLOOR([QuantityReceived]) AND [QuantityReceived] <= [QuantityOrdered]");
                         });
                 });
 

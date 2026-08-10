@@ -120,7 +120,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
                 t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityOrdered",
                     "[QuantityOrdered] = FLOOR([QuantityOrdered]) AND [QuantityOrdered] >= 1");
                 t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived",
-                    "[QuantityReceived] >= 0 AND [QuantityReceived] <= [QuantityOrdered]");
+                    "[QuantityReceived] >= 0 AND [QuantityReceived] = FLOOR([QuantityReceived]) AND [QuantityReceived] <= [QuantityOrdered]");
             });
             e.HasOne(x => x.PurchaseOrder).WithMany(x => x.Lines).HasForeignKey(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);

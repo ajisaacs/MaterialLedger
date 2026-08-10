@@ -68,7 +68,7 @@ namespace MaterialLedger.Data.Migrations
                 {
                     table.PrimaryKey("PK_PurchaseOrderLines", x => x.PurchaseOrderLineId);
                     table.CheckConstraint("CK_PurchaseOrderLine_QuantityOrdered", "[QuantityOrdered] = FLOOR([QuantityOrdered]) AND [QuantityOrdered] >= 1");
-                    table.CheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] <= [QuantityOrdered]");
+                    table.CheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] = FLOOR([QuantityReceived]) AND [QuantityReceived] <= [QuantityOrdered]");
                     table.ForeignKey(
                         name: "FK_PurchaseOrderLines_MaterialSpecs_MaterialSpecId",
                         column: x => x.MaterialSpecId,
