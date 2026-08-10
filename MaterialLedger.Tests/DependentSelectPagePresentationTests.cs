@@ -27,6 +27,17 @@ public sealed class DependentSelectPagePresentationTests
         Assert.Contains("document.getElementById('add-line').addEventListener('click'", page);
     }
 
+    [Fact]
+    public void Receiving_page_wires_its_dependent_select_through_the_shared_script()
+    {
+        var page = ReadPage("Receiving", "NewReceipt.cshtml");
+
+        Assert.Contains("<script src=\"~/js/dependent-select.js\" asp-append-version=\"true\"></script>", page);
+        Assert.Contains("initDependentSelect(document.getElementById('receipt-material'), document.getElementById('receipt-thickness'), 'materialKey')", page);
+        Assert.DoesNotContain("option.hidden", page);
+        Assert.DoesNotContain("filterThicknesses", page);
+    }
+
     private static string ReadPage(params string[] pathSegments) => File.ReadAllText(
         Path.Combine(new[] { RepositoryRoot, "MaterialLedger.Web", "Pages" }.Concat(pathSegments).ToArray()));
 

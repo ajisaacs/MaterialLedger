@@ -76,23 +76,7 @@
 
     <button type="submit">Receive material</button>
 </form>
+<script src="~/js/dependent-select.js" asp-append-version="true"></script>
 <script>
-    (() => {
-        const material = document.getElementById('receipt-material');
-        const thickness = document.getElementById('receipt-thickness');
-        const selected = thickness.options[thickness.selectedIndex];
-        if (selected?.dataset.materialKey) material.value = selected.dataset.materialKey;
-        const filterThicknesses = reset => {
-            for (const option of thickness.options) {
-                if (!option.value) continue;
-                const matches = option.dataset.materialKey === material.value;
-                option.hidden = !matches;
-                option.disabled = !matches;
-            }
-            thickness.disabled = !material.value;
-            if (reset) thickness.value = '';
-        };
-        material.addEventListener('change', () => filterThicknesses(true));
-        filterThicknesses(false);
-    })();
+    initDependentSelect(document.getElementById('receipt-material'), document.getElementById('receipt-thickness'), 'materialKey');
 </script>
