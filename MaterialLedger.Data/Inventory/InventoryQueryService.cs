@@ -97,6 +97,19 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
         if (locationIds is not null)
             query = query.Where(x => locationIds.Contains(x.location.InventoryLocationId));
 
+        // Keep the availability predicate in the SQL query so CountAsync can use the same
+        // canonical rules without materializing inventory rows or reservation aggregates.
+        if (filter?.AvailableOnly == true)
+        {
+            var staleBeforeUtc = DateTime.UtcNow.AddDays(-freshnessThresholdDays);
+            query = query.Where(x =>
+                x.item.Status != InventoryItemStatus.Quarantined &&
+                x.item.LastObservedAtUtc >= staleBeforeUtc &&
+                x.item.QuantityOnHand > db.MaterialReservations.Count(reservation =>
+                    reservation.InventoryItemId == x.item.InventoryItemId &&
+                    ActiveReservationStatuses.Contains(reservation.Status)));
+        }
+
         return orderDeterministically
             ? query.OrderBy(x => x.location.LocationCode).ThenBy(x => x.item.PublicItemCode)
                 .Select(x => new ItemRow(x.item, x.spec, x.location, x.observer, 0))
@@ -139,23 +152,55 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
         IsStale = MaterialFreshness.IsStale(row.Item.LastObservedAtUtc, freshnessThresholdDays)
     };
 
+    /// <summary>
+    /// Retrieves the canonical availability projection for one selected inventory item. The active
+    /// hold aggregate and available-quantity subtraction are translated and executed by SQL, so a
+    /// caller cannot accidentally present quantity-on-hand as availability.
+    /// </summary>
+    public Task<InventoryItemSummary?> GetItemSummaryAsync(long inventoryItemId)
+    {
+        var staleBeforeUtc = DateTime.UtcNow.AddDays(-freshnessThresholdDays);
+        return (from item in db.InventoryItems
+                join spec in db.MaterialSpecs on item.MaterialSpecId equals spec.MaterialSpecId
+                join location in db.InventoryLocations on item.InventoryLocationId equals location.InventoryLocationId
+                join observer in db.AppUsers on item.LastObservedBy equals observer.AppUserId
+                where item.InventoryItemId == inventoryItemId
+                let activeCount = db.MaterialReservations.Count(reservation =>
+                    reservation.InventoryItemId == item.InventoryItemId &&
+                    ActiveReservationStatuses.Contains(reservation.Status))
+                select new InventoryItemSummary
+                {
+                    InventoryItemId = item.InventoryItemId,
+                    PublicItemCode = item.PublicItemCode,
+                    MaterialSpecDisplayName = spec.DisplayName,
+                    ItemKind = item.ItemKind,
+                    Status = item.Status,
+                    QuantityOnHand = item.QuantityOnHand,
+                    AvailableQuantity = item.QuantityOnHand - activeCount,
+                    UsableWidthIn = item.UsableWidthIn,
+                    UsableLengthIn = item.UsableLengthIn,
+                    LocationCode = location.LocationCode,
+                    LastObservedAtUtc = item.LastObservedAtUtc,
+                    LastObservedByDisplayName = observer.DisplayName,
+                    IsStale = item.LastObservedAtUtc < staleBeforeUtc
+                }).FirstOrDefaultAsync();
+    }
+
     public async Task<IReadOnlyList<InventoryItemSummary>> SearchAsync(InventoryFilter filter)
     {
-        // Compute active reservation counts as a separate query, materialized to dictionary
+        // Compute active reservation counts as a separate query, materialized to dictionary.
+        // BuildQuery applies AvailableOnly in SQL before rows are materialized.
         var activeLookup = await LoadActiveCountsAsync();
-
-        // Execute the base query with all scalar filters applied in SQL, deterministically ordered
         var rows = await BuildQuery(filter: filter, orderDeterministically: true).ToListAsync();
-
-        // Merge active counts in-memory
-        var rowsWithCounts = WithActiveCounts(rows, activeLookup);
-
-        // Apply AvailableOnly filter in-memory (needs computed AvailableQuantity)
-        IEnumerable<InventoryItemSummary> results = rowsWithCounts.Select(ToSummary);
-        if (filter.AvailableOnly)
-            results = results.Where(x => x.AvailableQuantity > 0 && x.Status != InventoryItemStatus.Quarantined && !x.IsStale);
-        return results.ToList();
+        return WithActiveCounts(rows, activeLookup).Select(ToSummary).ToList();
     }
+
+    /// <summary>
+    /// Counts inventory rows matching every <see cref="InventoryFilter"/> predicate. For
+    /// AvailableOnly filters, the active-hold, exception-status, stale, depleted, and scrapped
+    /// rules are evaluated by <see cref="BuildQuery"/> in SQL.
+    /// </summary>
+    public Task<int> CountAsync(InventoryFilter filter) => BuildQuery(filter: filter).CountAsync();
 
     public async Task<IReadOnlyList<InventoryItemSummary>> GetItemsAtLocationsAsync(IReadOnlyList<long> locationIds)
     {

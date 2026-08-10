@@ -1,8 +1,10 @@
 @* MaterialLedger.Web/Pages/Census/SelectSlot.cshtml *@
 @page
 @model MaterialLedger.Web.Pages.Census.SelectSlotModel
-@{ Layout = "Shared/_Layout"; }
-<h1>Select a slot</h1>
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Count existing material"; }
+
+<h1>Count existing material</h1>
+<p>Choose the confirmed rack slot where you counted material already on hand.</p>
 <table>
     <thead><tr><th>Rack</th><th>Slot</th><th></th></tr></thead>
     <tbody>
@@ -11,11 +13,7 @@
         <tr>
             <td>@slot.ParentInventoryLocation?.DisplayName</td>
             <td>@slot.LocationCode</td>
-            <td>
-                <a asp-page="NewOpeningBalance" asp-route-locationId="@slot.InventoryLocationId">Record opening balance</a>
-                &nbsp;|&nbsp;
-                <a asp-page="/Receiving/NewReceipt" asp-route-locationId="@slot.InventoryLocationId">Receive material</a>
-            </td>
+            <td><a asp-page="NewOpeningBalance" asp-route-locationId="@slot.InventoryLocationId">Record counted balance</a></td>
         </tr>
     }
     </tbody>

@@ -8,4 +8,4 @@
     <p>New drop item code: <strong>@Model.RemnantCode</strong></p>
     <p>QR payload for a printed label: <code>@Model.RemnantCode</code></p>
 }
-<p><a asp-page="Index">Back to closeout list</a></p>
+<p><a asp-page="Index" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Back to closeout list</a></p>

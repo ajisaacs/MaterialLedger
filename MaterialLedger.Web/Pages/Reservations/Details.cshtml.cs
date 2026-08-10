@@ -12,11 +12,13 @@ using Microsoft.EntityFrameworkCore;
 namespace MaterialLedger.Web.Pages.Reservations;
 
 [Authorize]
-public class DetailsModel(MaterialLedgerDbContext db, ReservationService reservations) : PageModel
+public class DetailsModel(MaterialLedgerDbContext db, IReservationService reservations) : PageModel
 {
     [BindProperty] public Guid CorrelationId { get; set; }
     [BindProperty] public string ExpectedRowVersionBase64 { get; set; } = string.Empty;
     [BindProperty] public string? ReleaseNotes { get; set; }
+    [BindProperty(SupportsGet = true)] public ReservationStatus? Status { get; set; }
+    [BindProperty(SupportsGet = true)] public ReservationEquipment? Equipment { get; set; }
 
     public MaterialReservation? Reservation { get; set; }
     public bool CanAct { get; set; }
@@ -42,7 +44,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ReservationService reserva
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await reservations.ApproveReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ReservationBalanceException
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException or ReservationBalanceException
             or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
         {
             var message = ex is DbUpdateException
@@ -51,7 +53,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ReservationService reserva
             return await ShowErrorAsync(id, message);
         }
 
-        return RedirectToPage("Details", new { id });
+        return RedirectToPage("Details", new { id, Status, Equipment });
     }
 
     public async Task<IActionResult> OnPostReleaseAsync(long id)
@@ -64,7 +66,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ReservationService reserva
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await reservations.ReleaseReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId, ReleaseNotes);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
         {
             var message = ex is DbUpdateException
                 ? "This reservation was changed by someone else — refresh and try again."
@@ -72,7 +74,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ReservationService reserva
             return await ShowErrorAsync(id, message);
         }
 
-        return RedirectToPage("Details", new { id });
+        return RedirectToPage("Details", new { id, Status, Equipment });
     }
 
     private async Task<IActionResult> ShowErrorAsync(long id, string message)

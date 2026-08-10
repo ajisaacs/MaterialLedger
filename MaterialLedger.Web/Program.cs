@@ -24,13 +24,18 @@ builder.Services.AddScoped<MaterialLedger.Data.Receiving.ReceiveMaterialService>
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.InventoryQueryService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
+builder.Services.AddScoped<WorkQueueQueryService>();
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Reservations.ReservationService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
+builder.Services.AddScoped<MaterialLedger.Data.Reservations.IReservationService>(sp =>
+    sp.GetRequiredService<MaterialLedger.Data.Reservations.ReservationService>());
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Closeout.CloseoutService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>()));
+builder.Services.AddScoped<MaterialLedger.Data.Closeout.ICloseoutService>(sp =>
+    sp.GetRequiredService<MaterialLedger.Data.Closeout.CloseoutService>());
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Exceptions.MaterialExceptionService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>(),

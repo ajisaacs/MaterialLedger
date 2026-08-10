@@ -32,7 +32,14 @@ public class ReservationResult
 public class ReservationBalanceException(string message) : Exception(message);
 public class ReservationConcurrencyException(string message) : Exception(message);
 
-public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard operationLog, int freshnessThresholdDays)
+public interface IReservationService
+{
+    Task<ReservationResult> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy);
+    Task<ReservationResult> ApproveReservationAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int approvedBy);
+    Task<ReservationResult> ReleaseReservationAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int releasedBy, string? notes);
+}
+
+public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard operationLog, int freshnessThresholdDays) : IReservationService
 {
     private static readonly ReservationStatus[] BundleActiveStatuses =
     [

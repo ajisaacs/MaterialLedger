@@ -4,8 +4,11 @@
 @using MaterialLedger.Data.Models
 @using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
-<h1>@Model.Rack!.DisplayName (@Model.Rack.LocationCode)</h1>
-<p>Storage: @Model.Rack.StorageMode — Slots confirmed: @(Model.Rack.CapacityConfirmed ? "Yes" : "No")</p>
+<header class="page-heading">
+    <p class="eyebrow">Material locations</p>
+    <h1>@Model.Rack!.DisplayName (@Model.Rack.LocationCode)</h1>
+    <p>Storage: @Model.Rack.StorageMode — Slots confirmed: @(Model.Rack.CapacityConfirmed ? "Yes" : "No")</p>
+</header>
 @if (Model.CanConfirmSlots)
 {
     <p><a asp-page="ConfirmSlots" asp-route-code="@Model.Rack.LocationCode">Confirm slot count</a></p>
@@ -26,13 +29,11 @@ else if (Model.Rack.CapacityConfirmed)
             <td>
             @foreach (var item in Model.ItemsBySlotCode[slot.LocationCode])
             {
-                var statusColor = InventoryStatusDisplay.BackgroundColor(item.Status);
-                var statusStyle = statusColor == "" ? "" : $"background:{statusColor}";
-                <div style="@statusStyle"><a asp-page="/Inventory/Search" asp-route-LocationCode="@slot.LocationCode" asp-route-AvailableOnly="false">@item.PublicItemCode — @item.MaterialSpecDisplayName — @item.AvailableQuantity of @item.QuantityOnHand — @item.Status @(item.IsStale ? "(STALE)" : "")</a></div>
+                <div class="inventory-status inventory-status-@item.Status.ToString().ToLowerInvariant() @(item.IsStale ? "inventory-status-stale" : "")"><a asp-page="/Inventory/Search" asp-route-LocationCode="@slot.LocationCode" asp-route-AvailableOnly="false">@item.PublicItemCode — @item.MaterialSpecDisplayName — @DisplayFormat.Quantity(item.AvailableQuantity) of @DisplayFormat.Quantity(item.QuantityOnHand) — @item.Status @(item.IsStale ? "(STALE)" : "")</a></div>
             }
             </td>
         </tr>
     }
     </tbody>
 </table>
-<p><a asp-page="Index">Back to material map</a></p>
+<p><a asp-page="Index">Back to material locations</a></p>

@@ -36,7 +36,7 @@ never applies its own grants, and no automation should attempt to run these agai
 Plans live in `docs/superpowers/plans/YYYY-MM-DD-material-ledger-phaseN.md`, written via the
 `superpowers:writing-plans` skill and (recommended) executed via `superpowers:subagent-driven-development`.
 
-## Current status (updated 2026-08-08)
+## Current status (updated 2026-08-10)
 
 | Phase | Status | Plan doc |
 |---|---|---|
@@ -44,7 +44,7 @@ Plans live in `docs/superpowers/plans/YYYY-MM-DD-material-ledger-phaseN.md`, wri
 | 1 — locations, opening census | **Done** | `docs/superpowers/plans/2026-08-07-material-ledger-phase1.md` |
 | 2 — reservations, inventory view | **Done** | `docs/superpowers/plans/2026-08-07-material-ledger-phase2.md` |
 | 3 — manual closeout, exceptions | **In progress — controlled physical pilot remains** | `docs/superpowers/plans/2026-08-08-material-ledger-phase3.md` |
-| Shop-floor workflow redesign | **In progress — Tasks 1–2 started** | `.hermes/plans/2026-08-10_020904-shop-floor-workflow-redesign.md` |
+| Shop-floor workflow redesign | **Source implementation complete — uncommitted local preview; controlled physical pilot/deployment remain** | `.hermes/plans/2026-08-10_020904-shop-floor-workflow-redesign.md` |
 | 4 — reporting, scheduling input | **Not started** | — |
 
 Repo was 1 commit ahead of `origin/master`, not pushed, as of session start — check `git status`/`git log` before assuming remote is current.
@@ -220,3 +220,22 @@ so Phase 4 doesn't have to re-derive them):
   `ReservationStatus` values and semantic CSS classes; focused display mapping tests pass (8/8) and
   `dotnet build MaterialLedger.sln --no-restore --verbosity minimal` completed with 0 warnings and
   0 errors. No schema, production data, Forge deployment, or physical-pilot activity occurred.
+- **2026-08-10 (Shop-floor workflow redesign, Tasks 3–8):** Completed the source-only redesign from
+  `.hermes/plans/2026-08-10_020904-shop-floor-workflow-redesign.md`. The control board and role-aware
+  work queues now use SQL-backed persisted data and central `ReservationWorkflowDisplay` labels;
+  canonical inventory availability is shared by search/count and the selected-hold summary; receiving
+  and stock count have separate entry routes; reservation holds and details use plain work references
+  without fabricated lookup data; closeout uses one protected outcome decision flow; reservation and
+  closeout queue filters persist across details/forms/errors/PRG; and the shared layout has accessible
+  operator-language navigation, feedback, focus treatment, and responsive table behavior. Task 8
+  presentation contracts cover sidebar/light focus contrast, route/role gating, and overflow behavior.
+  Canonical validation: `dotnet build MaterialLedger.sln
+  --no-restore --verbosity minimal` completed with 0 warnings/0 errors, and the full suite passed
+  155/155 with the disposable `MaterialLedgerTest` database provisioned through the dedicated test
+  principal. The local LAN preview was launched at `http://10.10.100.135:8091/Login` against the
+  existing MaterialLedger database using the dedicated preview principal. No production schema/data
+  change, Forge deployment, or physical-pilot activity occurred; the dedicated test principal received
+  the verified disposable-database permission required for the integration suite. The redesign remains
+  uncommitted for review.
+- **2026-08-10 (cutting-wide terminology/control board):** Replaced the user-facing `Work now` label with `Cutting workflow`; replaced laser-specific navigation, queue, role, program-record, and seeded-location labels with cutting-wide language; and changed control-board Ready for cutting / Record cut result counts and links to include all equipment rather than only `Laser`. Existing legacy display names are updated only when they exactly match the prior seeded names, preserving custom names. The persisted `LaserProgramRecordId` field and explicit `Laser` equipment option remain technical/selection details, while their operator-facing record label is now generic. Added `CuttingScopeTerminologyTests`, updated the existing all-equipment count contract, and added a legacy-location-label update test. Canonical validation: terminology test 2/2, location-seeder test 3/3, full suite 158/158, and `dotnet build MaterialLedger.sln --no-restore --nologo` completed with 0 warnings/0 errors. No schema, production data, Forge deployment, or physical-pilot activity occurred. The current source is running as a local LAN preview at `http://10.10.100.135:8091/Login` with the dedicated preview principal and preserved data-protection keys; `/Login` returned HTTP 200 from localhost, the LAN address, and Forge.
+- **2026-08-10 (quick shop-floor sheet entry):** Added a Programmer/Manager-only `Add a sheet` control-board modal for recording one existing full sheet. The form offers only active confirmed material slots in its location dropdown, reuses the existing material-spec catalog (or permits a new family/grade/finish/thickness), keeps one-sheet/full-sheet semantics explicit, uses the existing idempotent `OpeningBalanceService`, validates the selected slot server-side, and redirects to the existing success surface. Added `QuickSheetEntryPresentationTests`: RED 0/2 before implementation; GREEN 2/2 after. `dotnet build MaterialLedger.sln --no-restore --verbosity minimal` completed with 0 warnings/0 errors. Full suite currently has one unrelated concurrent presentation-test failure: `ReservationHoldPresentationTests.Hold_form_centers_the_selected_item_and_one_readable_work_reference` expects the superseded raw `@Model.Item?.AvailableQuantity` expression while the page renders through `DisplayFormat.Quantity`; repeated suite result was 159/160 passing. No schema, production data, Forge deployment, or physical-pilot activity occurred. The local preview was relaunched from current source on `http://10.10.100.135:8091/Login`; `/Login` returned HTTP 200 from both localhost and the LAN address.

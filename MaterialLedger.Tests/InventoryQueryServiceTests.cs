@@ -62,6 +62,30 @@ public class InventoryQueryServiceTests : IClassFixture<SqlServerTestDatabaseFix
     }
 
     [Fact]
+    public async Task GetItemSummaryAsync_ComputesAvailableQuantityFromEveryActiveHoldStatus()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, _, slotId, specId) = await SeedAsync(db);
+        var item = NewBundle(slotId, specId, userId, 7m);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        db.MaterialReservations.AddRange(
+            new MaterialReservation { InventoryItemId = item.InventoryItemId, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId },
+            new MaterialReservation { InventoryItemId = item.InventoryItemId, Status = ReservationStatus.Approved, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId },
+            new MaterialReservation { InventoryItemId = item.InventoryItemId, Status = ReservationStatus.AwaitingCloseout, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId },
+            new MaterialReservation { InventoryItemId = item.InventoryItemId, Status = ReservationStatus.Released, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId });
+        await db.SaveChangesAsync();
+        var service = new InventoryQueryService(db, freshnessThresholdDays: 90);
+
+        var summary = await service.GetItemSummaryAsync(item.InventoryItemId);
+
+        Assert.NotNull(summary);
+        Assert.Equal(item.InventoryItemId, summary.InventoryItemId);
+        Assert.Equal(7m, summary.QuantityOnHand);
+        Assert.Equal(4m, summary.AvailableQuantity);
+    }
+
+    [Fact]
     public async Task SearchAsync_FiltersByMaterialFamilyAndMinWidth()
     {
         await using var db = _fixture.CreateContext();
@@ -127,6 +151,51 @@ public class InventoryQueryServiceTests : IClassFixture<SqlServerTestDatabaseFix
 
         var summary = Assert.Single(results);
         Assert.Equal(available.InventoryItemId, summary.InventoryItemId);
+    }
+
+    [Fact]
+    public async Task CountAsync_matches_available_search_with_active_holds_exception_states_and_all_scalar_filters()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, _, slotId, specId) = await SeedAsync(db);
+        var slot = await db.InventoryLocations.FindAsync(slotId);
+        var matchingSpec = await db.MaterialSpecs.FindAsync(specId);
+        matchingSpec!.Finish = "Mill";
+        var matching = NewBundle(slotId, specId, userId, 2m);
+        matching.UsableWidthIn = 24m;
+        matching.UsableLengthIn = 48m;
+        var fullyHeld = NewBundle(slotId, specId, userId, 1m);
+        fullyHeld.UsableWidthIn = 24m;
+        fullyHeld.UsableLengthIn = 48m;
+        var quarantined = NewBundle(slotId, specId, userId, 2m);
+        quarantined.UsableWidthIn = 24m;
+        quarantined.UsableLengthIn = 48m;
+        quarantined.Status = InventoryItemStatus.Quarantined;
+        var stale = NewBundle(slotId, specId, userId, 2m);
+        stale.UsableWidthIn = 24m;
+        stale.UsableLengthIn = 48m;
+        stale.LastObservedAtUtc = DateTime.UtcNow.AddDays(-91);
+        var depleted = NewBundle(slotId, specId, userId, 2m);
+        depleted.UsableWidthIn = 24m;
+        depleted.UsableLengthIn = 48m;
+        depleted.Status = InventoryItemStatus.Depleted;
+        var scrapped = NewBundle(slotId, specId, userId, 2m);
+        scrapped.UsableWidthIn = 24m;
+        scrapped.UsableLengthIn = 48m;
+        scrapped.Status = InventoryItemStatus.Scrapped;
+        db.InventoryItems.AddRange(matching, fullyHeld, quarantined, stale, depleted, scrapped);
+        await db.SaveChangesAsync();
+        db.MaterialReservations.Add(new MaterialReservation { InventoryItemId = fullyHeld.InventoryItemId, Status = ReservationStatus.Approved, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId });
+        await db.SaveChangesAsync();
+
+        var filter = new InventoryFilter("Steel", "A36", "Mill", 0.25m, InventoryItemKind.FullSheetBundle, 24m, 48m, slot!.LocationCode, AvailableOnly: true);
+        var service = new InventoryQueryService(db, freshnessThresholdDays: 90);
+
+        var searchResults = await service.SearchAsync(filter);
+        var count = await service.CountAsync(filter);
+
+        Assert.Equal(searchResults.Count, count);
+        Assert.Equal(matching.InventoryItemId, Assert.Single(searchResults).InventoryItemId);
     }
 
     [Fact]

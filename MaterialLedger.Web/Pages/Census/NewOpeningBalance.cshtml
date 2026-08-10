@@ -1,6 +1,7 @@
 @* MaterialLedger.Web/Pages/Census/NewOpeningBalance.cshtml *@
 @page
 @model MaterialLedger.Web.Pages.Census.NewOpeningBalanceModel
+@using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
 <h1>Opening balance — @Model.Location?.LocationCode</h1>
 
@@ -12,7 +13,7 @@
         @foreach (var item in Model.ExistingActiveItems)
         {
             <li>
-                @item.PublicItemCode — @item.MaterialSpec?.DisplayName — qty @item.QuantityOnHand — @item.Status
+                @item.PublicItemCode — @item.MaterialSpec?.DisplayName — qty @DisplayFormat.Quantity(item.QuantityOnHand) — @item.Status
                 (<a asp-page="NewOpeningBalance" asp-route-locationId="@Model.LocationId" asp-route-copyFromItemId="@item.InventoryItemId">copy as new item</a>)
             </li>
         }

@@ -1,23 +1,46 @@
 @* MaterialLedger.Web/Pages/Reservations/Create.cshtml *@
 @page "{inventoryItemId:long?}"
 @model MaterialLedger.Web.Pages.Reservations.CreateModel
+@using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
-<h1>Reserve @Model.Item?.PublicItemCode</h1>
-<p>@Model.Item?.MaterialSpec?.DisplayName — @Model.Item?.InventoryLocation?.LocationCode — @Model.Item?.QuantityOnHand on hand</p>
+
+<header class="page-heading">
+    <p class="eyebrow">Cutting workflow</p>
+    <h1>Hold material for work</h1>
+    <p>Record the work context that is known now. Additional identifiers stay available without blocking the hold.</p>
+</header>
+
+<section aria-label="Selected material">
+    <h2>Selected material</h2>
+    <table class="selected-material-summary">
+        <tbody>
+            <tr><th scope="row">Item</th><td>@Model.Item?.PublicItemCode</td></tr>
+            <tr><th scope="row">Material</th><td>@Model.Item?.MaterialSpecDisplayName</td></tr>
+            <tr><th scope="row">Available quantity</th><td>@(Model.Item is null ? null : DisplayFormat.Quantity(Model.Item.AvailableQuantity))</td></tr>
+            <tr><th scope="row">Usable size</th><td>@(Model.Item?.UsableWidthIn is not null ? $"{Model.Item.UsableWidthIn} × {Model.Item.UsableLengthIn} in" : "Not recorded")</td></tr>
+            <tr><th scope="row">Location</th><td>@Model.Item?.LocationCode</td></tr>
+        </tbody>
+    </table>
+</section>
+
 @if (Model.Error is not null)
 {
     <p style="color:red">@Model.Error</p>
 }
+
 <form method="post">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="InventoryItemId" />
     <input type="hidden" asp-for="CorrelationId" />
 
     <fieldset>
-        <legend>Job / drawing / nest reference</legend>
-        <label>ShopOps job ID <input asp-for="ShopOpsJobId" /></label>
-        <label>Drawing ID <input asp-for="DrawingId" /></label>
-        <label>Drawing revision <input asp-for="DrawingRevision" /></label>
+        <legend>Work details</legend>
+        <label>Work reference <input asp-for="DrawingId" /></label>
+        <p>Enter the job, drawing, or nest identifier your team will recognize. Leave it blank only for an <strong>Unassigned material hold</strong>.</p>
+    </fieldset>
+
+    <fieldset>
+        <legend>Equipment</legend>
         <label>Equipment
             <select asp-for="Equipment">
                 <option value="">-- unspecified --</option>
@@ -27,18 +50,25 @@
                 <option value="Other">Other</option>
             </select>
         </label>
-        <label>PEP nest year <input asp-for="PepNestYear" type="number" /></label>
-        <label>PEP nest name <input asp-for="PepNestName" /></label>
-        <label>Laser program record ID <input asp-for="LaserProgramRecordId" /></label>
     </fieldset>
 
     <fieldset>
         <legend>Expected remainder</legend>
-        <label><input asp-for="HasManualEstimate" type="checkbox" /> Record an approved manual remainder estimate</label>
+        <label><input asp-for="HasManualEstimate" type="checkbox" /> Record an operator estimate of the expected remainder</label>
         <label>Expected width (in) <input asp-for="ExpectedRemainderWidthIn" type="number" step="0.001" /></label>
         <label>Expected length (in) <input asp-for="ExpectedRemainderLengthIn" type="number" step="0.001" /></label>
-        <p><em>OpenNest engine integration is not built yet — this records an operator-approved manual estimate only (spec section 5).</em></p>
+        <p><em>This is an operator estimate, not a calculated result. No OpenNest integration is connected.</em></p>
     </fieldset>
 
-    <button type="submit">Create reservation (Proposed)</button>
+    <details class="additional-traceability">
+        <summary>Additional traceability</summary>
+        <p>Optional technical identifiers are retained for audit and can be recorded when available.</p>
+        <label>ShopOps job ID <input asp-for="ShopOpsJobId" /></label>
+        <label>Drawing revision <input asp-for="DrawingRevision" /></label>
+        <label>PEP nest year <input asp-for="PepNestYear" type="number" /></label>
+        <label>PEP nest name <input asp-for="PepNestName" /></label>
+        <label>Program record ID <input asp-for="LaserProgramRecordId" /></label>
+    </details>
+
+    <button type="submit">Hold material for work</button>
 </form>

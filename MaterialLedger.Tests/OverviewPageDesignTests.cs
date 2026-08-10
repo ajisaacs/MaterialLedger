@@ -5,21 +5,23 @@ namespace MaterialLedger.Tests;
 public sealed class OverviewPageDesignTests
 {
     [Fact]
-    public void Overview_presents_the_operator_workflow_and_live_operational_summary()
+    public void Overview_presents_actionable_work_and_live_operational_summary()
     {
         var page = File.ReadAllText(OverviewPagePath());
 
-        Assert.Contains("Receive material", page);
-        Assert.Contains("Find stock", page);
-        Assert.Contains("Reserve material", page);
-        Assert.Contains("Close out cut", page);
+        Assert.Contains("Find material", page);
+        Assert.Contains("Hold material for work", page);
+        Assert.Contains("Record cut result", page);
+        Assert.Contains("Receive delivery", page);
+        Assert.Contains("Count existing material", page);
+        Assert.Contains("asp-page=\"/Receiving/SelectLocation\"", page);
         Assert.Contains("asp-page=\"/Census/SelectSlot\"", page);
         Assert.Contains("asp-page=\"/Inventory/Search\"", page);
         Assert.Contains("asp-page=\"/Reservations/Index\"", page);
         Assert.Contains("asp-page=\"/Closeout/Index\"", page);
         Assert.Contains("Available material", page);
-        Assert.Contains("Active reservations", page);
-        Assert.Contains("Awaiting closeout", page);
+        Assert.Contains("Ready for cutting", page);
+        Assert.Contains("Record cut result", page);
         Assert.Contains("Attention needed", page);
     }
 

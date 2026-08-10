@@ -1,30 +1,81 @@
 @* MaterialLedger.Web/Pages/Reservations/Index.cshtml *@
 @page
 @model MaterialLedger.Web.Pages.Reservations.IndexModel
+@using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
-<h1>Reservations</h1>
-<p><a asp-page="/Inventory/Search">Search inventory to reserve material →</a></p>
-@if (Model.Reservations.Count == 0)
+
+<header class="page-heading">
+    <p class="eyebrow">Material work queues</p>
+    <h1>Material holds</h1>
+    <p>Find the next physical step for held material without sorting through internal workflow codes.</p>
+</header>
+
+<p><a class="button" asp-page="/Inventory/Search">Find material to hold for work</a></p>
+
+@if (Model.Status is not null || Model.Equipment is not null)
 {
-    <p class="empty-state">No open reservations.</p>
+    <p class="filter-summary">
+        Showing filtered material work
+        @if (Model.Status is not null) { <span>— @ReservationWorkflowDisplay.For(Model.Status.Value).Label</span> }
+        @if (Model.Equipment is not null) { <span>— @Model.Equipment equipment</span> }
+        <a asp-page="Index">Clear filters</a>
+    </p>
 }
-else
+
+@foreach (var queueSection in Model.QueueSections)
 {
-<table>
-    <thead><tr><th>Item</th><th>Material</th><th>Job/Drawing</th><th>Equipment</th><th>Status</th><th>Created</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var r in Model.Reservations)
-    {
-        <tr>
-            <td>@r.InventoryItem?.PublicItemCode</td>
-            <td>@r.InventoryItem?.MaterialSpec?.DisplayName</td>
-            <td>@r.ShopOpsJobId @r.DrawingId @r.DrawingRevision</td>
-            <td>@r.Equipment</td>
-            <td>@r.Status</td>
-            <td>@r.CreatedAtUtc.ToString("u")</td>
-            <td><a asp-page="Details" asp-route-id="@r.MaterialReservationId">View</a></td>
-        </tr>
-    }
-    </tbody>
-</table>
+    <section class="workflow-section" aria-labelledby="@($"queue-{queueSection.Kind}")">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Next physical step</p>
+                <h2 id="@($"queue-{queueSection.Kind}")">@queueSection.Title</h2>
+            </div>
+            <p>@queueSection.Description</p>
+        </div>
+
+        @if (queueSection.Rows.Count == 0)
+        {
+            <p class="empty-state">@queueSection.EmptyMessage</p>
+        }
+        else
+        {
+            <table>
+                <thead><tr><th>Material item</th><th>Material</th><th>Usable size</th><th>Location</th><th>Work reference</th><th>Equipment</th><th>Workflow status</th><th>Since</th><th>Next action</th></tr></thead>
+                <tbody>
+                @foreach (var row in queueSection.Rows)
+                {
+                    var workflow = ReservationWorkflowDisplay.For(row.Reservation.Status);
+                    <tr>
+                        <td>@row.Reservation.InventoryItem?.PublicItemCode</td>
+                        <td>@row.Reservation.InventoryItem?.MaterialSpec?.DisplayName</td>
+                        <td>@row.UsableSize</td>
+                        <td>@row.Reservation.InventoryItem?.InventoryLocation?.LocationCode</td>
+                        <td>@row.WorkReference</td>
+                        <td>@(row.Reservation.Equipment?.ToString() ?? "Equipment not assigned")</td>
+                        <td><span class="workflow-status @workflow.CssClass">@workflow.Label</span><br /><small>@workflow.Description</small></td>
+                        <td>@row.TimestampUtc.ToString("u")</td>
+                        <td class="queue-action">
+                            @if (queueSection.Kind == ReservationQueueKind.ApprovalNeeded && (User.IsInRole("Programmer") || User.IsInRole("Manager")))
+                            {
+                                <a class="button button-primary" asp-page="Details" asp-route-id="@row.Reservation.MaterialReservationId" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Review approval</a>
+                            }
+                            else if (queueSection.Kind == ReservationQueueKind.ReadyForCutting && (User.IsInRole("Operator") || User.IsInRole("Manager")))
+                            {
+                                <a class="button button-primary" asp-page="/Closeout/Index" asp-route-Status="Approved" asp-route-Equipment="@row.Reservation.Equipment">Open cut queue</a>
+                            }
+                            else if (queueSection.Kind == ReservationQueueKind.CutResultNeeded && (User.IsInRole("Operator") || User.IsInRole("Manager")))
+                            {
+                                <a class="button button-primary" asp-page="/Closeout/Details" asp-route-id="@row.Reservation.MaterialReservationId" asp-route-Status="AwaitingCloseout" asp-route-Equipment="@row.Reservation.Equipment">Record cut result</a>
+                            }
+                            else
+                            {
+                                <a class="button" asp-page="Details" asp-route-id="@row.Reservation.MaterialReservationId" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">View hold</a>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
 }

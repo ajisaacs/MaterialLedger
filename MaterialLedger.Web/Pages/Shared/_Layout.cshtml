@@ -12,16 +12,20 @@
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" asp-page="/Index"><span class="brand-mark">ML</span><span>Material<small>Ledger</small></span></a>
-            <p class="rail-caption">Laser material control</p>
+            <p class="rail-caption">Material control</p>
             <nav class="primary-nav" aria-label="Primary navigation">
-                <p>Work now</p>
+                <p>Cutting workflow</p>
                 <a asp-page="/Index">Control board</a>
                 <a asp-page="/Inventory/Search">Find material</a>
-                <a asp-page="/Reservations/Index">Reservations</a>
-                @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Close out cut</a> }
-                <p>Inventory</p>
-                <a asp-page="/Locations/Index">Material map</a>
-                @if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a asp-page="/Census/SelectSlot">Receive material</a><a asp-page="/Census/SelectSlot">Opening census</a> }
+                <a asp-page="/Reservations/Index">Material holds</a>
+                @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Record cut result</a> }
+                <p>Inventory setup</p>
+                @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+                {
+                    <a asp-page="/Receiving/SelectLocation">Receive delivery</a>
+                    <a asp-page="/Census/SelectSlot">Count existing material</a>
+                }
+                <a asp-page="/Locations/Index">Material locations</a>
                 <p>Review</p>
                 <a asp-page="/Exceptions/Index">Attention needed</a>
             </nav>

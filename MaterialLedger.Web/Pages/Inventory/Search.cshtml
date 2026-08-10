@@ -17,13 +17,13 @@
 }
 
 <header class="page-heading">
-    <p class="eyebrow">Work now</p>
+    <p class="eyebrow">Cutting workflow</p>
     <h1>Find material</h1>
-    <p>Search available stock and drops, then reserve the item for work.</p>
+    <p>Search available stock and drops, then hold the selected item for work.</p>
 </header>
 @if (TempData["Message"] is string message)
 {
-    <p class="info-banner">@message</p>
+    <p class="alert-success" role="status">@message</p>
 }
 
 <section class="inventory-search-bar" aria-label="Inventory search filters">
@@ -90,19 +90,19 @@ else
     <tbody>
     @foreach (var r in Model.Results)
     {
-        <tr style="@(r.IsStale ? "background:#fee" : $"background:{InventoryStatusDisplay.BackgroundColor(r.Status)}")">
+        <tr>
             <td>@r.PublicItemCode</td>
             <td>@r.MaterialSpecDisplayName</td>
             <td>@r.ItemKind</td>
-            <td>@r.AvailableQuantity of @r.QuantityOnHand</td>
+            <td>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</td>
             <td>@(r.UsableWidthIn is not null ? $"{r.UsableWidthIn} x {r.UsableLengthIn}" : "-")</td>
             <td>@r.LocationCode</td>
             <td>@r.LastObservedAtUtc.ToString("u") by @r.LastObservedByDisplayName @(r.IsStale ? "(STALE)" : "")</td>
-            <td>@r.Status</td>
+            <td><span class="inventory-status inventory-status-@r.Status.ToString().ToLowerInvariant() @(r.IsStale ? "inventory-status-stale" : "")">@r.Status@(r.IsStale ? " — review before use" : "")</span></td>
             <td>
             @if (Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined)
             {
-                <a asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Reserve</a>
+                <a asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Hold for work</a>
             }
             </td>
         </tr>

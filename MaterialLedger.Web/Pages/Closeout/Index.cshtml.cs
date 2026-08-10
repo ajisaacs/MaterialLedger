@@ -13,8 +13,10 @@ using Microsoft.EntityFrameworkCore;
 namespace MaterialLedger.Web.Pages.Closeout;
 
 [Authorize(Policy = MaterialLedgerPolicies.RequireOperatorOrManager)]
-public class IndexModel(MaterialLedgerDbContext db, CloseoutService closeout) : PageModel
+public class IndexModel(MaterialLedgerDbContext db, ICloseoutService closeout) : PageModel
 {
+    [BindProperty(SupportsGet = true)] public ReservationStatus? Status { get; set; }
+    [BindProperty(SupportsGet = true)] public ReservationEquipment? Equipment { get; set; }
     public List<MaterialReservation> Reservations { get; set; } = [];
     public Dictionary<long, Guid> CorrelationIdsByReservationId { get; set; } = [];
     public string? Error { get; set; }
@@ -24,6 +26,37 @@ public class IndexModel(MaterialLedgerDbContext db, CloseoutService closeout) : 
         await LoadAsync();
     }
 
+    public string WorkReference(MaterialReservation reservation)
+    {
+        if (!string.IsNullOrWhiteSpace(reservation.ShopOpsJobId)) return reservation.ShopOpsJobId;
+        if (!string.IsNullOrWhiteSpace(reservation.DrawingId))
+            return string.IsNullOrWhiteSpace(reservation.DrawingRevision)
+                ? reservation.DrawingId
+                : $"{reservation.DrawingId} rev {reservation.DrawingRevision}";
+        if (!string.IsNullOrWhiteSpace(reservation.PepNestName))
+            return reservation.PepNestYear is null ? reservation.PepNestName : $"{reservation.PepNestYear} {reservation.PepNestName}";
+        return "No work reference recorded";
+    }
+
+    public string UsableSize(MaterialReservation reservation)
+    {
+        var item = reservation.InventoryItem;
+        return item?.UsableWidthIn is not null && item.UsableLengthIn is not null
+            ? $"Usable {item.UsableWidthIn:0.###} × {item.UsableLengthIn:0.###} in"
+            : "Usable size not recorded";
+    }
+
+    public string PendingFor(MaterialReservation reservation)
+    {
+        var startedAt = reservation.ApprovedAtUtc ?? reservation.CreatedAtUtc;
+        var elapsed = DateTime.UtcNow - startedAt;
+        return elapsed.TotalDays >= 1
+            ? $"{Math.Floor(elapsed.TotalDays):0} day(s)"
+            : elapsed.TotalHours >= 1
+                ? $"{Math.Floor(elapsed.TotalHours):0} hour(s)"
+                : "Less than 1 hour";
+    }
+
     public async Task<IActionResult> OnPostStartJobAsync(long id, Guid correlationId, string expectedRowVersionBase64)
     {
         try
@@ -31,22 +64,29 @@ public class IndexModel(MaterialLedgerDbContext db, CloseoutService closeout) : 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await closeout.MarkReservationAwaitingCloseoutAsync(correlationId, id, Convert.FromBase64String(expectedRowVersionBase64), userId);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
         {
             Error = ex is DbUpdateException ? "This reservation was changed by someone else — refresh and try again." : ex.Message;
             await LoadAsync();
             return Page();
         }
 
-        return RedirectToPage("Index");
+        return RedirectToPage("Index", new { Status, Equipment });
     }
 
     private async Task LoadAsync()
     {
-        Reservations = await db.MaterialReservations
+        var query = db.MaterialReservations
             .Include(x => x.InventoryItem)!.ThenInclude(x => x!.MaterialSpec)
-            .Where(x => x.Status == ReservationStatus.Approved || x.Status == ReservationStatus.AwaitingCloseout)
+            .Include(x => x.InventoryItem)!.ThenInclude(x => x!.InventoryLocation)
+            .Where(x => x.Status == ReservationStatus.Approved || x.Status == ReservationStatus.AwaitingCloseout);
+
+        if (Status is not null) query = query.Where(x => x.Status == Status);
+        if (Equipment is not null) query = query.Where(x => x.Equipment == Equipment);
+
+        Reservations = await query
             .OrderByDescending(x => x.ApprovedAtUtc)
+            .ThenByDescending(x => x.MaterialReservationId)
             .ToListAsync();
         CorrelationIdsByReservationId = Reservations.ToDictionary(x => x.MaterialReservationId, _ => Guid.NewGuid());
     }

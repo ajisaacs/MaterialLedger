@@ -1,62 +1,79 @@
 @* MaterialLedger.Web/Pages/Closeout/Details.cshtml *@
 @page "{id:long}"
 @model MaterialLedger.Web.Pages.Closeout.DetailsModel
+@using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
-<h1>Close material — reservation @Model.Reservation!.MaterialReservationId</h1>
-@if (Model.Error is not null)
-{
-    <p style="color:red">@Model.Error</p>
-}
-<dl>
-    <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode — @Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName — @Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
-    <dt>Job / Drawing</dt><dd>@Model.Reservation.ShopOpsJobId @Model.Reservation.DrawingId @Model.Reservation.DrawingRevision</dd>
-    <dt>Equipment</dt><dd>@Model.Reservation.Equipment</dd>
-    <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} x {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})" : "-")</dd>
-    <dt>Status</dt><dd>@Model.Reservation.Status</dd>
-</dl>
+<section class="closeout-detail">
+    <p class="eyebrow">Cut-result closeout</p>
+    <h1>Record cut result</h1>
+    <p>Record what physically remains from this cut. This updates material availability only after you submit the outcome.</p>
 
-<form method="post" action="?handler=AllConsumed">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="CorrelationId" />
-    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
-    <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">All consumed / scrap remaining</button>
-</form>
+    @if (Model.Error is not null)
+    {
+        <p class="form-error" role="alert">@Model.Error</p>
+    }
 
-<form method="post" action="?handler=FullSheetReturned">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="CorrelationId" />
-    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
-    <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Full sheet returned</button>
-</form>
+    <dl class="closeout-context">
+        <dt>Material</dt><dd>@Model.Reservation!.InventoryItem?.PublicItemCode — @Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName</dd>
+        <dt>Source location</dt><dd>@Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
+        <dt>Work reference</dt><dd>@Model.WorkReference</dd>
+        <dt>Equipment</dt><dd>@Model.Reservation.Equipment</dd>
+        <dt>Workflow status</dt><dd>@ReservationWorkflowDisplay.For(Model.Reservation.Status).Label</dd>
+        <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} x {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})" : "No estimate recorded")</dd>
+    </dl>
 
-<form method="post" action="?handler=UsableDropCreated">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="CorrelationId" />
-    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
-    <fieldset>
-        <legend>Usable rectangular drop remains</legend>
-        <label>Measured usable width (in) <input asp-for="MeasuredUsableWidthIn" type="number" step="0.001" /></label>
-        <label>Measured usable length (in) <input asp-for="MeasuredUsableLengthIn" type="number" step="0.001" /></label>
-        <label>Destination slot
-            <select asp-for="DestinationLocationId">
-                <option value="">-- select --</option>
-                @foreach (var loc in Model.DestinationChoices)
-                {
-                    <option value="@loc.InventoryLocationId">@loc.LocationCode — @loc.DisplayName</option>
-                }
-            </select>
+    <form method="post" action="?handler=Closeout" class="closeout-decision">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="CorrelationId" />
+        <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
+        <input type="hidden" asp-for="Status" />
+        <input type="hidden" asp-for="Equipment" />
+
+        <fieldset>
+            <legend>After the cut, what remains?</legend>
+            <p class="form-hint">Select the one physical outcome that was observed.</p>
+            <div class="outcome-options">
+                <label class="outcome-option" for="outcome-consumed">
+                    <input id="outcome-consumed" type="radio" name="Outcome" value="AllConsumed" checked="@(Model.Outcome == ProductionConsumptionOutcome.AllConsumed)" />
+                    <span><strong>Nothing usable remains</strong><small>Material was consumed or remaining pieces are scrap.</small></span>
+                </label>
+                <label class="outcome-option" for="outcome-returned">
+                    <input id="outcome-returned" type="radio" name="Outcome" value="FullSheetReturned" checked="@(Model.Outcome == ProductionConsumptionOutcome.FullSheetReturned)" />
+                    <span><strong>Full sheet returned</strong><small>The original sheet is back in its source location.</small></span>
+                </label>
+                <label class="outcome-option" for="outcome-drop">
+                    <input id="outcome-drop" type="radio" name="Outcome" value="UsableDropCreated" checked="@(Model.Outcome == ProductionConsumptionOutcome.UsableDropCreated)" />
+                    <span><strong>Usable rectangular drop remains</strong><small>Measure it and record where it was placed.</small></span>
+                </label>
+                <label class="outcome-option" for="outcome-review">
+                    <input id="outcome-review" type="radio" name="Outcome" value="NeedsReview" checked="@(Model.Outcome == ProductionConsumptionOutcome.NeedsReview)" />
+                    <span><strong>Material needs review</strong><small>Use when the physical outcome is unknown or needs follow-up.</small></span>
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset class="closeout-drop-fields" data-outcome="UsableDropCreated">
+            <legend>Usable drop details</legend>
+            <p class="form-hint">Required only when a usable rectangular drop remains. Measurements and destination are validated on submit.</p>
+            <label>Measured usable width (in) <input asp-for="MeasuredUsableWidthIn" type="number" min="0.001" step="0.001" /></label>
+            <label>Measured usable length (in) <input asp-for="MeasuredUsableLengthIn" type="number" min="0.001" step="0.001" /></label>
+            <label>Destination slot
+                <select asp-for="DestinationLocationId">
+                    <option value="">-- select --</option>
+                    @foreach (var loc in Model.DestinationChoices)
+                    {
+                        <option value="@loc.InventoryLocationId">@loc.LocationCode — @loc.DisplayName</option>
+                    }
+                </select>
+            </label>
+        </fieldset>
+
+        <label class="closeout-notes">Notes (optional; explain review-needed outcomes)
+            <textarea asp-for="Notes" maxlength="1000"></textarea>
         </label>
-        <label>Note <input asp-for="Notes" /></label>
-        <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Record usable drop</button>
-    </fieldset>
-</form>
+        <button type="submit" class="button button-primary">Record cut result</button>
+    </form>
+</section>
 
-<form method="post" action="?handler=NeedsReview">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="CorrelationId" />
-    <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
-    <label>Note <input asp-for="Notes" /></label>
-    <button type="submit" style="font-size:1.4em; padding:0.8em 1.2em; margin:0.4em;">Needs review / outcome unknown</button>
-</form>
-
-<p><a asp-page="Index">Back to closeout list</a></p>
+<p><a asp-page="Index" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Back to cut-result queue</a></p>

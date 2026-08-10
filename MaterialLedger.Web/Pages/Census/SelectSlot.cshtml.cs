@@ -1,6 +1,7 @@
 using MaterialLedger.Data;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Web.Authorization;
+using MaterialLedger.Web.Pages.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -14,13 +15,6 @@ public class SelectSlotModel(MaterialLedgerDbContext db) : PageModel
 
     public async Task OnGetAsync()
     {
-        ConfirmedSlots = await db.InventoryLocations
-            .Where(x => x.IsActive && x.ParentInventoryLocationId != null
-                && (x.LocationType == InventoryLocationType.Shelf
-                    || x.LocationType == InventoryLocationType.Bay
-                    || x.LocationType == InventoryLocationType.Staging))
-            .Include(x => x.ParentInventoryLocation)
-            .OrderBy(x => x.ParentInventoryLocation!.SortOrder).ThenBy(x => x.SortOrder)
-            .ToListAsync();
+        ConfirmedSlots = await ActiveMaterialSlotQuery.Create(db).ToListAsync();
     }
 }

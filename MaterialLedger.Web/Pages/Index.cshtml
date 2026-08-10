@@ -5,36 +5,148 @@
 <section class="control-header">
     <div>
         <p class="eyebrow">Material control</p>
-        <h1>Run the material workflow.</h1>
-        <p>Receive stock, find a usable sheet, reserve it to production, and close it out when the work is complete.</p>
+        <h1>What needs to happen now?</h1>
+        <p>Use the control board to find material, hold it for work, and record the physical result after cutting.</p>
     </div>
-    <a class="button button-primary" asp-page="/Inventory/Search">Find material <span aria-hidden="true">→</span></a>
+    <div class="control-header-actions">
+        @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+        {
+            <button class="button button-primary" type="button" onclick="document.getElementById('add-sheet-dialog').showModal()">Add a sheet</button>
+        }
+        <a class="button" asp-page="/Inventory/Search">Find material <span aria-hidden="true">→</span></a>
+    </div>
 </section>
 
-<section class="summary-grid" aria-label="Current material status">
-    <a class="summary-card" asp-page="/Inventory/Search" asp-route-AvailableOnly="true"><span>Available material</span><strong>@Model.Summary.AvailableMaterial</strong><small>items ready to allocate</small></a>
-    <a class="summary-card" asp-page="/Reservations/Index"><span>Active reservations</span><strong>@Model.Summary.ActiveReservations</strong><small>material held for work</small></a>
-    <a class="summary-card @(Model.Summary.AwaitingCloseout > 0 ? "summary-card-warning" : "")" asp-page="/Closeout/Index"><span>Awaiting closeout</span><strong>@Model.Summary.AwaitingCloseout</strong><small>cut activity to confirm</small></a>
-    <a class="summary-card @(Model.Summary.AttentionNeeded > 0 ? "summary-card-alert" : "")" asp-page="/Exceptions/Index"><span>Attention needed</span><strong>@Model.Summary.AttentionNeeded</strong><small>items requiring review</small></a>
+@if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+{
+    <dialog id="add-sheet-dialog" class="sheet-entry-dialog" aria-labelledby="add-sheet-title">
+        <div class="dialog-heading">
+            <div>
+                <p class="eyebrow">Count existing material</p>
+                <h2 id="add-sheet-title">Add a sheet</h2>
+                <p>Record one sheet that is already on the shop floor.</p>
+            </div>
+            <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close add sheet">×</button></form>
+        </div>
+        @if (Model.NewSheetError is not null)
+        {
+            <p class="form-error" role="alert">@Model.NewSheetError</p>
+        }
+        <form method="post" action="?handler=AddSheet" class="sheet-entry-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="NewSheet.CorrelationId" />
+            <label>Location
+                <select asp-for="NewSheet.LocationId" required>
+                    <option value="">Choose confirmed rack slot</option>
+                    @foreach (var location in Model.MaterialLocations)
+                    {
+                        <option value="@location.InventoryLocationId">@location.ParentInventoryLocation?.DisplayName — @location.LocationCode</option>
+                    }
+                </select>
+            </label>
+            <fieldset>
+                <legend>Material</legend>
+                <label>Existing material
+                    <select asp-for="NewSheet.ExistingMaterialSpecId">
+                        <option value="">Enter a new material below</option>
+                        @foreach (var spec in Model.AvailableSpecs)
+                        {
+                            <option value="@spec.MaterialSpecId">@spec.DisplayName</option>
+                        }
+                    </select>
+                </label>
+                <p class="form-hint">Or enter a new material.</p>
+                <div class="sheet-entry-grid">
+                    <label>Family <input asp-for="NewSheet.MaterialFamily" /></label>
+                    <label>Grade <input asp-for="NewSheet.Grade" /></label>
+                    <label>Finish <input asp-for="NewSheet.Finish" /></label>
+                    <label>Thickness (in) <input asp-for="NewSheet.ThicknessIn" type="number" step="0.0001" min="0" /></label>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>Sheet size</legend>
+                <p class="form-hint">One full sheet will be recorded.</p>
+                <div class="sheet-entry-grid">
+                    <label>Usable width (in) <input asp-for="NewSheet.UsableWidthIn" type="number" step="0.001" min="0" /></label>
+                    <label>Usable length (in) <input asp-for="NewSheet.UsableLengthIn" type="number" step="0.001" min="0" /></label>
+                </div>
+            </fieldset>
+            <label class="checkbox-label"><input asp-for="NewSheet.IsQuarantined" type="checkbox" /> Unknown or questionable — quarantine it</label>
+            <label>Notes <textarea asp-for="NewSheet.Notes"></textarea></label>
+            <div class="dialog-actions"><button type="submit">Add sheet</button><button type="button" class="button-secondary" onclick="document.getElementById('add-sheet-dialog').close()">Cancel</button></div>
+        </form>
+    </dialog>
+    @if (Model.ShowAddSheetDialog)
+    {
+        <script>document.addEventListener('DOMContentLoaded', () => document.getElementById('add-sheet-dialog').showModal());</script>
+    }
+}
+
+<section class="summary-grid" aria-label="Current material work">
+    <a class="summary-card" asp-page="/Inventory/Search" asp-route-AvailableOnly="true"><span>Available material</span><strong>@Model.Summary.AvailableMaterialCount</strong><small>items ready to allocate</small></a>
+    <a class="summary-card" asp-page="/Reservations/Index" asp-route-Status="Approved"><span>Ready for cutting</span><strong>@Model.Summary.ReadyForCuttingCount</strong><small>approved holds</small></a>
+    @if (User.IsInRole("Operator") || User.IsInRole("Manager"))
+    {
+        <a class="summary-card @(Model.Summary.CutResultNeededCount > 0 ? "summary-card-warning" : "")" asp-page="/Closeout/Index" asp-route-Status="AwaitingCloseout"><span>Record cut result</span><strong>@Model.Summary.CutResultNeededCount</strong><small>work awaiting closeout</small></a>
+    }
+    else
+    {
+        <div class="summary-card @(Model.Summary.CutResultNeededCount > 0 ? "summary-card-warning" : "")"><span>Record cut result</span><strong>@Model.Summary.CutResultNeededCount</strong><small>operator work awaiting closeout</small></div>
+    }
+    <a class="summary-card @(Model.Summary.AttentionNeededCount > 0 ? "summary-card-alert" : "")" asp-page="/Exceptions/Index"><span>Attention needed</span><strong>@Model.Summary.AttentionNeededCount</strong><small>open material review items</small></a>
 </section>
 
 <section class="workflow-section">
-    <div class="section-heading"><div><p class="eyebrow">Primary workflow</p><h2>What needs to happen now?</h2></div><p>Use these four actions in the same order material moves through the shop.</p></div>
+    <div class="section-heading"><div><p class="eyebrow">Next actions</p><h2>Take the next physical step.</h2></div></div>
     <div class="workflow-grid">
+        <a class="workflow-card workflow-card-primary" asp-page="/Inventory/Search"><h3>Find material</h3><p>Search usable sheets and drops by material, size, availability, or location.</p><b>Search inventory <span aria-hidden="true">→</span></b></a>
         @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
         {
-            <a class="workflow-card workflow-card-primary" asp-page="/Census/SelectSlot"><span class="workflow-number">01</span><h3>Receive material</h3><p>Choose a slot, record the delivery, and establish accountable stock.</p><b>Choose receiving slot <span aria-hidden="true">→</span></b></a>
+            <a class="workflow-card" asp-page="/Inventory/Search"><h3>Hold material for work</h3><p>Select available material and create a controlled hold for the work reference.</p><b>Find material to hold <span aria-hidden="true">→</span></b></a>
+            <a class="workflow-card" asp-page="/Reservations/Index" asp-route-Status="Proposed"><h3>Approve held material</h3><p>@Model.Summary.ApprovalNeededCount hold@(Model.Summary.ApprovalNeededCount == 1 ? "" : "s") need approval before cutting.</p><b>Review approval queue <span aria-hidden="true">→</span></b></a>
         }
-        <a class="workflow-card" asp-page="/Inventory/Search"><span class="workflow-number">02</span><h3>Find stock</h3><p>Search usable sheets and drops by material, size, availability, or location.</p><b>Search inventory <span aria-hidden="true">→</span></b></a>
-        <a class="workflow-card" asp-page="/Reservations/Index"><span class="workflow-number">03</span><h3>Reserve material</h3><p>Hold a specific item for a job, drawing, nest, or production operation.</p><b>Open reservations <span aria-hidden="true">→</span></b></a>
         @if (User.IsInRole("Operator") || User.IsInRole("Manager"))
         {
-            <a class="workflow-card workflow-card-closeout" asp-page="/Closeout/Index"><span class="workflow-number">04</span><h3>Close out cut</h3><p>Confirm consumption, return a full sheet, or record a usable remnant.</p><b>Start closeout <span aria-hidden="true">→</span></b></a>
+            <a class="workflow-card workflow-card-closeout" asp-page="/Closeout/Index" asp-route-Status="AwaitingCloseout"><h3>Record cut result</h3><p>@Model.Summary.CutResultNeededCount work item@(Model.Summary.CutResultNeededCount == 1 ? " is" : "s are") awaiting the physical outcome.</p><b>Open cut-result queue <span aria-hidden="true">→</span></b></a>
         }
     </div>
 </section>
 
-<section class="support-row">
-    <div><p class="eyebrow">Supporting work</p><h2>Keep the floor organized.</h2></div>
-    <div class="support-links"><a asp-page="/Locations/Index">Material map <span>Locations and slots</span></a><a asp-page="/Exceptions/Index">Attention queue <span>Resolve inventory issues</span></a>@if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <a asp-page="/Census/SelectSlot">Opening census <span>Establish a counted balance</span></a> }</div>
+@if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+{
+    <section class="workflow-section" aria-labelledby="inventory-support-heading">
+        <div class="section-heading"><div><p class="eyebrow">Inventory support</p><h2 id="inventory-support-heading">Receive or count material.</h2></div><p>Choose the action that matches the physical material in front of you.</p></div>
+        <div class="workflow-grid">
+            <a class="workflow-card" asp-page="/Receiving/SelectLocation"><h3>Receive delivery</h3><p>Record material that arrived from a vendor in its confirmed rack slot.</p><b>Choose receiving slot <span aria-hidden="true">→</span></b></a>
+            <a class="workflow-card" asp-page="/Census/SelectSlot"><h3>Count existing material</h3><p>Record the counted balance of material already on hand.</p><b>Choose counted slot <span aria-hidden="true">→</span></b></a>
+        </div>
+    </section>
+}
+
+<section class="workflow-section" aria-labelledby="recent-work-heading">
+    <div class="section-heading"><div><p class="eyebrow">Recent work</p><h2 id="recent-work-heading">Current material workflow</h2></div><p>Recent holds and their current plain-language workflow status.</p></div>
+    @if (Model.Summary.RecentWork.Count == 0)
+    {
+        <p class="empty-state">No material work has been recorded yet.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Material item</th><th>Material</th><th>Location</th><th>Work</th><th>Equipment</th><th>Workflow</th><th>When</th></tr></thead>
+            <tbody>
+            @foreach (var work in Model.Summary.RecentWork)
+            {
+                <tr>
+                    <td>@work.PublicItemCode</td>
+                    <td>@work.MaterialDisplayName</td>
+                    <td>@work.LocationCode</td>
+                    <td>@work.WorkReference</td>
+                    <td>@work.Equipment</td>
+                    <td>@work.WorkflowLabel</td>
+                    <td>@work.TimestampUtc.ToString("u")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
 </section>

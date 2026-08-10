@@ -8,14 +8,14 @@ public class LocationSeeder(MaterialLedgerDbContext db)
 {
     private record SeedLocation(
         string Code, string DisplayName, InventoryLocationType Type,
-        InventoryStorageMode Mode, int SortOrder, string? ParentCode);
+        InventoryStorageMode Mode, int SortOrder, string? ParentCode, string? LegacyDisplayName = null);
 
     private static readonly SeedLocation[] SeedLocations =
     [
-        new("LASER-MATERIAL", "Laser Material Storage Area", InventoryLocationType.Area, InventoryStorageMode.Other, 0, null),
-        new("L1-SOUTH-ROLL", "Laser 1 South Roll-Out Rack", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 1, "LASER-MATERIAL"),
-        new("L1-NORTH-ROLL", "Laser 1 North Roll-Out Rack", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 2, "LASER-MATERIAL"),
-        new("L2-ROLL", "Laser 2 Roll-Out Rack", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 3, "LASER-MATERIAL"),
+        new("LASER-MATERIAL", "Material Storage Area", InventoryLocationType.Area, InventoryStorageMode.Other, 0, null, "Laser Material Storage Area"),
+        new("L1-SOUTH-ROLL", "South Roll-Out Rack", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 1, "LASER-MATERIAL", "Laser 1 South Roll-Out Rack"),
+        new("L1-NORTH-ROLL", "North Roll-Out Rack", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 2, "LASER-MATERIAL", "Laser 1 North Roll-Out Rack"),
+        new("L2-ROLL", "Roll-Out Rack 2", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 3, "LASER-MATERIAL", "Laser 2 Roll-Out Rack"),
         new("MID-ROLL", "Mid-Floor Roll-Out Rack", InventoryLocationType.Rack, InventoryStorageMode.RolloutShelf, 4, "LASER-MATERIAL"),
         new("EAST-DROP", "East Drop Rack", InventoryLocationType.Rack, InventoryStorageMode.VerticalDropBay, 5, "LASER-MATERIAL"),
         new("MID-DROP", "Mid Drop Rack", InventoryLocationType.Rack, InventoryStorageMode.VerticalDropBay, 6, "LASER-MATERIAL"),
@@ -29,27 +29,43 @@ public class LocationSeeder(MaterialLedgerDbContext db)
 
     public async Task SeedAsync()
     {
-        var codeToId = await db.InventoryLocations.ToDictionaryAsync(x => x.LocationCode, x => x.InventoryLocationId);
+        var locationsByCode = await db.InventoryLocations.ToDictionaryAsync(x => x.LocationCode);
 
         foreach (var seed in SeedLocations.Where(s => s.ParentCode is null))
         {
-            if (codeToId.ContainsKey(seed.Code))
+            if (locationsByCode.TryGetValue(seed.Code, out var existing))
+            {
+                UpdateLegacyDisplayName(existing, seed);
                 continue;
+            }
+
             var entity = ToEntity(seed, parentId: null);
             db.InventoryLocations.Add(entity);
             await db.SaveChangesAsync();
-            codeToId[seed.Code] = entity.InventoryLocationId;
+            locationsByCode[seed.Code] = entity;
         }
 
         foreach (var seed in SeedLocations.Where(s => s.ParentCode is not null))
         {
-            if (codeToId.ContainsKey(seed.Code))
+            if (locationsByCode.TryGetValue(seed.Code, out var existing))
+            {
+                UpdateLegacyDisplayName(existing, seed);
                 continue;
-            var entity = ToEntity(seed, parentId: codeToId[seed.ParentCode!]);
+            }
+
+            var entity = ToEntity(seed, parentId: locationsByCode[seed.ParentCode!].InventoryLocationId);
             db.InventoryLocations.Add(entity);
             await db.SaveChangesAsync();
-            codeToId[seed.Code] = entity.InventoryLocationId;
+            locationsByCode[seed.Code] = entity;
         }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static void UpdateLegacyDisplayName(InventoryLocation existing, SeedLocation seed)
+    {
+        if (existing.DisplayName == seed.LegacyDisplayName)
+            existing.DisplayName = seed.DisplayName;
     }
 
     private static InventoryLocation ToEntity(SeedLocation seed, long? parentId) => new()

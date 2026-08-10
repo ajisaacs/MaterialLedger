@@ -27,7 +27,13 @@ public class CloseoutResult
     public string? RemnantPublicItemCode { get; init; }
 }
 
-public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard operationLog)
+public interface ICloseoutService
+{
+    Task<ReservationResult> MarkReservationAwaitingCloseoutAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int actorId);
+    Task<CloseoutResult> CloseoutConsumptionAsync(Guid correlationId, CloseoutConsumptionRequest request, int confirmedBy);
+}
+
+public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard operationLog) : ICloseoutService
 {
     private static readonly ReservationStatus[] CloseableStatuses =
     [

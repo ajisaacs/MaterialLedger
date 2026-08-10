@@ -1,11 +1,27 @@
 @* MaterialLedger.Web/Pages/Exceptions/Index.cshtml *@
 @page
 @model MaterialLedger.Web.Pages.Exceptions.IndexModel
+@using MaterialLedger.Data.Models
 @{ Layout = "Shared/_Layout"; }
-<h1>Attention needed</h1>
+@{
+    string Explain(MaterialExceptionType type) => type switch
+    {
+        MaterialExceptionType.AwaitingCloseoutOverdue => "Cut result has not been recorded within the expected time.",
+        MaterialExceptionType.OutcomeUnknown => "The physical cut outcome still needs to be recorded.",
+        MaterialExceptionType.QuarantinedMaterial => "Material is quarantined and must be reviewed before use.",
+        MaterialExceptionType.GeometryMismatchOrInsufficientBalance => "The recorded remaining material does not match the expected usable balance.",
+        MaterialExceptionType.StaleObservation => "The material observation is out of date and should be checked.",
+        _ => "This item needs review."
+    };
+}
+<header class="page-heading">
+    <p class="eyebrow">Review</p>
+    <h1>Attention needed</h1>
+    <p>What needs attention before material can continue through the workflow.</p>
+</header>
 @if (Model.Error is not null)
 {
-    <p style="color:red">@Model.Error</p>
+    <p class="alert-error" role="alert">@Model.Error</p>
 }
 <h2>Open</h2>
 @if (Model.OpenExceptions.Count == 0)
@@ -15,12 +31,12 @@
 else
 {
 <table>
-    <thead><tr><th>Type</th><th>Item</th><th>Reservation</th><th>Opened</th><th>Notes</th><th></th></tr></thead>
+    <thead><tr><th>What needs attention</th><th>Item</th><th>Reservation</th><th>Opened</th><th>Notes</th><th></th></tr></thead>
     <tbody>
     @foreach (var e in Model.OpenExceptions)
     {
         <tr>
-            <td>@e.ExceptionType</td>
+            <td><strong>@e.ExceptionType</strong><span class="exception-explanation">@Explain(e.ExceptionType)</span></td>
             <td>@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</td>
             <td>@(e.MaterialReservationId is not null ? $"#{e.MaterialReservationId}" : "-")</td>
             <td>@e.OpenedAtUtc.ToString("u") by @e.OpenedByUser?.DisplayName</td>

@@ -2,41 +2,50 @@
 @page
 @model MaterialLedger.Web.Pages.Closeout.IndexModel
 @using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
-<h1>Closeout</h1>
+<p class="eyebrow">Cutting work queue</p>
+<h1>Record cut result</h1>
+<p>Record the physical result after cutting so material availability stays accurate.</p>
 @if (Model.Error is not null)
 {
-    <p style="color:red">@Model.Error</p>
+    <p class="form-error" role="alert">@Model.Error</p>
 }
 @if (Model.Reservations.Count == 0)
 {
-    <p class="empty-state">Nothing awaiting closeout.</p>
+    <p class="empty-state">No cut results are waiting to be recorded.</p>
 }
 else
 {
 <table>
-    <thead><tr><th>Item</th><th>Material</th><th>Job/Drawing</th><th>Equipment</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Material</th><th>Location</th><th>Work reference</th><th>Equipment</th><th>Workflow status</th><th>Pending</th><th>Next action</th></tr></thead>
     <tbody>
     @foreach (var r in Model.Reservations)
     {
         <tr>
-            <td>@r.InventoryItem?.PublicItemCode</td>
-            <td>@r.InventoryItem?.MaterialSpec?.DisplayName</td>
-            <td>@r.ShopOpsJobId @r.DrawingId @r.DrawingRevision</td>
+            <td>@r.InventoryItem?.PublicItemCode<br /><small>@r.InventoryItem?.MaterialSpec?.DisplayName<br />@Model.UsableSize(r)</small></td>
+            <td>@r.InventoryItem?.InventoryLocation?.LocationCode</td>
+            <td>@Model.WorkReference(r)</td>
             <td>@r.Equipment</td>
-            <td>@r.Status</td>
-            <td style="white-space:nowrap">
+            <td>@ReservationWorkflowDisplay.For(r.Status).Label</td>
+            <td>@Model.PendingFor(r)</td>
+            <td class="queue-action">
             @if (r.Status == ReservationStatus.Approved)
             {
-                <form method="post" action="?handler=StartJob" style="display:inline">
+                <form method="post" action="?handler=StartJob">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@r.MaterialReservationId" />
                     <input type="hidden" name="correlationId" value="@Model.CorrelationIdsByReservationId[r.MaterialReservationId]" />
                     <input type="hidden" name="expectedRowVersionBase64" value="@Convert.ToBase64String(r.RowVersion)" />
-                    <button type="submit" style="font-size:1.1em; padding:0.6em 1em;">Start job</button>
+                    <input type="hidden" asp-for="Status" />
+                    <input type="hidden" asp-for="Equipment" />
+                    <button type="submit" class="button button-primary">Mark cut started</button>
                 </form>
             }
-            <a asp-page="Details" asp-route-id="@r.MaterialReservationId"><button type="button" style="font-size:1.1em; padding:0.6em 1em;">Close material</button></a>
+            else
+            {
+                <a class="button button-primary" asp-page="Details" asp-route-id="@r.MaterialReservationId" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Record cut result</a>
+            }
             </td>
         </tr>
     }

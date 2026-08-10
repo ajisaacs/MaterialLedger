@@ -1,0 +1,19 @@
+@page
+@model MaterialLedger.Web.Pages.Receiving.SelectLocationModel
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Receive delivery"; }
+
+<h1>Receive delivery</h1>
+<p>Choose the confirmed rack slot where this vendor delivery will be received.</p>
+<table>
+    <thead><tr><th>Rack</th><th>Slot</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var slot in Model.ConfirmedSlots)
+    {
+        <tr>
+            <td>@slot.ParentInventoryLocation?.DisplayName</td>
+            <td>@slot.LocationCode</td>
+            <td><a asp-page="NewReceipt" asp-route-locationId="@slot.InventoryLocationId">Receive delivery here</a></td>
+        </tr>
+    }
+    </tbody>
+</table>

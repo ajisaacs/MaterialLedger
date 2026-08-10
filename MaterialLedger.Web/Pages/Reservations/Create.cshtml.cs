@@ -1,18 +1,17 @@
 using System.Security.Claims;
-using MaterialLedger.Data;
 using MaterialLedger.Data.Idempotency;
+using MaterialLedger.Data.Inventory;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.Reservations;
 using MaterialLedger.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
 namespace MaterialLedger.Web.Pages.Reservations;
 
 [Authorize(Policy = MaterialLedgerPolicies.RequireProgrammerOrManager)]
-public class CreateModel(MaterialLedgerDbContext db, ReservationService reservations) : PageModel
+public class CreateModel(InventoryQueryService inventoryQuery, ReservationService reservations) : PageModel
 {
     [BindProperty] public long InventoryItemId { get; set; }
     [BindProperty] public Guid CorrelationId { get; set; }
@@ -27,13 +26,12 @@ public class CreateModel(MaterialLedgerDbContext db, ReservationService reservat
     [BindProperty] public decimal? ExpectedRemainderWidthIn { get; set; }
     [BindProperty] public decimal? ExpectedRemainderLengthIn { get; set; }
 
-    public InventoryItem? Item { get; set; }
+    public InventoryItemSummary? Item { get; set; }
     public string? Error { get; set; }
 
     public async Task<IActionResult> OnGetAsync(long inventoryItemId)
     {
-        Item = await db.InventoryItems.Include(x => x.MaterialSpec).Include(x => x.InventoryLocation)
-            .FirstOrDefaultAsync(x => x.InventoryItemId == inventoryItemId);
+        Item = await inventoryQuery.GetItemSummaryAsync(inventoryItemId);
         if (Item is null)
         {
             TempData["Message"] = "Select an item from Inventory Search to create a reservation.";
@@ -46,8 +44,7 @@ public class CreateModel(MaterialLedgerDbContext db, ReservationService reservat
 
     public async Task<IActionResult> OnPostAsync()
     {
-        Item = await db.InventoryItems.Include(x => x.MaterialSpec).Include(x => x.InventoryLocation)
-            .FirstOrDefaultAsync(x => x.InventoryItemId == InventoryItemId);
+        Item = await inventoryQuery.GetItemSummaryAsync(InventoryItemId);
         if (Item is null)
             return NotFound();
 

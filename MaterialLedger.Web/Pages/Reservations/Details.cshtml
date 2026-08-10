@@ -2,22 +2,74 @@
 @page "{id:long}"
 @model MaterialLedger.Web.Pages.Reservations.DetailsModel
 @using MaterialLedger.Data.Models
-@{ Layout = "Shared/_Layout"; }
-<h1>Reservation @Model.Reservation!.MaterialReservationId</h1>
+@using MaterialLedger.Web.Shared
+@{
+    Layout = "Shared/_Layout";
+    var workflow = ReservationWorkflowDisplay.For(Model.Reservation!.Status);
+    var workReference = ReservationWorkReference.Describe(Model.Reservation);
+    var nextAction = Model.Reservation.Status switch
+    {
+        ReservationStatus.Proposed => "Review and approve the hold before material is released for cutting.",
+        ReservationStatus.Approved => "Prepare this material for the assigned equipment.",
+        ReservationStatus.AwaitingCloseout => "Record the result of the cut.",
+        ReservationStatus.Exception => "Review the material exception before further work.",
+        _ => "No further action is required for this hold."
+    };
+    var nextResponsibleRole = Model.Reservation.Status switch
+    {
+        ReservationStatus.Proposed => "Manager or programmer",
+        ReservationStatus.Approved => "Cutting operator",
+        ReservationStatus.AwaitingCloseout => "Cutting operator",
+        ReservationStatus.Exception => "Manager",
+        _ => "No action owner"
+    };
+}
+
+<header class="page-heading">
+    <p class="eyebrow">Material hold</p>
+    <h1>Material hold @Model.Reservation.MaterialReservationId</h1>
+    <p>@Model.Reservation.InventoryItem?.PublicItemCode — @Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName</p>
+</header>
+
 @if (Model.Error is not null)
 {
     <p style="color:red">@Model.Error</p>
 }
-<dl>
-    <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode — @Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName — @Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
-    <dt>Job / Drawing</dt><dd>@Model.Reservation.ShopOpsJobId @Model.Reservation.DrawingId @Model.Reservation.DrawingRevision</dd>
-    <dt>Equipment</dt><dd>@Model.Reservation.Equipment</dd>
-    <dt>PEP nest</dt><dd>@Model.Reservation.PepNestYear @Model.Reservation.PepNestName</dd>
-    <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} x {Model.Reservation.ExpectedRemainderLengthIn} ({Model.Reservation.ExpectedRemainderSourceType})" : "-")</dd>
-    <dt>Status</dt><dd>@Model.Reservation.Status</dd>
-    <dt>Created</dt><dd>@Model.Reservation.CreatedAtUtc.ToString("u") by @Model.Reservation.CreatedByUser?.DisplayName</dd>
-    <dt>Approved</dt><dd>@(Model.Reservation.ApprovedAtUtc is not null ? $"{Model.Reservation.ApprovedAtUtc:u} by {Model.Reservation.ApprovedByUser?.DisplayName}" : "-")</dd>
-</dl>
+
+<section aria-label="Hold workflow">
+    <h2>Current workflow</h2>
+    <dl>
+        <dt>Workflow status</dt><dd><span class="workflow-status @workflow.CssClass">@workflow.Label</span></dd>
+        <dt>Work reference</dt><dd>@workReference</dd>
+        <dt>Equipment</dt><dd>@(Model.Reservation.Equipment?.ToString() ?? "Unassigned")</dd>
+        <dt>Next action</dt><dd>@nextAction</dd>
+        <dt>Next responsible role</dt><dd>@nextResponsibleRole</dd>
+    </dl>
+</section>
+
+<section aria-label="Held material">
+    <h2>Held material</h2>
+    <dl>
+        <dt>Item</dt><dd>@Model.Reservation.InventoryItem?.PublicItemCode</dd>
+        <dt>Material</dt><dd>@Model.Reservation.InventoryItem?.MaterialSpec?.DisplayName</dd>
+        <dt>Location</dt><dd>@Model.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
+        <dt>Expected remainder</dt><dd>@(Model.Reservation.ExpectedRemainderWidthIn is not null ? $"{Model.Reservation.ExpectedRemainderWidthIn} × {Model.Reservation.ExpectedRemainderLengthIn} in (operator estimate)" : "No estimate recorded")</dd>
+    </dl>
+</section>
+
+<details class="additional-traceability">
+    <summary>Additional traceability</summary>
+    <dl>
+        <dt>Technical status</dt><dd>@Model.Reservation.Status</dd>
+        <dt>ShopOps job ID</dt><dd>@(Model.Reservation.ShopOpsJobId ?? "Not recorded")</dd>
+        <dt>Drawing ID</dt><dd>@(Model.Reservation.DrawingId ?? "Not recorded")</dd>
+        <dt>Drawing revision</dt><dd>@(Model.Reservation.DrawingRevision ?? "Not recorded")</dd>
+        <dt>PEP nest</dt><dd>@Model.Reservation.PepNestYear @Model.Reservation.PepNestName</dd>
+        <dt>Program record ID</dt><dd>@(Model.Reservation.LaserProgramRecordId ?? "Not recorded")</dd>
+        <dt>Created</dt><dd>@Model.Reservation.CreatedAtUtc.ToString("u") by @Model.Reservation.CreatedByUser?.DisplayName</dd>
+        <dt>Approved</dt><dd>@(Model.Reservation.ApprovedAtUtc is not null ? $"{Model.Reservation.ApprovedAtUtc:u} by {Model.Reservation.ApprovedByUser?.DisplayName}" : "Not approved")</dd>
+    </dl>
+</details>
 
 @if (Model.CanAct && Model.Reservation.Status == ReservationStatus.Proposed)
 {
@@ -25,7 +77,9 @@
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="CorrelationId" />
         <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
-        <button type="submit">Approve</button>
+        <input type="hidden" asp-for="Status" />
+        <input type="hidden" asp-for="Equipment" />
+        <button type="submit">Approve hold</button>
     </form>
 }
 @if (Model.CanAct && (Model.Reservation.Status == ReservationStatus.Proposed || Model.Reservation.Status == ReservationStatus.Approved))
@@ -34,8 +88,10 @@
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="CorrelationId" />
         <input type="hidden" name="ExpectedRowVersionBase64" value="@Convert.ToBase64String(Model.Reservation.RowVersion)" />
-        <label>Notes <input asp-for="ReleaseNotes" /></label>
-        <button type="submit">Release</button>
+        <input type="hidden" asp-for="Status" />
+        <input type="hidden" asp-for="Equipment" />
+        <label>Release notes <input asp-for="ReleaseNotes" /></label>
+        <button type="submit">Release hold</button>
     </form>
 }
-<p><a asp-page="Index">Back to reservations</a></p>
+<p><a asp-page="Index" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Back to material holds</a></p>
