@@ -1,6 +1,7 @@
 using MaterialLedger.Data;
 using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
+using MaterialLedger.Data.PurchaseOrders;
 using MaterialLedger.Data.Receiving;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -156,5 +157,87 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
         Assert.Equal(1, itemCount);
         var lotCount = await db.SheetLots.CountAsync(x => x.MaterialSpecId == specId);
         Assert.Equal(1, lotCount);
+    }
+
+    private async Task<long> SeedPurchaseOrderLineAsync(MaterialLedgerDbContext db, long specId, decimal quantityOrdered, int userId)
+    {
+        var order = new PurchaseOrder
+        {
+            VendorName = "Acme Steel", PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
+            CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId
+        };
+        db.PurchaseOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        var line = new PurchaseOrderLine
+        {
+            PurchaseOrderId = order.PurchaseOrderId, LineNumber = 1, MaterialSpecId = specId,
+            QuantityOrdered = quantityOrdered, QuantityReceived = 0, Status = PurchaseOrderLineStatus.Open
+        };
+        db.PurchaseOrderLines.Add(line);
+        await db.SaveChangesAsync();
+        return line.PurchaseOrderLineId;
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_AgainstPurchaseOrderLine_PartialReceiptSetsPartiallyReceived()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, quantityOrdered: 10m, userId);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var request = MakeRequest(locationId, specId, quantity: 4m) with { PurchaseOrderLineId = lineId };
+
+        var result = await service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId);
+
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        Assert.Equal(4m, line.QuantityReceived);
+        Assert.Equal(PurchaseOrderLineStatus.PartiallyReceived, line.Status);
+
+        var lot = await db.SheetLots.SingleAsync(x => x.SheetLotId == result.SheetLotId);
+        Assert.Equal(lineId, lot.PurchaseOrderLineId);
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_AgainstPurchaseOrderLine_FullReceiptSetsReceived()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, quantityOrdered: 6m, userId);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var request = MakeRequest(locationId, specId, quantity: 6m) with { PurchaseOrderLineId = lineId };
+
+        await service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId);
+
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        Assert.Equal(6m, line.QuantityReceived);
+        Assert.Equal(PurchaseOrderLineStatus.Received, line.Status);
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_ExceedsRemainingPurchaseOrderQuantity_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, quantityOrdered: 3m, userId);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var request = MakeRequest(locationId, specId, quantity: 4m) with { PurchaseOrderLineId = lineId };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId));
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_AgainstCancelledPurchaseOrderLine_Throws()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, quantityOrdered: 3m, userId);
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        line.Status = PurchaseOrderLineStatus.Cancelled;
+        await db.SaveChangesAsync();
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var request = MakeRequest(locationId, specId, quantity: 1m) with { PurchaseOrderLineId = lineId };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId));
     }
 }

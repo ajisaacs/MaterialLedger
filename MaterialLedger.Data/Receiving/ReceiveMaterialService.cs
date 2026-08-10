@@ -25,7 +25,8 @@ public record ReceiveMaterialRequest(
     string? VendorPartNumber,
     string? HeatLotNumber,
     decimal? CostPerUnit,
-    string? Notes);
+    string? Notes,
+    long? PurchaseOrderLineId = null);
 
 public class ReceiveMaterialResult
 {
@@ -64,6 +65,20 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
             throw new InvalidOperationException(
                 $"Location '{location.LocationCode}' is a {location.LocationType} — inventory can only be recorded at a leaf location.");
 
+        PurchaseOrderLine? purchaseOrderLine = null;
+        if (request.PurchaseOrderLineId is not null)
+        {
+            purchaseOrderLine = await db.PurchaseOrderLines.FindAsync(request.PurchaseOrderLineId.Value)
+                ?? throw new InvalidOperationException($"Purchase order line {request.PurchaseOrderLineId} does not exist.");
+            if (purchaseOrderLine.Status is PurchaseOrderLineStatus.Cancelled or PurchaseOrderLineStatus.Received)
+                throw new InvalidOperationException(
+                    $"Purchase order line {purchaseOrderLine.PurchaseOrderLineId} is {purchaseOrderLine.Status} and cannot receive more material.");
+            var remaining = purchaseOrderLine.QuantityOrdered - purchaseOrderLine.QuantityReceived;
+            if (request.Quantity > remaining)
+                throw new InvalidOperationException(
+                    $"Cannot receive {request.Quantity} — only {remaining} remains outstanding on purchase order line {purchaseOrderLine.PurchaseOrderLineId}.");
+        }
+
         var receivedAt = DateTime.UtcNow;
         var sheetLot = new SheetLot
         {
@@ -75,7 +90,8 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
             HeatLotNumber = request.HeatLotNumber,
             CostPerUnit = request.CostPerUnit,
             ReceivedAtUtc = receivedAt,
-            SourceType = SheetLotSourceType.Receipt
+            SourceType = SheetLotSourceType.Receipt,
+            PurchaseOrderLineId = purchaseOrderLine?.PurchaseOrderLineId
         };
         db.SheetLots.Add(sheetLot);
         await db.SaveChangesAsync();
@@ -123,6 +139,14 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
             Notes = request.Notes,
             SourceSystem = MaterialTransactionSourceSystem.OperatorUI
         });
+
+        if (purchaseOrderLine is not null)
+        {
+            purchaseOrderLine.QuantityReceived += request.Quantity;
+            purchaseOrderLine.Status = purchaseOrderLine.QuantityReceived >= purchaseOrderLine.QuantityOrdered
+                ? PurchaseOrderLineStatus.Received
+                : PurchaseOrderLineStatus.PartiallyReceived;
+        }
 
         var result = new ReceiveMaterialResult
         {
