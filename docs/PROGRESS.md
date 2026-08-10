@@ -43,7 +43,8 @@ Plans live in `docs/superpowers/plans/YYYY-MM-DD-material-ledger-phaseN.md`, wri
 | 0 — schema, login, idempotency | **Done** | (no separate plan doc — built directly) |
 | 1 — locations, opening census | **Done** | `docs/superpowers/plans/2026-08-07-material-ledger-phase1.md` |
 | 2 — reservations, inventory view | **Done** | `docs/superpowers/plans/2026-08-07-material-ledger-phase2.md` |
-| 3 — manual closeout, exceptions | **In progress** | `docs/superpowers/plans/2026-08-08-material-ledger-phase3.md` |
+| 3 — manual closeout, exceptions | **In progress — controlled physical pilot remains** | `docs/superpowers/plans/2026-08-08-material-ledger-phase3.md` |
+| Shop-floor workflow redesign | **In progress — Tasks 1–2 started** | `.hermes/plans/2026-08-10_020904-shop-floor-workflow-redesign.md` |
 | 4 — reporting, scheduling input | **Not started** | — |
 
 Repo was 1 commit ahead of `origin/master`, not pushed, as of session start — check `git status`/`git log` before assuming remote is current.
@@ -210,3 +211,12 @@ so Phase 4 doesn't have to re-derive them):
   Full suite: 79/80 passing (one pre-existing, expected, environment-gated failure —
   `MaterialTransactionPermissionsTests.MaterialledgerApp_CannotUpdateMaterialTransactions`, needs
   `MATERIALLEDGER_TEST_APP_CONNECTION`, not set in this dev environment — not a regression).
+- **2026-08-10 (Shop-floor workflow redesign, Tasks 1–2)**: Began implementation from
+  `.hermes/plans/2026-08-10_020904-shop-floor-workflow-redesign.md`. Added the source-level
+  `ShopFloorWorkflowPresentationTests` contract and updated the overview presentation expectation;
+  these tests intentionally remain red until the associated UI tasks are implemented (current red
+  coverage: physical action labels, separated receipt/count routes, one closeout outcome form, and
+  non-technical queue labels). Added `ReservationWorkflowDisplay` with explicit mappings for all eight
+  `ReservationStatus` values and semantic CSS classes; focused display mapping tests pass (8/8) and
+  `dotnet build MaterialLedger.sln --no-restore --verbosity minimal` completed with 0 warnings and
+  0 errors. No schema, production data, Forge deployment, or physical-pilot activity occurred.

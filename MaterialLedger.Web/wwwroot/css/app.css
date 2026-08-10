@@ -675,6 +675,32 @@ legend {
   font-weight: 700;
   margin: 1.2rem 0 0.2rem;
 }
+.workflow-status {
+  border: 1px solid currentColor;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 0.22rem 0.42rem;
+}
+.workflow-status.pending,
+.workflow-status.unknown {
+  background: #eef2f3;
+  color: #42535b;
+}
+.workflow-status.ready,
+.workflow-status.complete {
+  background: #e6f4ea;
+  color: var(--green);
+}
+.workflow-status.action-needed {
+  background: #fff4e5;
+  color: var(--amber);
+}
+.workflow-status.attention {
+  background: #fdecea;
+  color: var(--red);
+}
 @media (max-width: 720px) {
   .inventory-search-bar {
     padding: 0.9rem;
