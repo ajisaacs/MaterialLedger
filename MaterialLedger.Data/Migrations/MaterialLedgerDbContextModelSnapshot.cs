@@ -695,6 +695,107 @@ namespace MaterialLedger.Data.Migrations
                     b.ToTable("ProductionConsumptions", "material");
                 });
 
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrder", b =>
+                {
+                    b.Property<long>("PurchaseOrderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("PurchaseOrderId"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateOnly?>("OrderDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("PurchaseOrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("VendorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("PurchaseOrderId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.ToTable("PurchaseOrders", "material");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLine", b =>
+                {
+                    b.Property<long>("PurchaseOrderLineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("PurchaseOrderLineId"));
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.Property<long>("MaterialSpecId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("PurchaseOrderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("QuantityOrdered")
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<decimal>("QuantityReceived")
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<DateOnly?>("QuotedDeliveryDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal?>("UnitPrice")
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<decimal?>("UsableLengthIn")
+                        .HasColumnType("decimal(10,3)");
+
+                    b.Property<decimal?>("UsableWidthIn")
+                        .HasColumnType("decimal(10,3)");
+
+                    b.Property<string>("VendorDescription")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("VendorPartNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("PurchaseOrderLineId");
+
+                    b.HasIndex("MaterialSpecId");
+
+                    b.HasIndex("PurchaseOrderId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("PurchaseOrderLines", "material", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityOrdered", "[QuantityOrdered] = FLOOR([QuantityOrdered]) AND [QuantityOrdered] >= 1");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived", "[QuantityReceived] >= 0 AND [QuantityReceived] <= [QuantityOrdered]");
+                        });
+                });
+
             modelBuilder.Entity("MaterialLedger.Data.Models.SheetLot", b =>
                 {
                     b.Property<long>("SheetLotId")
@@ -711,6 +812,9 @@ namespace MaterialLedger.Data.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<long>("MaterialSpecId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PurchaseOrderLineId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("PurchaseOrderNumber")
@@ -740,6 +844,8 @@ namespace MaterialLedger.Data.Migrations
                     b.HasKey("SheetLotId");
 
                     b.HasIndex("MaterialSpecId");
+
+                    b.HasIndex("PurchaseOrderLineId");
 
                     b.ToTable("SheetLots", "material");
                 });
@@ -970,6 +1076,36 @@ namespace MaterialLedger.Data.Migrations
                     b.Navigation("PrimaryMaterialTransaction");
                 });
 
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrder", b =>
+                {
+                    b.HasOne("MaterialLedger.Data.Models.AppUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLine", b =>
+                {
+                    b.HasOne("MaterialLedger.Data.Models.MaterialSpec", "MaterialSpec")
+                        .WithMany()
+                        .HasForeignKey("MaterialSpecId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MaterialLedger.Data.Models.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MaterialSpec");
+
+                    b.Navigation("PurchaseOrder");
+                });
+
             modelBuilder.Entity("MaterialLedger.Data.Models.SheetLot", b =>
                 {
                     b.HasOne("MaterialLedger.Data.Models.MaterialSpec", "MaterialSpec")
@@ -978,12 +1114,24 @@ namespace MaterialLedger.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MaterialLedger.Data.Models.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("MaterialSpec");
+
+                    b.Navigation("PurchaseOrderLine");
                 });
 
             modelBuilder.Entity("MaterialLedger.Data.Models.MaterialReservation", b =>
                 {
                     b.Navigation("ExpectedRemnants");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

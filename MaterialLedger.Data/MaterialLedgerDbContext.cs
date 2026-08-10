@@ -13,6 +13,8 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
     public DbSet<MaterialSpecExternalMapping> MaterialSpecExternalMappings => Set<MaterialSpecExternalMapping>();
     public DbSet<InventoryLocation> InventoryLocations => Set<InventoryLocation>();
     public DbSet<SheetLot> SheetLots => Set<SheetLot>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<MaterialReservation> MaterialReservations => Set<MaterialReservation>();
     public DbSet<ExpectedRemnant> ExpectedRemnants => Set<ExpectedRemnant>();
@@ -88,6 +90,39 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.HeatLotNumber).HasMaxLength(100);
             e.Property(x => x.CostPerUnit).HasColumnType("decimal(12,4)");
             e.Property(x => x.SourceType).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PurchaseOrderLine).WithMany().HasForeignKey(x => x.PurchaseOrderLineId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrder>(e =>
+        {
+            e.HasKey(x => x.PurchaseOrderId);
+            e.Property(x => x.VendorName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.PurchaseOrderNumber).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrderLine>(e =>
+        {
+            e.HasKey(x => x.PurchaseOrderLineId);
+            e.Property(x => x.VendorDescription).HasMaxLength(200);
+            e.Property(x => x.VendorPartNumber).HasMaxLength(100);
+            e.Property(x => x.QuantityOrdered).HasColumnType("decimal(12,3)").IsRequired();
+            e.Property(x => x.QuantityReceived).HasColumnType("decimal(12,3)").IsRequired();
+            e.Property(x => x.UsableWidthIn).HasColumnType("decimal(10,3)");
+            e.Property(x => x.UsableLengthIn).HasColumnType("decimal(10,3)");
+            e.Property(x => x.UnitPrice).HasColumnType("decimal(12,4)");
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.HasIndex(x => new { x.PurchaseOrderId, x.LineNumber }).IsUnique();
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityOrdered",
+                    "[QuantityOrdered] = FLOOR([QuantityOrdered]) AND [QuantityOrdered] >= 1");
+                t.HasCheckConstraint("CK_PurchaseOrderLine_QuantityReceived",
+                    "[QuantityReceived] >= 0 AND [QuantityReceived] <= [QuantityOrdered]");
+            });
+            e.HasOne(x => x.PurchaseOrder).WithMany(x => x.Lines).HasForeignKey(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -12,6 +12,8 @@ public class SheetLot
     public string? ReceiptNumber { get; set; }
     public string? VendorPartNumber { get; set; }
     public string? HeatLotNumber { get; set; }
+    public long? PurchaseOrderLineId { get; set; }
+    public PurchaseOrderLine? PurchaseOrderLine { get; set; }
     public decimal? CostPerUnit { get; set; }
     public DateTime? ReceivedAtUtc { get; set; }
     public SheetLotSourceType SourceType { get; set; }

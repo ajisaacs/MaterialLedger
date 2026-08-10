@@ -1,6 +1,6 @@
 namespace MaterialLedger.Data.Models;
 
-public enum AttachmentEntityType { InventoryItem, MaterialReservation, MaterialTransaction, MaterialException }
+public enum AttachmentEntityType { InventoryItem, MaterialReservation, MaterialTransaction, MaterialException, PurchaseOrder }
 
 public class Attachment
 {
