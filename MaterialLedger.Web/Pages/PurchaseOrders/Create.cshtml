@@ -66,6 +66,8 @@
     document.querySelectorAll('.po-line').forEach(row => {
         const material = row.querySelector('.po-line-material');
         const thickness = row.querySelector('.po-line-thickness');
+        const selected = thickness.options[thickness.selectedIndex];
+        if (selected?.dataset.materialKey) material.value = selected.dataset.materialKey;
         const filterThicknesses = reset => {
             for (const option of thickness.options) {
                 if (!option.value) continue;

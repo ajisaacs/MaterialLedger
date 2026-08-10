@@ -41,10 +41,19 @@ public class CreateModel(MaterialLedgerDbContext db, PurchaseOrderService purcha
         var lineRequests = new List<PurchaseOrderLineRequest>();
         foreach (var line in Lines)
         {
-            if (line.ExistingMaterialSpecId is null && line.QuantityOrdered <= 0) continue;
-            if (line.ExistingMaterialSpecId is null)
+            var isBlank = line.ExistingMaterialSpecId is null
+                && line.QuantityOrdered <= 0
+                && string.IsNullOrWhiteSpace(line.VendorDescription)
+                && string.IsNullOrWhiteSpace(line.VendorPartNumber)
+                && line.UnitPrice is null
+                && line.UsableWidthIn is null
+                && line.UsableLengthIn is null
+                && line.QuotedDeliveryDate is null;
+            if (isBlank) continue;
+
+            if (line.ExistingMaterialSpecId is null || line.QuantityOrdered <= 0)
             {
-                Error = "Choose a material and thickness for every line you fill in.";
+                Error = "Choose a material and thickness and enter a quantity for every line you fill in.";
                 return Page();
             }
             lineRequests.Add(new PurchaseOrderLineRequest(
