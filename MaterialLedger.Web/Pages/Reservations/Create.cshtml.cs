@@ -10,12 +10,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace MaterialLedger.Web.Pages.Reservations;
 
-public class ExpectedRemnantInput
-{
-    public decimal? WidthIn { get; set; }
-    public decimal? LengthIn { get; set; }
-}
-
 [Authorize(Policy = MaterialLedgerPolicies.RequireProgrammerOrManager)]
 public class CreateModel(InventoryQueryService inventoryQuery, ReservationService reservations) : PageModel
 {
@@ -28,10 +22,7 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
     [BindProperty] public int? PepNestYear { get; set; }
     [BindProperty] public string? PepNestName { get; set; }
     [BindProperty] public string? LaserProgramRecordId { get; set; }
-    [BindProperty] public bool HasManualEstimate { get; set; }
-    [BindProperty] public decimal? ExpectedRemainderWidthIn { get; set; }
-    [BindProperty] public decimal? ExpectedRemainderLengthIn { get; set; }
-    [BindProperty] public List<ExpectedRemnantInput> ExpectedRemnants { get; set; } = [new()];
+    [BindProperty] public List<string?> ExpectedDropSizes { get; set; } = [string.Empty];
 
     public InventoryItemSummary? Item { get; set; }
     public string? Error { get; set; }
@@ -58,16 +49,23 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var expectedRemnants = HasManualEstimate
-                ? ExpectedRemnants.Where(x => x.WidthIn is not null || x.LengthIn is not null)
-                    .Select(x => new ExpectedRemnantRequest(x.WidthIn ?? 0, x.LengthIn ?? 0, ExpectedRemainderSource.Manual)).ToList()
-                : [];
+            var expectedRemnants = new List<ExpectedRemnantRequest>();
+            for (var index = 0; index < ExpectedDropSizes.Count; index++)
+            {
+                var dropSize = ExpectedDropSizes[index];
+                if (string.IsNullOrWhiteSpace(dropSize))
+                    continue;
+
+                if (!ExpectedDropSizeParser.TryParse(dropSize, out var widthIn, out var lengthIn))
+                    throw new InvalidOperationException($"Expected drop {index + 1} must be width x length using positive inch values (for example, 12.5x24 or 12 1/2 x 24 3/8).");
+
+                expectedRemnants.Add(new ExpectedRemnantRequest(widthIn, lengthIn, ExpectedRemainderSource.Manual));
+            }
+
             var request = new CreateReservationRequest(
                 InventoryItemId, ShopOpsJobId, DrawingId, DrawingRevision, Equipment,
                 PepNestYear, PepNestName, LaserProgramRecordId,
-                HasManualEstimate ? ExpectedRemainderWidthIn : null,
-                HasManualEstimate ? ExpectedRemainderLengthIn : null,
-                HasManualEstimate ? ExpectedRemainderSource.Manual : null,
+                null, null, null,
                 expectedRemnants.Count > 0 ? expectedRemnants : null);
 
             var result = await reservations.CreateReservationAsync(CorrelationId, request, userId);

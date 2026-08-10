@@ -54,20 +54,16 @@
 
     <fieldset>
         <legend>Expected usable drops</legend>
-        <label><input asp-for="HasManualEstimate" type="checkbox" /> Record calculated usable drops expected after this cut</label>
-        <div id="expected-remnant-list">
-            <div class="remnant-entry">
-                <label>Expected width (in) <input name="ExpectedRemnants[0].WidthIn" value="@Model.ExpectedRemnants[0].WidthIn" type="number" min="0.001" step="0.001" /></label>
-                <label>Expected length (in) <input name="ExpectedRemnants[0].LengthIn" value="@Model.ExpectedRemnants[0].LengthIn" type="number" min="0.001" step="0.001" /></label>
-            </div>
+        <div id="expected-drop-list">
+            @for (var index = 0; index < Model.ExpectedDropSizes.Count; index++)
+            {
+                <label>Expected usable drop size (in) <input class="expected-drop-size" name="ExpectedDropSizes[@index]" value="@Model.ExpectedDropSizes[index]" placeholder="0.0x0.0" autocomplete="off" /></label>
+            }
         </div>
-        <button id="add-expected-remnant" type="button" class="button button-secondary">Add another expected drop</button>
-        <template id="expected-remnant-template">
-            <div class="remnant-entry">
-                <label>Expected width (in) <input name="ExpectedRemnants[__index__].WidthIn" type="number" min="0.001" step="0.001" /></label>
-                <label>Expected length (in) <input name="ExpectedRemnants[__index__].LengthIn" type="number" min="0.001" step="0.001" /></label>
-            </div>
+        <template id="expected-drop-template">
+            <label>Expected usable drop size (in) <input class="expected-drop-size" name="ExpectedDropSizes[__index__]" placeholder="0.0x0.0" autocomplete="off" /></label>
         </template>
+        <p>Optional. Leave the first box blank when no usable drops are expected. Enter width × length, for example <code>12.5x24</code> or <code>12 1/2 x 24 3/8</code>. Another box appears when the last size is valid.</p>
     </fieldset>
 
     <details class="additional-traceability">
@@ -84,13 +80,38 @@
 </form>
 
 <script>
-    document.getElementById("add-expected-remnant")?.addEventListener("click", () => {
-        const list = document.getElementById("expected-remnant-list");
-        const template = document.getElementById("expected-remnant-template");
-        if (!list || !template) return;
-        const index = list.querySelectorAll(".remnant-entry").length;
-        const fragment = template.content.cloneNode(true);
+    const expectedDropList = document.getElementById("expected-drop-list");
+    const expectedDropTemplate = document.getElementById("expected-drop-template");
+    const fractionPattern = /(?:(\d+)(?:\s+|-))?(\d+\/\d+)/g;
+
+    function replaceFractionsWithDecimals(value) {
+        return value.replace(fractionPattern, (_, whole, fraction) => {
+            const [numerator, denominator] = fraction.split("/").map(Number);
+            if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return "invalid";
+            const decimal = (Number(whole || 0) + Math.round((numerator / denominator) * 100000000) / 100000000);
+            return decimal.toString();
+        });
+    }
+
+    function isExpectedDropSize(value) {
+        const dimensions = replaceFractionsWithDecimals(value).trim().split(/\s*x\s*/i);
+        return dimensions.length === 2 && dimensions.every(dimension => /^\d+(?:\.\d+)?$/.test(dimension) && Number(dimension) > 0);
+    }
+
+    function addExpectedDropWhenValid() {
+        if (!expectedDropList || !expectedDropTemplate) return;
+        const inputs = expectedDropList.querySelectorAll(".expected-drop-size");
+        const lastInput = inputs[inputs.length - 1];
+        if (!lastInput || !isExpectedDropSize(lastInput.value)) return;
+
+        const index = inputs.length;
+        const fragment = expectedDropTemplate.content.cloneNode(true);
         fragment.querySelectorAll("[name]").forEach(input => input.name = input.name.replace("__index__", index));
-        list.appendChild(fragment);
+        expectedDropList.appendChild(fragment);
+    }
+
+    expectedDropList?.addEventListener("input", event => {
+        if (event.target.classList.contains("expected-drop-size")) addExpectedDropWhenValid();
     });
+    addExpectedDropWhenValid();
 </script>

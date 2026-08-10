@@ -60,13 +60,13 @@
                 <ul>
                     @foreach (var remainder in Model.Reservation.ExpectedRemnants.OrderBy(x => x.Sequence))
                     {
-                        <li>@remainder.WidthIn × @remainder.LengthIn in (operator estimate)</li>
+                        <li>@remainder.WidthIn × @remainder.LengthIn in (expected at reservation)</li>
                     }
                 </ul>
             }
             else if (Model.Reservation.ExpectedRemainderWidthIn is not null)
             {
-                @($"{Model.Reservation.ExpectedRemainderWidthIn} × {Model.Reservation.ExpectedRemainderLengthIn} in (operator estimate)")
+                @($"{Model.Reservation.ExpectedRemainderWidthIn} × {Model.Reservation.ExpectedRemainderLengthIn} in (expected at reservation)")
             }
             else
             {

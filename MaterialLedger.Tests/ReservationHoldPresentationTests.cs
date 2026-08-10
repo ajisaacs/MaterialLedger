@@ -43,13 +43,14 @@ public sealed class ReservationHoldPresentationTests
     }
 
     [Fact]
-    public void Hold_form_groups_equipment_and_estimated_remainder_while_hiding_optional_ids_by_default()
+    public void Hold_form_groups_equipment_and_optional_expected_drop_while_hiding_optional_ids_by_default()
     {
         var page = ReadPage("Reservations", "Create.cshtml");
 
         Assert.Contains("<legend>Equipment</legend>", page);
         Assert.Contains("<legend>Expected usable drops</legend>", page);
-        Assert.Contains("calculated usable drops", page, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Expected usable drop size", page);
+        Assert.Contains("Leave the first box blank when no usable drops are expected", page);
         Assert.DoesNotContain("operator estimate", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("OpenNest integration", page, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("<details class=\"additional-traceability\">", page);
@@ -62,14 +63,17 @@ public sealed class ReservationHoldPresentationTests
     }
 
     [Fact]
-    public void Hold_form_allows_multiple_expected_rectangular_remnants()
+    public void Hold_form_adds_another_optional_dimension_input_after_a_valid_drop_size_without_a_checkbox()
     {
         var page = ReadPage("Reservations", "Create.cshtml");
 
-        Assert.Contains("name=\"ExpectedRemnants[0].WidthIn\"", page);
-        Assert.Contains("name=\"ExpectedRemnants[0].LengthIn\"", page);
-        Assert.Contains("id=\"add-expected-remnant\"", page);
-        Assert.Contains("Add another expected drop", page);
+        Assert.Contains("name=\"ExpectedDropSizes[@index]\"", page);
+        Assert.Contains("expected-drop-template", page);
+        Assert.Contains("addExpectedDropWhenValid", page);
+        Assert.Contains("0.0x0.0", page);
+        Assert.DoesNotContain("HasManualEstimate", page);
+        Assert.DoesNotContain("add-expected-remnant", page);
+        Assert.DoesNotContain("ExpectedRemnants[0].", page);
     }
 
     [Fact]
