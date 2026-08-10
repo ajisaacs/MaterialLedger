@@ -18,6 +18,7 @@ public sealed class QuickSheetEntryPresentationTests
         Assert.Contains("Material family / grade / finish", page);
         Assert.Contains("Thickness", page);
         Assert.Contains("data-material-key", page);
+        Assert.Contains("@spec.DisplayName", page);
         Assert.Contains("asp-for=\"NewSheet.ExistingMaterialSpecId\"", page);
         Assert.Contains("Materials/Index", page);
         Assert.DoesNotContain("asp-for=\"NewSheet.MaterialFamily\"", page);

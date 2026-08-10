@@ -61,7 +61,7 @@
                         <option value="">Choose thickness</option>
                         @foreach (var spec in Model.AvailableSpecs)
                         {
-                            <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.ThicknessIn.ToString("0.####") in</option>
+                            <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.DisplayName</option>
                         }
                     </select>
                 </label>
