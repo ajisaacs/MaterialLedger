@@ -55,18 +55,38 @@
 
         <fieldset class="closeout-drop-fields" data-outcome="UsableDropCreated">
             <legend>Usable drop details</legend>
-            <p class="form-hint">Required only when a usable rectangular drop remains. Measurements and destination are validated on submit.</p>
-            <label>Measured usable width (in) <input asp-for="MeasuredUsableWidthIn" type="number" min="0.001" step="0.001" /></label>
-            <label>Measured usable length (in) <input asp-for="MeasuredUsableLengthIn" type="number" min="0.001" step="0.001" /></label>
-            <label>Destination slot
-                <select asp-for="DestinationLocationId">
-                    <option value="">-- select --</option>
-                    @foreach (var loc in Model.DestinationChoices)
-                    {
-                        <option value="@loc.InventoryLocationId">@loc.LocationCode — @loc.DisplayName</option>
-                    }
-                </select>
-            </label>
+            <p class="form-hint">Record every usable rectangular drop. Measurements and destination are validated on submit.</p>
+            <div id="remnant-list">
+                <div class="remnant-entry">
+                    <label>Measured usable width (in) <input name="Remnants[0].MeasuredUsableWidthIn" value="@Model.Remnants[0].MeasuredUsableWidthIn" type="number" min="0.001" step="0.001" /></label>
+                    <label>Measured usable length (in) <input name="Remnants[0].MeasuredUsableLengthIn" value="@Model.Remnants[0].MeasuredUsableLengthIn" type="number" min="0.001" step="0.001" /></label>
+                    <label>Destination slot
+                        <select name="Remnants[0].DestinationLocationId">
+                            <option value="">-- select --</option>
+                            @foreach (var loc in Model.DestinationChoices)
+                            {
+                                <option value="@loc.InventoryLocationId" selected="@(Model.Remnants[0].DestinationLocationId == loc.InventoryLocationId)">@loc.LocationCode — @loc.DisplayName</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+            </div>
+            <button id="add-remnant" type="button" class="button button-secondary">Add another drop</button>
+            <template id="remnant-template">
+                <div class="remnant-entry">
+                    <label>Measured usable width (in) <input name="Remnants[__index__].MeasuredUsableWidthIn" type="number" min="0.001" step="0.001" /></label>
+                    <label>Measured usable length (in) <input name="Remnants[__index__].MeasuredUsableLengthIn" type="number" min="0.001" step="0.001" /></label>
+                    <label>Destination slot
+                        <select name="Remnants[__index__].DestinationLocationId">
+                            <option value="">-- select --</option>
+                            @foreach (var loc in Model.DestinationChoices)
+                            {
+                                <option value="@loc.InventoryLocationId">@loc.LocationCode — @loc.DisplayName</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+            </template>
         </fieldset>
 
         <label class="closeout-notes">Notes (optional; explain review-needed outcomes)
@@ -75,5 +95,17 @@
         <button type="submit" class="button button-primary">Record cut result</button>
     </form>
 </section>
+
+<script>
+    document.getElementById("add-remnant")?.addEventListener("click", () => {
+        const list = document.getElementById("remnant-list");
+        const template = document.getElementById("remnant-template");
+        if (!list || !template) return;
+        const index = list.querySelectorAll(".remnant-entry").length;
+        const fragment = template.content.cloneNode(true);
+        fragment.querySelectorAll("[name]").forEach(input => input.name = input.name.replace("__index__", index));
+        list.appendChild(fragment);
+    });
+</script>
 
 <p><a asp-page="Index" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Back to cut-result queue</a></p>

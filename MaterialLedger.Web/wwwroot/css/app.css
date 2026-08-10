@@ -663,6 +663,20 @@ legend {
   font-weight: 500;
   margin-top: 0.2rem;
 }
+.remnant-entry {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+}
+.remnant-entry label {
+  display: flex;
+}
+.closeout-drop-fields > .button {
+  margin-top: 0.9rem;
+}
 .closeout-notes {
   display: flex;
   margin-top: 0.8rem;

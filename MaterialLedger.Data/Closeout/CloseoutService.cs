@@ -11,6 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MaterialLedger.Data.Closeout;
 
+public record UsableDropRequest(decimal MeasuredUsableWidthIn, decimal MeasuredUsableLengthIn, long DestinationLocationId);
+
 public record CloseoutConsumptionRequest(
     long MaterialReservationId,
     byte[] ExpectedRowVersion,
@@ -18,13 +20,15 @@ public record CloseoutConsumptionRequest(
     decimal? MeasuredUsableWidthIn,
     decimal? MeasuredUsableLengthIn,
     long? DestinationLocationId,
-    string? Notes);
+    string? Notes,
+    IReadOnlyList<UsableDropRequest>? Remnants = null);
 
 public class CloseoutResult
 {
     public required long MaterialReservationId { get; init; }
     public required ReservationStatus Status { get; init; }
     public string? RemnantPublicItemCode { get; init; }
+    public IReadOnlyList<string> RemnantPublicItemCodes { get; init; } = [];
 }
 
 public interface ICloseoutService
@@ -113,7 +117,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
 
         var item = await db.InventoryItems.FirstAsync(x => x.InventoryItemId == reservation.InventoryItemId);
         var now = DateTime.UtcNow;
-        string? remnantCode = null;
+        var remnantCodes = new List<string>();
 
         switch (request.Outcome)
         {
@@ -150,12 +154,6 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
             }
             case ProductionConsumptionOutcome.UsableDropCreated:
             {
-                var destination = await db.InventoryLocations.FirstOrDefaultAsync(x => x.InventoryLocationId == request.DestinationLocationId)
-                    ?? throw new InvalidOperationException($"Destination location {request.DestinationLocationId} does not exist.");
-                if (!LeafLocationTypes.Contains(destination.LocationType))
-                    throw new InvalidOperationException(
-                        $"Destination location '{destination.LocationCode}' is a {destination.LocationType} — a drop can only be placed at a leaf location.");
-
                 var isIndividuallyTracked = item.ItemKind is InventoryItemKind.Drop or InventoryItemKind.FullSheet;
                 item.QuantityOnHand -= 1;
                 if (isIndividuallyTracked)
@@ -165,50 +163,8 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
                 db.MaterialTransactions.Add(consumeTxn);
                 await db.SaveChangesAsync();
 
-                long nextSeq;
-                await using (var command = db.Database.GetDbConnection().CreateCommand())
-                {
-                    command.CommandText = "SELECT NEXT VALUE FOR material.ItemCodeSeq";
-                    command.Transaction = (SqlTransaction)db.Database.CurrentTransaction!.GetDbTransaction();
-                    nextSeq = (long)(await command.ExecuteScalarAsync())!;
-                }
-                remnantCode = $"DROP-{nextSeq}";
-                var remnant = new InventoryItem
-                {
-                    PublicItemCode = remnantCode,
-                    MaterialSpecId = item.MaterialSpecId,
-                    SheetLotId = item.SheetLotId,
-                    InventoryLocationId = destination.InventoryLocationId,
-                    ItemKind = InventoryItemKind.Drop,
-                    Status = InventoryItemStatus.Available,
-                    QuantityOnHand = 1,
-                    UsableWidthIn = request.MeasuredUsableWidthIn,
-                    UsableLengthIn = request.MeasuredUsableLengthIn,
-                    ShapeClassification = ShapeClassification.Rectangular,
-                    LastObservedAtUtc = now,
-                    LastObservedBy = confirmedBy,
-                    Notes = request.Notes
-                };
-                db.InventoryItems.Add(remnant);
-                await db.SaveChangesAsync();
-
-                db.MaterialTransactions.Add(new MaterialTransaction
-                {
-                    OccurredAtUtc = now,
-                    RecordedAtUtc = now,
-                    RecordedBy = confirmedBy,
-                    TransactionType = MaterialTransactionType.RemnantCreated,
-                    InventoryItemId = remnant.InventoryItemId,
-                    RelatedInventoryItemId = item.InventoryItemId,
-                    MaterialReservationId = reservation.MaterialReservationId,
-                    SheetLotId = item.SheetLotId,
-                    QuantityDelta = 1m,
-                    GeometryWidthInSnapshot = request.MeasuredUsableWidthIn,
-                    GeometryLengthInSnapshot = request.MeasuredUsableLengthIn,
-                    Notes = request.Notes,
-                    SourceSystem = MaterialTransactionSourceSystem.OperatorUI
-                });
-                await db.SaveChangesAsync();
+                foreach (var remnant in GetRemnants(request))
+                    remnantCodes.Add(await CreateRemnantAsync(item, reservation.MaterialReservationId, remnant, now, confirmedBy, request.Notes));
 
                 db.ProductionConsumptions.Add(NewProductionConsumption(reservation.MaterialReservationId, consumeTxn.MaterialTransactionId, request.Outcome, 1m, now, confirmedBy, request.Notes));
                 reservation.Status = ReservationStatus.ClosedConsumed;
@@ -247,7 +203,13 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
                 throw new ArgumentOutOfRangeException(nameof(request), $"Unknown outcome {request.Outcome}.");
         }
 
-        var result = new CloseoutResult { MaterialReservationId = reservation.MaterialReservationId, Status = reservation.Status, RemnantPublicItemCode = remnantCode };
+        var result = new CloseoutResult
+        {
+            MaterialReservationId = reservation.MaterialReservationId,
+            Status = reservation.Status,
+            RemnantPublicItemCode = remnantCodes.FirstOrDefault(),
+            RemnantPublicItemCodes = remnantCodes
+        };
         operationLog.Record(correlationId, "CloseoutConsumption", payloadHash, JsonSerializer.Serialize(result), confirmedBy);
 
         await db.SaveChangesAsync();
@@ -280,14 +242,58 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
         Notes = notes
     };
 
+    private async Task<string> CreateRemnantAsync(InventoryItem sourceItem, long reservationId, UsableDropRequest request, DateTime now, int actorId, string? notes)
+    {
+        var destination = await db.InventoryLocations.FirstOrDefaultAsync(x => x.InventoryLocationId == request.DestinationLocationId)
+            ?? throw new InvalidOperationException($"Destination location {request.DestinationLocationId} does not exist.");
+        if (!LeafLocationTypes.Contains(destination.LocationType))
+            throw new InvalidOperationException($"Destination location '{destination.LocationCode}' is a {destination.LocationType} — a drop can only be placed at a leaf location.");
+
+        await using var command = db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "SELECT NEXT VALUE FOR material.ItemCodeSeq";
+        command.Transaction = (SqlTransaction)db.Database.CurrentTransaction!.GetDbTransaction();
+        var code = $"DROP-{(long)(await command.ExecuteScalarAsync())!}";
+        var remnant = new InventoryItem
+        {
+            PublicItemCode = code, MaterialSpecId = sourceItem.MaterialSpecId, SheetLotId = sourceItem.SheetLotId,
+            InventoryLocationId = destination.InventoryLocationId, ItemKind = InventoryItemKind.Drop,
+            Status = InventoryItemStatus.Available, QuantityOnHand = 1,
+            UsableWidthIn = request.MeasuredUsableWidthIn, UsableLengthIn = request.MeasuredUsableLengthIn,
+            ShapeClassification = ShapeClassification.Rectangular, LastObservedAtUtc = now, LastObservedBy = actorId, Notes = notes
+        };
+        db.InventoryItems.Add(remnant);
+        await db.SaveChangesAsync();
+        db.MaterialTransactions.Add(new MaterialTransaction
+        {
+            OccurredAtUtc = now, RecordedAtUtc = now, RecordedBy = actorId, TransactionType = MaterialTransactionType.RemnantCreated,
+            InventoryItemId = remnant.InventoryItemId, RelatedInventoryItemId = sourceItem.InventoryItemId,
+            MaterialReservationId = reservationId, SheetLotId = sourceItem.SheetLotId, QuantityDelta = 1m,
+            GeometryWidthInSnapshot = request.MeasuredUsableWidthIn, GeometryLengthInSnapshot = request.MeasuredUsableLengthIn,
+            Notes = notes, SourceSystem = MaterialTransactionSourceSystem.OperatorUI
+        });
+        await db.SaveChangesAsync();
+        return code;
+    }
+
+    private static IReadOnlyList<UsableDropRequest> GetRemnants(CloseoutConsumptionRequest request) =>
+        request.Remnants is { Count: > 0 }
+            ? request.Remnants
+            : request.DestinationLocationId is not null && request.MeasuredUsableWidthIn is not null && request.MeasuredUsableLengthIn is not null
+                ? [new UsableDropRequest(request.MeasuredUsableWidthIn.Value, request.MeasuredUsableLengthIn.Value, request.DestinationLocationId.Value)]
+                : [];
+
     private static void ValidateRequestShape(CloseoutConsumptionRequest request)
     {
         if (request.Outcome != ProductionConsumptionOutcome.UsableDropCreated)
             return;
-        if (request.DestinationLocationId is null)
-            throw new ArgumentException("A destination slot is required when recording a usable drop.", nameof(request));
-        if (request.MeasuredUsableWidthIn is null or <= 0 || request.MeasuredUsableLengthIn is null or <= 0)
-            throw new ArgumentException("A usable drop requires a measured width and length greater than zero.", nameof(request));
+        var remnants = GetRemnants(request);
+        if (remnants.Count == 0)
+            throw new ArgumentException("Record at least one usable drop.", nameof(request));
+        foreach (var remnant in remnants)
+        {
+            if (remnant.DestinationLocationId <= 0 || remnant.MeasuredUsableWidthIn <= 0 || remnant.MeasuredUsableLengthIn <= 0)
+                throw new ArgumentException("Each usable drop requires a destination slot and measured width and length greater than zero.", nameof(request));
+        }
     }
 
     private static string HashPayload<T>(T payload) =>

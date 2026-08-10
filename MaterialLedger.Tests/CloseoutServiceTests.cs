@@ -238,6 +238,47 @@ public class CloseoutServiceTests : IClassFixture<SqlServerTestDatabaseFixture>
     }
 
     [Fact]
+    public async Task CloseoutConsumptionAsync_UsableDropCreated_MultipleDrops_CreatesEveryMeasuredRemnant()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, destinationSlotId, specId, lotId) = await SeedAsync(db);
+        var secondDestination = new InventoryLocation
+        {
+            LocationCode = $"DEST-{Guid.NewGuid():N}"[..30], DisplayName = "Second destination",
+            LocationType = InventoryLocationType.Bay, StorageMode = InventoryStorageMode.VerticalDropBay, IsActive = true
+        };
+        db.InventoryLocations.Add(secondDestination);
+        var item = NewBundle(slotId, specId, userId, 2m, lotId);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var reservation = await ApprovedReservationForAsync(db, item.InventoryItemId, userId);
+        var service = new CloseoutService(db, new OperationLogGuard(db));
+        var request = RequestFor(reservation.MaterialReservationId, reservation.RowVersion, ProductionConsumptionOutcome.UsableDropCreated,
+            notes: "vertical then horizontal cut") with
+        {
+            Remnants =
+            [
+                new UsableDropRequest(10m, 15m, destinationSlotId),
+                new UsableDropRequest(8m, 20m, secondDestination.InventoryLocationId)
+            ]
+        };
+
+        var result = await service.CloseoutConsumptionAsync(Guid.NewGuid(), request, userId);
+
+        Assert.Equal(2, result.RemnantPublicItemCodes.Count);
+        var remnants = await db.InventoryItems
+            .Where(x => result.RemnantPublicItemCodes.Contains(x.PublicItemCode))
+            .OrderBy(x => x.UsableWidthIn)
+            .ToListAsync();
+        Assert.Collection(remnants,
+            remnant => { Assert.Equal(8m, remnant.UsableWidthIn); Assert.Equal(20m, remnant.UsableLengthIn); Assert.Equal(secondDestination.InventoryLocationId, remnant.InventoryLocationId); },
+            remnant => { Assert.Equal(10m, remnant.UsableWidthIn); Assert.Equal(15m, remnant.UsableLengthIn); Assert.Equal(destinationSlotId, remnant.InventoryLocationId); });
+        Assert.All(remnants, remnant => Assert.Equal(lotId, remnant.SheetLotId));
+        Assert.Equal(2, await db.MaterialTransactions.CountAsync(x => x.TransactionType == MaterialTransactionType.RemnantCreated && x.MaterialReservationId == reservation.MaterialReservationId));
+        Assert.Single(await db.ProductionConsumptions.Where(x => x.MaterialReservationId == reservation.MaterialReservationId).ToListAsync());
+    }
+
+    [Fact]
     public async Task CloseoutConsumptionAsync_UsableDropCreated_MissingMeasurements_Throws()
     {
         await using var db = _fixture.CreateContext();

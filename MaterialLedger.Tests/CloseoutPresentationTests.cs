@@ -49,11 +49,23 @@ public sealed class CloseoutPresentationTests
 
         Assert.Contains("data-outcome=\"UsableDropCreated\"", page);
         Assert.Contains("class=\"closeout-drop-fields\"", page);
-        Assert.Contains("Required only when a usable rectangular drop remains", page);
+        Assert.Contains("Record every usable rectangular drop", page);
         Assert.Contains("Measured usable width", page);
         Assert.Contains("Measured usable length", page);
         Assert.Contains("Destination slot", page);
         Assert.Contains(".closeout-decision:has(#outcome-drop:checked) .closeout-drop-fields", ReadAppCss());
+    }
+
+    [Fact]
+    public void Detail_allows_operator_to_add_multiple_measured_drops_before_recording_the_cut_result()
+    {
+        var page = ReadCloseoutPage("Details.cshtml");
+
+        Assert.Contains("name=\"Remnants[0].MeasuredUsableWidthIn\"", page);
+        Assert.Contains("name=\"Remnants[0].MeasuredUsableLengthIn\"", page);
+        Assert.Contains("name=\"Remnants[0].DestinationLocationId\"", page);
+        Assert.Contains("id=\"add-remnant\"", page);
+        Assert.Contains("Add another drop", page);
     }
 
     [Fact]

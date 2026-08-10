@@ -12,6 +12,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MaterialLedger.Web.Pages.Closeout;
 
+public class CloseoutRemnantInput
+{
+    public decimal? MeasuredUsableWidthIn { get; set; }
+    public decimal? MeasuredUsableLengthIn { get; set; }
+    public long? DestinationLocationId { get; set; }
+}
+
 [Authorize(Policy = MaterialLedgerPolicies.RequireOperatorOrManager)]
 public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout) : PageModel
 {
@@ -27,6 +34,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
     [BindProperty] public decimal? MeasuredUsableWidthIn { get; set; }
     [BindProperty] public decimal? MeasuredUsableLengthIn { get; set; }
     [BindProperty] public long? DestinationLocationId { get; set; }
+    [BindProperty] public List<CloseoutRemnantInput> Remnants { get; set; } = [new()];
     [BindProperty(SupportsGet = true)] public ReservationStatus? Status { get; set; }
     [BindProperty(SupportsGet = true)] public ReservationEquipment? Equipment { get; set; }
 
@@ -52,8 +60,13 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var recordedRemnants = Remnants
+                .Where(x => x.MeasuredUsableWidthIn is not null || x.MeasuredUsableLengthIn is not null || x.DestinationLocationId is not null)
+                .Select(x => new UsableDropRequest(x.MeasuredUsableWidthIn ?? 0, x.MeasuredUsableLengthIn ?? 0, x.DestinationLocationId ?? 0))
+                .ToList();
             var request = new CloseoutConsumptionRequest(id, Convert.FromBase64String(ExpectedRowVersionBase64), Outcome.Value,
-                MeasuredUsableWidthIn, MeasuredUsableLengthIn, DestinationLocationId, Notes);
+                MeasuredUsableWidthIn, MeasuredUsableLengthIn, DestinationLocationId, Notes,
+                recordedRemnants.Count > 0 ? recordedRemnants : null);
             var result = await closeout.CloseoutConsumptionAsync(CorrelationId, request, userId);
             return RedirectToPage("Success", new { id, remnantCode = result.RemnantPublicItemCode, Status, Equipment });
         }
