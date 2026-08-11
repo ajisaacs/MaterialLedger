@@ -32,4 +32,17 @@ public class PurchaseOrderLine
     public decimal? UnitPrice { get; set; }
     public DateOnly? QuotedDeliveryDate { get; set; }
     public PurchaseOrderLineStatus Status { get; set; }
+    public List<PurchaseOrderLineAllocation> LocationAllocations { get; set; } = [];
+}
+
+public class PurchaseOrderLineAllocation
+{
+    public long PurchaseOrderLineAllocationId { get; set; }
+    public long PurchaseOrderLineId { get; set; }
+    public PurchaseOrderLine? PurchaseOrderLine { get; set; }
+    public long InventoryLocationId { get; set; }
+    public InventoryLocation? InventoryLocation { get; set; }
+    public decimal QuantityPlanned { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public int CreatedBy { get; set; }
 }

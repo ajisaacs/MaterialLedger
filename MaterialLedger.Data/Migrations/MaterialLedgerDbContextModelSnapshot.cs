@@ -796,6 +796,41 @@ namespace MaterialLedger.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLineAllocation", b =>
+                {
+                    b.Property<long>("PurchaseOrderLineAllocationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("PurchaseOrderLineAllocationId"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<long>("InventoryLocationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("PurchaseOrderLineId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("QuantityPlanned")
+                        .HasColumnType("decimal(12,3)");
+
+                    b.HasKey("PurchaseOrderLineAllocationId");
+
+                    b.HasIndex("InventoryLocationId");
+
+                    b.HasIndex("PurchaseOrderLineId");
+
+                    b.ToTable("PurchaseOrderLineAllocations", "material", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderLineAllocation_QuantityPlanned", "[QuantityPlanned] = FLOOR([QuantityPlanned]) AND [QuantityPlanned] >= 1");
+                        });
+                });
+
             modelBuilder.Entity("MaterialLedger.Data.Models.SheetLot", b =>
                 {
                     b.Property<long>("SheetLotId")
@@ -1106,6 +1141,25 @@ namespace MaterialLedger.Data.Migrations
                     b.Navigation("PurchaseOrder");
                 });
 
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLineAllocation", b =>
+                {
+                    b.HasOne("MaterialLedger.Data.Models.InventoryLocation", "InventoryLocation")
+                        .WithMany()
+                        .HasForeignKey("InventoryLocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MaterialLedger.Data.Models.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany("LocationAllocations")
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InventoryLocation");
+
+                    b.Navigation("PurchaseOrderLine");
+                });
+
             modelBuilder.Entity("MaterialLedger.Data.Models.SheetLot", b =>
                 {
                     b.HasOne("MaterialLedger.Data.Models.MaterialSpec", "MaterialSpec")
@@ -1132,6 +1186,11 @@ namespace MaterialLedger.Data.Migrations
             modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrder", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLine", b =>
+                {
+                    b.Navigation("LocationAllocations");
                 });
 #pragma warning restore 612, 618
         }

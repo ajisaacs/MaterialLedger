@@ -15,6 +15,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
     public DbSet<SheetLot> SheetLots => Set<SheetLot>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+    public DbSet<PurchaseOrderLineAllocation> PurchaseOrderLineAllocations => Set<PurchaseOrderLineAllocation>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<MaterialReservation> MaterialReservations => Set<MaterialReservation>();
     public DbSet<ExpectedRemnant> ExpectedRemnants => Set<ExpectedRemnant>();
@@ -124,6 +125,18 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             });
             e.HasOne(x => x.PurchaseOrder).WithMany(x => x.Lines).HasForeignKey(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrderLineAllocation>(e =>
+        {
+            e.HasKey(x => x.PurchaseOrderLineAllocationId);
+            e.Property(x => x.QuantityPlanned).HasColumnType("decimal(12,3)").IsRequired();
+            e.ToTable(t => t.HasCheckConstraint("CK_PurchaseOrderLineAllocation_QuantityPlanned",
+                "[QuantityPlanned] = FLOOR([QuantityPlanned]) AND [QuantityPlanned] >= 1"));
+            e.HasOne(x => x.PurchaseOrderLine).WithMany(x => x.LocationAllocations)
+                .HasForeignKey(x => x.PurchaseOrderLineId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.InventoryLocation).WithMany()
+                .HasForeignKey(x => x.InventoryLocationId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<InventoryItem>(e =>
