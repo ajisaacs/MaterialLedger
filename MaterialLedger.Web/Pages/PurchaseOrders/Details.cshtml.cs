@@ -6,6 +6,7 @@ using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.PurchaseOrders;
 using MaterialLedger.Web.Authorization;
+using MaterialLedger.Web.Pages.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,7 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
 
     public PurchaseOrder? Order { get; set; }
     public List<Attachment> Attachments { get; set; } = [];
+    public List<InventoryLocation> LeafLocations { get; set; } = [];
     public string? Error { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
@@ -80,6 +82,39 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
         }
     }
 
+    public async Task<IActionResult> OnPostAddAllocationAsync(long lineId, long inventoryLocationId, decimal quantity)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await purchaseOrderService.AddLocationAllocationAsync(
+                CorrelationId, new AddLocationAllocationRequest(lineId, inventoryLocationId, quantity), userId);
+            return RedirectToPage(new { id = Id });
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or OperationConflictException)
+        {
+            if (!await LoadAsync()) return NotFound();
+            Error = ex.Message;
+            return Page();
+        }
+    }
+
+    public async Task<IActionResult> OnPostRemoveAllocationAsync(long allocationId)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await purchaseOrderService.RemoveLocationAllocationAsync(CorrelationId, allocationId, userId);
+            return RedirectToPage(new { id = Id });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException)
+        {
+            if (!await LoadAsync()) return NotFound();
+            Error = ex.Message;
+            return Page();
+        }
+    }
+
     public async Task<IActionResult> OnGetDownloadAttachmentAsync(long attachmentId)
     {
         if (!await LoadAsync()) return NotFound();
@@ -98,8 +133,11 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
     {
         Order = await db.PurchaseOrders
             .Include(x => x.Lines).ThenInclude(x => x.MaterialSpec)
+            .Include(x => x.Lines).ThenInclude(x => x.LocationAllocations).ThenInclude(x => x.InventoryLocation)
             .FirstOrDefaultAsync(x => x.PurchaseOrderId == Id);
         if (Order is null) return false;
+
+        LeafLocations = await ActiveMaterialSlotQuery.Create(db).ToListAsync();
 
         Attachments = await db.Attachments
             .Where(x => x.EntityType == AttachmentEntityType.PurchaseOrder && x.EntityId == Id)

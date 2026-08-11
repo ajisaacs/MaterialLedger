@@ -44,12 +44,61 @@
                 }
             </td>
         </tr>
+        @if (line.Status is PurchaseOrderLineStatus.Open or PurchaseOrderLineStatus.PartiallyReceived)
+        {
+            var lineRemaining = line.QuantityOrdered - line.QuantityReceived;
+            var lineAllocated = line.LocationAllocations.Sum(x => x.QuantityPlanned);
+            var lineUnallocated = lineRemaining - lineAllocated;
+            <tr>
+                <td colspan="9">
+                    <strong>Planned delivery locations</strong>
+                    @if (line.LocationAllocations.Count == 0)
+                    {
+                        <p>None planned yet.</p>
+                    }
+                    else
+                    {
+                        <ul>
+                        @foreach (var allocation in line.LocationAllocations.OrderBy(x => x.PurchaseOrderLineAllocationId))
+                        {
+                            <li>
+                                @allocation.InventoryLocation?.LocationCode — @DisplayFormat.Quantity(allocation.QuantityPlanned)
+                                <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=RemoveAllocation&amp;allocationId=@allocation.PurchaseOrderLineAllocationId" method="post" style="display:inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" asp-for="CorrelationId" />
+                                    <button type="submit">Remove</button>
+                                </form>
+                            </li>
+                        }
+                        </ul>
+                    }
+                    <p>Unallocated: @DisplayFormat.Quantity(lineUnallocated)</p>
+                    <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=AddAllocation" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="CorrelationId" />
+                        <input type="hidden" name="lineId" value="@line.PurchaseOrderLineId" />
+                        <label>Location
+                            <select name="inventoryLocationId" required>
+                                <option value="">Choose location</option>
+                                @foreach (var loc in Model.LeafLocations)
+                                {
+                                    <option value="@loc.InventoryLocationId">@loc.LocationCode</option>
+                                }
+                            </select>
+                        </label>
+                        <label>Quantity <input name="quantity" type="number" step="1" min="1" /></label>
+                        <button type="submit">Add allocation</button>
+                    </form>
+                </td>
+            </tr>
+        }
     }
     </tbody>
 </table>
 
 @if (status == PurchaseOrderStatus.Open)
 {
+    <p><a asp-page="ReceiveAll" asp-route-id="@Model.Order.PurchaseOrderId">Receive all</a></p>
     <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=CloseRemaining" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="CorrelationId" />
