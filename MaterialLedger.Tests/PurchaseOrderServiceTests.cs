@@ -194,4 +194,218 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
         await Assert.ThrowsAsync<MaterialLedger.Data.Idempotency.OperationConflictException>(
             () => service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, poNumber: "DIFFERENT-PO"), userId));
     }
+
+    private static InventoryLocation MakeLocation(InventoryLocationType type = InventoryLocationType.Shelf) => new()
+    {
+        LocationCode = $"LOC-{Guid.NewGuid():N}",
+        DisplayName = "Test location",
+        LocationType = type,
+        StorageMode = InventoryStorageMode.RolloutShelf,
+        IsActive = true
+    };
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_CreatesAllocation_VisibleViaLineNavigation()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        var allocationId = await service.AddLocationAllocationAsync(
+            Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 20m), userId);
+
+        var line = await db.PurchaseOrderLines.Include(x => x.LocationAllocations).SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        Assert.Single(line.LocationAllocations);
+        Assert.Equal(allocationId, line.LocationAllocations[0].PurchaseOrderLineAllocationId);
+        Assert.Equal(20m, line.LocationAllocations[0].QuantityPlanned);
+        Assert.Equal(location.InventoryLocationId, line.LocationAllocations[0].InventoryLocationId);
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsNonLeafLocation()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var rack = MakeLocation(InventoryLocationType.Rack);
+        db.InventoryLocations.Add(rack);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, rack.InventoryLocationId, 5m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsQuantityLessThanOne()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 0m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsFractionalQuantity()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 2.5m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsWhenExceedsLineRemaining()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 10m, quantityReceived: 2m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 9m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsWhenCombinedWithExistingExceedsRemaining()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var locationA = MakeLocation();
+        var locationB = MakeLocation();
+        db.InventoryLocations.AddRange(locationA, locationB);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+        await service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, locationA.InventoryLocationId, 20m), userId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, locationB.InventoryLocationId, 9m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsReceivedLine()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 10m);
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        line.Status = PurchaseOrderLineStatus.Received;
+        await db.SaveChangesAsync();
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 1m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RejectsCancelledLine()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 10m);
+        var line = await db.PurchaseOrderLines.SingleAsync(x => x.PurchaseOrderLineId == lineId);
+        line.Status = PurchaseOrderLineStatus.Cancelled;
+        await db.SaveChangesAsync();
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.AddLocationAllocationAsync(Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 1m), userId));
+    }
+
+    [Fact]
+    public async Task AddLocationAllocationAsync_RetryWithSameCorrelationId_DoesNotDuplicate()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+        var correlationId = Guid.NewGuid();
+        var request = new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 20m);
+
+        var first = await service.AddLocationAllocationAsync(correlationId, request, userId);
+        var second = await service.AddLocationAllocationAsync(correlationId, request, userId);
+
+        Assert.Equal(first, second);
+        var count = await db.PurchaseOrderLineAllocations.CountAsync(x => x.PurchaseOrderLineId == lineId);
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task RemoveLocationAllocationAsync_DeletesRow()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+        var allocationId = await service.AddLocationAllocationAsync(
+            Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 20m), userId);
+
+        await service.RemoveLocationAllocationAsync(Guid.NewGuid(), allocationId, userId);
+
+        Assert.False(await db.PurchaseOrderLineAllocations.AnyAsync(x => x.PurchaseOrderLineAllocationId == allocationId));
+    }
+
+    [Fact]
+    public async Task RemoveLocationAllocationAsync_NoOpOnMissingId()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, _) = await SeedAsync(db);
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+
+        await service.RemoveLocationAllocationAsync(Guid.NewGuid(), 999_999_999L, userId);
+
+        Assert.False(await db.PurchaseOrderLineAllocations.AnyAsync(x => x.PurchaseOrderLineAllocationId == 999_999_999L));
+    }
+
+    [Fact]
+    public async Task RemoveLocationAllocationAsync_RetryWithSameCorrelationId_DoesNotDoubleDelete()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, specId) = await SeedAsync(db);
+        var lineId = await SeedLineAsync(db, userId, specId, quantityOrdered: 28m);
+        var location = MakeLocation();
+        db.InventoryLocations.Add(location);
+        await db.SaveChangesAsync();
+        var service = new PurchaseOrderService(db, new OperationLogGuard(db));
+        var allocationId = await service.AddLocationAllocationAsync(
+            Guid.NewGuid(), new AddLocationAllocationRequest(lineId, location.InventoryLocationId, 20m), userId);
+        var correlationId = Guid.NewGuid();
+
+        await service.RemoveLocationAllocationAsync(correlationId, allocationId, userId);
+        await service.RemoveLocationAllocationAsync(correlationId, allocationId, userId);
+
+        Assert.False(await db.PurchaseOrderLineAllocations.AnyAsync(x => x.PurchaseOrderLineAllocationId == allocationId));
+    }
 }
