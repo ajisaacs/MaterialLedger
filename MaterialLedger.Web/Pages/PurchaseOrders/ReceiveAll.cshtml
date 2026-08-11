@@ -54,7 +54,13 @@ else
                         <td>@(row.CostPerUnit?.ToString("0.00") ?? "—")<input type="hidden" asp-for="Rows[i].CostPerUnit" /></td>
                         <td>@(row.IsQuarantined ? "Yes" : "No")<input type="hidden" asp-for="Rows[i].IsQuarantined" /></td>
                         <td>@row.Notes<input type="hidden" asp-for="Rows[i].Notes" /></td>
-                        <td>Received as @row.SucceededItemCode</td>
+                        <td>
+                            Received as @row.SucceededItemCode
+                            @if (row.Warning is not null)
+                            {
+                                <br /><span style="color:red">@row.Warning</span>
+                            }
+                        </td>
                     }
                     else
                     {
