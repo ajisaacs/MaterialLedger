@@ -63,6 +63,16 @@ public sealed class PepNestPresentationTests
     }
 
     [Fact]
+    public void PEP_nest_details_shows_a_warning_when_the_program_has_been_cut()
+    {
+        var page = ReadPage("PepNests", "Details.cshtml");
+
+        Assert.Contains("warning-banner", page);
+        Assert.Contains("Contains(\"has been cut\", StringComparison.OrdinalIgnoreCase)", page);
+        Assert.Contains("already been cut", page);
+    }
+
+    [Fact]
     public void Navigation_links_authorized_users_to_PEP_nests()
     {
         var layout = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Shared", "_Layout.cshtml"));

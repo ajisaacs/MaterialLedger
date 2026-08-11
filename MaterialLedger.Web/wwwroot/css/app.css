@@ -482,6 +482,15 @@ p {
   border-color: #edc4bd;
   color: #8c2d25;
 }
+.warning-banner {
+  background: #fff4d6;
+  border: 2px solid #e0a300;
+  color: #7a5200;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
 table {
   background: var(--surface);
   border-collapse: collapse;

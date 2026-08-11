@@ -20,6 +20,11 @@ else
         <p>Customer @Model.Nest.Customer · Created @Model.Nest.DateCreated.ToString("yyyy-MM-dd")</p>
     </header>
 
+    @if (Model.Nest.Status?.Contains("has been cut", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        <p class="warning-banner" role="alert">⚠ This program has already been cut.</p>
+    }
+
     @if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
 
     <section aria-label="PEP material">
