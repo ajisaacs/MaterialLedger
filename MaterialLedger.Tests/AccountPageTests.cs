@@ -132,6 +132,10 @@ public class AccountPageTests : IClassFixture<SqlServerTestDatabaseFixture>
         Assert.Equal("Renamed Person", auth.LastSignedInPrincipal!.FindFirst(ClaimTypes.Name)?.Value);
         Assert.Equal(userId.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         Assert.Equal(AppUserRole.Operator.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.Role)?.Value);
+
+        // The current request's principal must be updated too, not just the outgoing Set-Cookie header,
+        // otherwise the page renders the old name on the response that shows the "updated" success message.
+        Assert.Equal("Renamed Person", model.User.FindFirst(ClaimTypes.Name)?.Value);
     }
 
     [Fact]
