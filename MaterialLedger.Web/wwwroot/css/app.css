@@ -182,6 +182,13 @@ p {
 .account small {
   color: #8ca8ad;
 }
+.account-name {
+  color: inherit;
+  text-decoration: none;
+}
+.account-name:hover {
+  text-decoration: underline;
+}
 .signout {
   background: none;
   border: 0;

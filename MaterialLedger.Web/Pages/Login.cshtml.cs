@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using MaterialLedger.Web.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -24,15 +23,9 @@ public class LoginModel(AppUserAuthenticator authenticator) : PageModel
             return Page();
         }
 
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.AppUserId.ToString()),
-            new(ClaimTypes.Name, user.DisplayName),
-            new(ClaimTypes.Role, user.Role.ToString())
-        };
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = AppUserPrincipalFactory.Create(user);
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity),
+            principal,
             new AuthenticationProperties { IsPersistent = true });
 
         return LocalRedirect(string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl);

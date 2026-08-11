@@ -1,0 +1,33 @@
+@* MaterialLedger.Web/Pages/Account.cshtml *@
+@page
+@model MaterialLedger.Web.Pages.AccountModel
+@{ Layout = "Shared/_Layout"; }
+<header class="page-heading">
+    <p class="eyebrow">Your workspace</p>
+    <h1>Account</h1>
+    <p>Update your display name or change your password.</p>
+</header>
+
+<form method="post" asp-page-handler="Profile">
+    @Html.AntiForgeryToken()
+    <fieldset>
+        <legend>Profile</legend>
+        @if (Model.ProfileError is not null) { <p class="form-error">@Model.ProfileError</p> }
+        @if (Model.ProfileSuccess) { <p class="alert-success">Display name updated.</p> }
+        <label>Display name <input asp-for="DisplayName" maxlength="100" autocomplete="off" /></label>
+        <button type="submit">Save</button>
+    </fieldset>
+</form>
+
+<form method="post" asp-page-handler="Password">
+    @Html.AntiForgeryToken()
+    <fieldset>
+        <legend>Change password</legend>
+        @if (Model.PasswordError is not null) { <p class="form-error">@Model.PasswordError</p> }
+        @if (Model.PasswordSuccess) { <p class="alert-success">Password changed.</p> }
+        <label>Current password <input asp-for="CurrentPassword" type="password" autocomplete="current-password" /></label>
+        <label>New password <input asp-for="NewPassword" type="password" autocomplete="new-password" /></label>
+        <label>Confirm new password <input asp-for="ConfirmPassword" type="password" autocomplete="new-password" /></label>
+        <button type="submit">Change password</button>
+    </fieldset>
+</form>

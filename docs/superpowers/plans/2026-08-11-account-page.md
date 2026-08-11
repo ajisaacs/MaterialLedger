@@ -224,17 +224,53 @@ git commit -m "feat: add Account page with display name editing"
 
 The sidebar (`_Layout.cshtml`) renders `@User.Identity.Name`, which comes from the `ClaimTypes.Name` claim baked into the cookie at login (`Login.cshtml.cs:30`). Saving a new `DisplayName` to the DB alone won't update that claim until the next login — re-sign-in immediately so the change is visible right away.
 
+To verify this without a full `TestServer` (no existing test in this repo spins one up — `ReceiveAllIntegrationTests` and friends all test PageModel handlers directly against a bare `PageContext`), this task adds a `FakeAuthenticationService` test double that captures whatever `ClaimsPrincipal` gets passed to `SignInAsync`, so the test can assert on the actual re-issued claims rather than only on the DB write.
+
 **Files:**
 - Modify: `MaterialLedger.Web/Pages/Account.cshtml.cs`
-- Test: `MaterialLedger.Tests/AccountPageTests.cs`
+- Modify: `MaterialLedger.Tests/AccountPageTests.cs` (updates the shared `NewPageContext` helper — safe for Task 1's tests too, since they never invoke `SignInAsync`)
 
 **Interfaces:**
 - Consumes: `AppUser.Role` (`AppUserRole` enum, `MaterialLedger.Data.Models`), `HttpContext.SignInAsync` (from `Microsoft.AspNetCore.Authentication`), `CookieAuthenticationDefaults.AuthenticationScheme` (from `Microsoft.AspNetCore.Authentication.Cookies`) — same claim set built in `Login.cshtml.cs:27-36`.
-- Produces: no new public members; `OnPostProfileAsync` now also re-signs-in the user.
+- Produces: no new public members on `AccountModel`; `OnPostProfileAsync` now also re-signs-in the user. Test-only: `AccountPageTests.FakeAuthenticationService` (implements `IAuthenticationService`, exposes `ClaimsPrincipal? LastSignedInPrincipal`), registered as the `IAuthenticationService` singleton by the (now updated) `NewPageContext` helper — resolvable in any test via `model.HttpContext.RequestServices.GetRequiredService<IAuthenticationService>()` cast back to `FakeAuthenticationService`.
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `MaterialLedger.Tests/AccountPageTests.cs`:
+First, update the shared `NewPageContext` helper in `MaterialLedger.Tests/AccountPageTests.cs` to register a `FakeAuthenticationService` so `SignInAsync` has something to call instead of throwing a missing-service error:
+
+```csharp
+    private sealed class FakeAuthenticationService : Microsoft.AspNetCore.Authentication.IAuthenticationService
+    {
+        public ClaimsPrincipal? LastSignedInPrincipal { get; private set; }
+
+        public Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
+            Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.NoResult());
+        public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+        public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+        public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties)
+        {
+            LastSignedInPrincipal = principal;
+            return Task.CompletedTask;
+        }
+        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+    }
+
+    private static PageContext NewPageContext(int userId)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<Microsoft.AspNetCore.Authentication.IAuthenticationService>(new FakeAuthenticationService());
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test")),
+            RequestServices = services.BuildServiceProvider()
+        };
+        return new PageContext { HttpContext = context };
+    }
+```
+
+This replaces the plain `NewPageContext` written in Task 1. Add `using Microsoft.AspNetCore.Authentication;` and `using Microsoft.Extensions.DependencyInjection;` to the top of `AccountPageTests.cs`.
+
+Then add the test itself:
 
 ```csharp
     [Fact]
@@ -248,23 +284,19 @@ Add to `MaterialLedger.Tests/AccountPageTests.cs`:
 
         await model.OnPostProfileAsync();
 
-        // AuthenticationService isn't wired up in this bare PageContext, so SignInAsync
-        // would throw if it were reached without the service present — the absence of an
-        // exception combined with the assertions below confirms the handler ran end-to-end
-        // up to (and including) the re-sign-in call path being exercised in Task 3's full
-        // integration coverage. Here we confirm the DB write, which is the prerequisite for
-        // the re-issued claims to be correct.
-        var reloaded = await db.AppUsers.AsNoTracking().SingleAsync(x => x.AppUserId == userId);
-        Assert.Equal("Renamed Person", reloaded.DisplayName);
+        var auth = (FakeAuthenticationService)model.HttpContext.RequestServices
+            .GetRequiredService<Microsoft.AspNetCore.Authentication.IAuthenticationService>();
+        Assert.NotNull(auth.LastSignedInPrincipal);
+        Assert.Equal("Renamed Person", auth.LastSignedInPrincipal!.FindFirst(ClaimTypes.Name)?.Value);
+        Assert.Equal(userId.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        Assert.Equal(AppUserRole.Operator.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.Role)?.Value);
     }
 ```
-
-Note: this step's test does not actually exercise `SignInAsync` (a bare `PageContext` has no `IAuthenticationService` registered). Skip writing a fake sign-in assertion here — verifying the cookie's claim contents requires a real `TestServer`, which is out of scope for this plan (no existing test in this repo does that; `ReceiveAllIntegrationTests` and friends all test PageModel handlers directly without exercising ASP.NET Core's authentication pipeline). This step's real purpose is Step 2 below: confirm the implementation compiles and the existing behavior (DB write) still passes once `SignInAsync` is added — a manual smoke check closes the gap.
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~AccountPageTests"`
-Expected: PASS already (this test only re-checks the DB write) — this confirms Task 1's behavior is stable before adding the sign-in call. Proceed to Step 3.
+Expected: FAIL — `OnPostProfileAsync` does not call `SignInAsync` yet, so `auth.LastSignedInPrincipal` is `null` and `Assert.NotNull` fails. (The other two Task 1 tests should still PASS — confirms the `NewPageContext` change is non-breaking.)
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -310,38 +342,7 @@ Replace the body of `OnPostProfileAsync` after `await db.SaveChangesAsync();` wi
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `dotnet test --filter "FullyQualifiedName~AccountPageTests"`
-Expected: FAIL — `InvalidOperationException: Unable to resolve service for type 'IAuthenticationService'` because the bare `PageContext` used in tests has no auth services registered.
-
-Fix the test helper `NewPageContext` in `MaterialLedger.Tests/AccountPageTests.cs` to provide a minimal fake `IAuthenticationService` so `SignInAsync` no-ops instead of throwing:
-
-```csharp
-    private sealed class FakeAuthenticationService : Microsoft.AspNetCore.Authentication.IAuthenticationService
-    {
-        public Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
-            Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.NoResult());
-        public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
-        public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
-        public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties) => Task.CompletedTask;
-        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
-    }
-
-    private static PageContext NewPageContext(int userId)
-    {
-        var services = new ServiceCollection();
-        services.AddSingleton<Microsoft.AspNetCore.Authentication.IAuthenticationService>(new FakeAuthenticationService());
-        var context = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test")),
-            RequestServices = services.BuildServiceProvider()
-        };
-        return new PageContext { HttpContext = context };
-    }
-```
-
-Add `using Microsoft.AspNetCore.Authentication;` and `using Microsoft.Extensions.DependencyInjection;` to the top of `AccountPageTests.cs`.
-
-Re-run: `dotnet test --filter "FullyQualifiedName~AccountPageTests"`
-Expected: PASS (3/3)
+Expected: PASS (3/3) — the `FakeAuthenticationService` and updated `NewPageContext` were already added in Step 1, so this step only needs the production code change above.
 
 - [ ] **Step 5: Commit**
 
@@ -570,7 +571,7 @@ Log in with any seeded account, confirm the sidebar name is now a link that navi
 - [ ] **Step 4: Run the full test suite**
 
 Run: `dotnet test`
-Expected: All tests pass, including the 7 new `AccountPageTests`.
+Expected: All tests pass, including the 7 new `AccountPageTests`. (A pre-existing, unrelated failure in `MaterialTransactionPermissionsTests` may appear if `MATERIALLEDGER_TEST_APP_CONNECTION` isn't set in this environment — that's a baseline condition, not a regression from this plan; confirm no *other* failures appear.)
 
 - [ ] **Step 5: Commit**
 
@@ -585,4 +586,4 @@ git commit -m "feat: link sidebar account name to the Account page"
 
 - **Spec coverage:** Profile update (Task 1+2), password change (Task 3), nav entry point (Task 4), server-side-only validation (all tasks reuse the `form-error`/`alert-success` CSS classes already in `app.css` — no new CSS needed, so the spec's mention of adding `form-success` is superseded by reusing the existing `.alert-success` class, which has the right visual treatment already), integration-test-only coverage (no Playwright, per spec) — all covered.
 - **Placeholder scan:** none found — every step has literal, runnable code.
-- **Type consistency:** `AccountModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> hasher)` constructor signature is identical across Tasks 1–3; `LoadCurrentUserAsync()` introduced in Task 1 is reused unchanged in Task 3; test helper `NewModel`/`NewPageContext` signatures introduced in Task 1 are extended (not replaced) in Task 2.
+- **Type consistency:** `AccountModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> hasher)` constructor signature is identical across Tasks 1–3; `LoadCurrentUserAsync()` introduced in Task 1 is reused unchanged in Task 3; test helper `NewModel`'s signature is unchanged throughout — `NewPageContext`'s signature is also unchanged, but Task 2 replaces its body (adds the `FakeAuthenticationService` registration) to support asserting on re-issued claims, as called out explicitly in Task 2's Step 1.
