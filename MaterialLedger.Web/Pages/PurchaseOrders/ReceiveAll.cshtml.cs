@@ -117,6 +117,11 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                     }
                     catch (Exception)
                     {
+                        foreach (var entry in db.ChangeTracker.Entries<PurchaseOrderLineAllocation>()
+                            .Where(e => e.State == EntityState.Deleted))
+                        {
+                            entry.State = EntityState.Unchanged;
+                        }
                         row.Warning = "Received, but its plan entry couldn't be cleared — remove it manually.";
                     }
                 }
@@ -126,6 +131,10 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                 row.Error = ex is OperationConflictException
                     ? "This row was already submitted with different values — please review and resubmit."
                     : ex.Message;
+            }
+            catch (Exception ex)
+            {
+                row.Error = $"Unexpected error: {ex.Message}";
             }
         }
 
@@ -137,7 +146,7 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
         .Include(x => x.Lines).ThenInclude(x => x.LocationAllocations).ThenInclude(x => x.InventoryLocation)
         .FirstOrDefaultAsync(x => x.PurchaseOrderId == Id);
 
-    private static List<ReceiveAllRow> BuildRows(PurchaseOrder order)
+    public static List<ReceiveAllRow> BuildRows(PurchaseOrder order)
     {
         var rows = new List<ReceiveAllRow>();
         foreach (var line in order.Lines

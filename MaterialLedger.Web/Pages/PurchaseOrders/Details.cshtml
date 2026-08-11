@@ -72,7 +72,7 @@
                         }
                         </ul>
                     }
-                    <p>Unallocated: @DisplayFormat.Quantity(lineUnallocated)</p>
+                    <p>Unallocated: @DisplayFormat.Quantity(Math.Max(0m, lineUnallocated))</p>
                     <form action="/PurchaseOrders/Details/@Model.Order.PurchaseOrderId?handler=AddAllocation" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="CorrelationId" />
