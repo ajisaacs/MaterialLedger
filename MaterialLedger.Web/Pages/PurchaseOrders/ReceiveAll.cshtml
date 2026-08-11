@@ -1,0 +1,91 @@
+@* MaterialLedger.Web/Pages/PurchaseOrders/ReceiveAll.cshtml *@
+@page "{id:long}"
+@model MaterialLedger.Web.Pages.PurchaseOrders.ReceiveAllModel
+@using MaterialLedger.Web.Shared
+@{ Layout = "Shared/_Layout"; }
+<header class="page-heading">
+    <p class="eyebrow">Purchase orders</p>
+    <h1>Receive all — @Model.Order!.PurchaseOrderNumber — @Model.Order.VendorName</h1>
+</header>
+
+@if (Model.Rows.Count == 0)
+{
+    <p>No open lines with quantity remaining.</p>
+}
+else
+{
+    <form method="post">
+        @Html.AntiForgeryToken()
+        <table>
+            <thead>
+                <tr>
+                    <th></th><th>Line</th><th>Material</th><th>Location</th><th>Quantity</th>
+                    <th>Heat/lot</th><th>Cost/unit</th><th>Quarantine</th><th>Notes</th><th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+            @for (var i = 0; i < Model.Rows.Count; i++)
+            {
+                var row = Model.Rows[i];
+                <tr>
+                    <td>
+                        <input type="hidden" asp-for="Rows[i].CorrelationId" />
+                        <input type="hidden" asp-for="Rows[i].AllocationId" />
+                        <input type="hidden" asp-for="Rows[i].PurchaseOrderLineId" />
+                        <input type="hidden" asp-for="Rows[i].LineNumber" />
+                        <input type="hidden" asp-for="Rows[i].MaterialDisplayName" />
+                        @if (row.SucceededItemCode is not null)
+                        {
+                            <input type="hidden" asp-for="Rows[i].Selected" />
+                            <input type="hidden" asp-for="Rows[i].SucceededItemCode" />
+                        }
+                        else
+                        {
+                            <input asp-for="Rows[i].Selected" type="checkbox" />
+                        }
+                    </td>
+                    <td>@row.LineNumber</td>
+                    <td>@row.MaterialDisplayName</td>
+                    @if (row.SucceededItemCode is not null)
+                    {
+                        <td>@row.LocationDisplay<input type="hidden" asp-for="Rows[i].LocationId" /></td>
+                        <td>@DisplayFormat.Quantity(row.Quantity)<input type="hidden" asp-for="Rows[i].Quantity" /></td>
+                        <td>@row.HeatLotNumber<input type="hidden" asp-for="Rows[i].HeatLotNumber" /></td>
+                        <td>@(row.CostPerUnit?.ToString("0.00") ?? "—")<input type="hidden" asp-for="Rows[i].CostPerUnit" /></td>
+                        <td>@(row.IsQuarantined ? "Yes" : "No")<input type="hidden" asp-for="Rows[i].IsQuarantined" /></td>
+                        <td>@row.Notes<input type="hidden" asp-for="Rows[i].Notes" /></td>
+                        <td>Received as @row.SucceededItemCode</td>
+                    }
+                    else
+                    {
+                        <td>
+                            <select asp-for="Rows[i].LocationId">
+                                <option value="">Choose location</option>
+                                @foreach (var loc in Model.LeafLocations)
+                                {
+                                    <option value="@loc.InventoryLocationId">@loc.LocationCode</option>
+                                }
+                            </select>
+                        </td>
+                        <td><input asp-for="Rows[i].Quantity" type="number" step="1" min="1" /></td>
+                        <td><input asp-for="Rows[i].HeatLotNumber" maxlength="100" /></td>
+                        <td><input asp-for="Rows[i].CostPerUnit" type="number" step="0.01" min="0" /></td>
+                        <td><input asp-for="Rows[i].IsQuarantined" type="checkbox" /></td>
+                        <td><input asp-for="Rows[i].Notes" /></td>
+                        <td style="color:red">
+                            @row.Error
+                            @if (row.Warning is not null)
+                            {
+                                <text> @row.Warning</text>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+        <button type="submit">Receive checked rows</button>
+    </form>
+}
+
+<p><a asp-page="Details" asp-route-id="@Model.Order.PurchaseOrderId">Back to purchase order</a></p>
