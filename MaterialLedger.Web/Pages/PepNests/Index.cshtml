@@ -10,8 +10,14 @@
 
 <form method="get" class="filter-bar">
     <label>Year <input asp-for="Year" type="number" min="2000" max="2100" /></label>
-    <label>Status <input asp-for="Status" placeholder="To be cut" /></label>
-    <label>Customer <input asp-for="Customer" /></label>
+    <label>Status <input asp-for="Status" list="statusOptions" placeholder="To be cut" autocomplete="off" /></label>
+    <label>Customer <input asp-for="Customer" list="customerOptions" autocomplete="off" /></label>
+    <datalist id="statusOptions">
+        @foreach (var status in Model.StatusOptions) { <option value="@status"></option> }
+    </datalist>
+    <datalist id="customerOptions">
+        @foreach (var customer in Model.CustomerOptions) { <option value="@customer"></option> }
+    </datalist>
     <button type="submit">Find nests</button>
 </form>
 

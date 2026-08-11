@@ -28,6 +28,23 @@ public sealed class PepNestQueryService(HttpClient client)
         return nests;
     }
 
+    public async Task<PepNestFilterOptions> GetFilterOptionsAsync(int year)
+    {
+        var nests = await client.GetFromJsonAsync<List<PepNestSummary>>($"nests/{year}", JsonOptions) ?? [];
+        return new PepNestFilterOptions
+        {
+            Statuses = DistinctSorted(nests.Select(x => x.Status)),
+            Customers = DistinctSorted(nests.Select(x => x.Customer)),
+        };
+    }
+
+    private static IReadOnlyList<string> DistinctSorted(IEnumerable<string?> values) => values
+        .Where(v => !string.IsNullOrWhiteSpace(v))
+        .Select(v => v!)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(v => v, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
     public async Task<PepNestDetails?> GetNestAsync(int year, string nestName)
     {
         using var response = await client.GetAsync($"nests/{year}/{Uri.EscapeDataString(nestName)}");
@@ -35,6 +52,12 @@ public sealed class PepNestQueryService(HttpClient client)
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<PepNestDetails>(JsonOptions);
     }
+}
+
+public sealed class PepNestFilterOptions
+{
+    public IReadOnlyList<string> Statuses { get; init; } = [];
+    public IReadOnlyList<string> Customers { get; init; } = [];
 }
 
 public sealed class PepNestSummary
