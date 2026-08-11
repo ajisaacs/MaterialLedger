@@ -10,11 +10,24 @@
 
 <form method="get" class="filter-bar">
     <label>Year <input asp-for="Year" type="number" min="2000" max="2100" /></label>
-    <label>Status <input asp-for="Status" list="statusOptions" placeholder="To be cut" autocomplete="off" /></label>
+    <label>Status
+        <select asp-for="Status">
+            <option value="">All statuses</option>
+            <option value="To be cut">To be cut</option>
+            <option value="Quote">Quote</option>
+            <option value="Has been cut">Has been cut</option>
+            <option value="Hold">Hold</option>
+            <option value="Quote, accepted, to be cut">Quote, accepted, to be cut</option>
+            <option value="Quote, accepted, has been cut">Quote, accepted, has been cut</option>
+            <option value="Quote, accepted, hold">Quote, accepted, hold</option>
+            <option value="Quote, accepted, moved to wip">Quote, accepted, moved to wip</option>
+            <option value="Quote, rejected">Quote, rejected</option>
+            <option value="Quote, timed out">Quote, timed out</option>
+            <option value="Deleted">Deleted</option>
+            <option value="N/A">N/A</option>
+        </select>
+    </label>
     <label>Customer <input asp-for="Customer" list="customerOptions" autocomplete="off" /></label>
-    <datalist id="statusOptions">
-        @foreach (var status in Model.StatusOptions) { <option value="@status"></option> }
-    </datalist>
     <datalist id="customerOptions">
         @foreach (var customer in Model.CustomerOptions) { <option value="@customer"></option> }
     </datalist>

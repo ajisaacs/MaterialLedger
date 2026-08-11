@@ -8,11 +8,18 @@ namespace MaterialLedger.Web.Pages.PepNests;
 [Authorize]
 public class IndexModel(PepNestQueryService pepNests) : PageModel
 {
+    public static readonly IReadOnlyList<string> StatusOptions =
+    [
+        "To be cut", "Quote", "Has been cut", "Hold",
+        "Quote, accepted, to be cut", "Quote, accepted, has been cut",
+        "Quote, accepted, hold", "Quote, accepted, moved to wip",
+        "Quote, rejected", "Quote, timed out", "Deleted", "N/A",
+    ];
+
     [BindProperty(SupportsGet = true)] public int Year { get; set; } = DateTime.UtcNow.Year;
-    [BindProperty(SupportsGet = true)] public string? Status { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Status { get; set; } = "To be cut";
     [BindProperty(SupportsGet = true)] public string? Customer { get; set; }
     public IReadOnlyList<PepNestSummary> Nests { get; private set; } = [];
-    public IReadOnlyList<string> StatusOptions { get; private set; } = [];
     public IReadOnlyList<string> CustomerOptions { get; private set; } = [];
     public string? Error { get; private set; }
 
@@ -22,12 +29,7 @@ public class IndexModel(PepNestQueryService pepNests) : PageModel
         try { Nests = (await pepNests.GetNestsAsync(Year, Status, Customer)).OrderByDescending(x => x.DateCreated).ToList(); }
         catch (HttpRequestException) { Error = "PEP nests could not be reached. Try again after the PEP API is available."; }
 
-        try
-        {
-            var options = await pepNests.GetFilterOptionsAsync(Year);
-            StatusOptions = options.Statuses;
-            CustomerOptions = options.Customers;
-        }
+        try { CustomerOptions = (await pepNests.GetFilterOptionsAsync(Year)).Customers; }
         catch (HttpRequestException) { }
     }
 }
