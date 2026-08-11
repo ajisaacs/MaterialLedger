@@ -890,6 +890,13 @@ legend {
   gap: 0.25rem 0.75rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.opening-balance-grid--quantity {
+  grid-template-columns: minmax(0, 220px);
+  margin-bottom: 0.7rem;
+}
+.opening-balance-dimensions-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .opening-balance-grid label,
 .opening-balance-notes > label:last-child {
   display: flex;

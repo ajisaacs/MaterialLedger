@@ -16,7 +16,7 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
     [BindProperty] public long LocationId { get; set; }
     [BindProperty] public Guid CorrelationId { get; set; }
     [BindProperty] public long? ExistingMaterialSpecId { get; set; }
-    [BindProperty] public InventoryItemKind ItemKind { get; set; } = InventoryItemKind.FullSheetBundle;
+    [BindProperty] public bool IsDrop { get; set; }
     [BindProperty] public decimal Quantity { get; set; }
     [BindProperty] public decimal? UsableWidthIn { get; set; }
     [BindProperty] public decimal? UsableLengthIn { get; set; }
@@ -45,7 +45,7 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
             if (prior is not null)
             {
                 ExistingMaterialSpecId = prior.MaterialSpecId;
-                ItemKind = prior.ItemKind;
+                IsDrop = prior.ItemKind == InventoryItemKind.Drop;
                 UsableWidthIn = prior.UsableWidthIn;
                 UsableLengthIn = prior.UsableLengthIn;
                 ShapeClassification = prior.ShapeClassification;
@@ -76,7 +76,11 @@ public class NewOpeningBalanceModel(MaterialLedgerDbContext db, OpeningBalanceSe
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var request = new OpeningBalanceRequest(LocationId, ExistingMaterialSpecId.Value, ItemKind, Quantity,
+            var itemKind = IsDrop ? InventoryItemKind.Drop
+                : Quantity > 1 ? InventoryItemKind.FullSheetBundle
+                : InventoryItemKind.FullSheet;
+            var quantity = IsDrop ? 1m : Quantity;
+            var request = new OpeningBalanceRequest(LocationId, ExistingMaterialSpecId.Value, itemKind, quantity,
                 UsableWidthIn, UsableLengthIn, ShapeClassification, IsQuarantined, Notes);
             var result = await openingBalance.RecordOpeningBalanceAsync(CorrelationId, request, userId);
             return RedirectToPage("Success", new { code = result.PublicItemCode });
