@@ -25,6 +25,7 @@ public class InventoryItemSummary
     public required long InventoryItemId { get; init; }
     public required string PublicItemCode { get; init; }
     public required string MaterialSpecDisplayName { get; init; }
+    public required string MaterialDescription { get; init; }
     public required decimal ThicknessIn { get; init; }
     public string? GaugeLabel { get; init; }
     public required InventoryItemKind ItemKind { get; init; }
@@ -56,6 +57,9 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
     ];
 
     private record ItemRow(InventoryItem Item, MaterialSpec Spec, InventoryLocation Location, AppUser Observer, int ActiveCount);
+
+    private static string DescribeMaterial(string materialFamily, string? grade, string? finish) =>
+        string.Join(" ", new[] { materialFamily, grade, finish }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
     /// <summary>
     /// Shared four-table join (items ⋈ spec ⋈ location ⋈ observer) with the exception-status
@@ -142,6 +146,7 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
         InventoryItemId = row.Item.InventoryItemId,
         PublicItemCode = row.Item.PublicItemCode,
         MaterialSpecDisplayName = row.Spec.DisplayName,
+        MaterialDescription = DescribeMaterial(row.Spec.MaterialFamily, row.Spec.Grade, row.Spec.Finish),
         ThicknessIn = row.Spec.ThicknessIn,
         GaugeLabel = row.Spec.GaugeLabel,
         ItemKind = row.Item.ItemKind,
@@ -177,6 +182,9 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                     InventoryItemId = item.InventoryItemId,
                     PublicItemCode = item.PublicItemCode,
                     MaterialSpecDisplayName = spec.DisplayName,
+                    MaterialDescription = spec.MaterialFamily
+                        + (string.IsNullOrEmpty(spec.Grade) ? "" : " " + spec.Grade)
+                        + (string.IsNullOrEmpty(spec.Finish) ? "" : " " + spec.Finish),
                     ThicknessIn = spec.ThicknessIn,
                     GaugeLabel = spec.GaugeLabel,
                     ItemKind = item.ItemKind,

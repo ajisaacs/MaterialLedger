@@ -92,7 +92,7 @@ else
     {
         <tr>
             <td><a asp-page="Details" asp-route-id="@r.InventoryItemId">@r.PublicItemCode</a></td>
-            <td>@r.MaterialSpecDisplayName</td>
+            <td>@r.MaterialDescription</td>
             <td>@DisplayFormat.Thickness(r.ThicknessIn, r.GaugeLabel)</td>
             <td>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</td>
             <td>@if (r.UsableWidthIn is not null)
