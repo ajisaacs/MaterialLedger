@@ -453,6 +453,10 @@ namespace MaterialLedger.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
 
+                    b.Property<string>("GaugeLabel")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Grade")
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");

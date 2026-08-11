@@ -31,8 +31,9 @@ public class IndexModel(MaterialSpecService materialSpecs) : PageModel
         var family = NewMaterial.MaterialFamily.Trim();
         var grade = Normalize(NewMaterial.Grade);
         var finish = Normalize(NewMaterial.Finish);
+        var gaugeLabel = Normalize(NewMaterial.GaugeLabel);
         var displayName = string.Join(" ", new[] { family, grade, finish, $"{NewMaterial.ThicknessIn:0.####} in" }.Where(x => !string.IsNullOrWhiteSpace(x)));
-        await materialSpecs.GetOrCreateAsync(family, grade, finish, NewMaterial.ThicknessIn, displayName);
+        await materialSpecs.GetOrCreateAsync(family, grade, finish, NewMaterial.ThicknessIn, displayName, gaugeLabel);
         Success = "Material is available for sheet entry.";
         NewMaterial = new();
         await LoadAsync();
@@ -41,8 +42,6 @@ public class IndexModel(MaterialSpecService materialSpecs) : PageModel
 
     private async Task LoadAsync() => AvailableSpecs = (await materialSpecs.SearchAsync(null)).ToList();
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    public static string? GaugeLabel(MaterialSpec spec) => GaugeTable.FindLabel(spec.MaterialFamily, spec.Grade, spec.ThicknessIn);
 }
 
 public class NewMaterialInput
@@ -51,4 +50,5 @@ public class NewMaterialInput
     public string? Grade { get; set; }
     public string? Finish { get; set; }
     public decimal ThicknessIn { get; set; }
+    public string? GaugeLabel { get; set; }
 }

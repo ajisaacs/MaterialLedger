@@ -12,7 +12,7 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
     public MaterialSpecSeederTests(SqlServerTestDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task SeedAsync_EmptyDatabase_CreatesOneHundredTenSpecs()
+    public async Task SeedAsync_EmptyDatabase_CreatesOneHundredThirtyNineSpecs()
     {
         await using var db = _fixture.CreateContext();
         var seeder = new MaterialSpecSeeder(new MaterialSpecService(db));
@@ -20,7 +20,7 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
         await seeder.SeedAsync();
 
         var count = await db.MaterialSpecs.CountAsync();
-        Assert.Equal(110, count);
+        Assert.Equal(139, count);
     }
 
     [Fact]
@@ -33,7 +33,53 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
         await seeder.SeedAsync();
 
         var count = await db.MaterialSpecs.CountAsync();
-        Assert.Equal(110, count);
+        Assert.Equal(139, count);
+    }
+
+    [Fact]
+    public async Task SeedAsync_Stainless304ThreeSixteenthPlate_HasExpectedLabelAndDisplayName()
+    {
+        await using var db = _fixture.CreateContext();
+        var seeder = new MaterialSpecSeeder(new MaterialSpecService(db));
+
+        await seeder.SeedAsync();
+
+        var spec = await db.MaterialSpecs.SingleAsync(x =>
+            x.MaterialFamily == "Stainless Steel" && x.Grade == "304" && x.ThicknessIn == 0.1875m);
+        Assert.Equal("3/16", spec.GaugeLabel);
+        Assert.Equal("Stainless Steel 304 — 3/16 (0.1875\")", spec.DisplayName);
+    }
+
+    [Fact]
+    public async Task SeedAsync_Stainless316_MatchesStainless304ThicknessSet()
+    {
+        await using var db = _fixture.CreateContext();
+        var seeder = new MaterialSpecSeeder(new MaterialSpecService(db));
+
+        await seeder.SeedAsync();
+
+        var thickness304 = await db.MaterialSpecs
+            .Where(x => x.MaterialFamily == "Stainless Steel" && x.Grade == "304")
+            .Select(x => x.ThicknessIn).OrderBy(t => t).ToListAsync();
+        var thickness316 = await db.MaterialSpecs
+            .Where(x => x.MaterialFamily == "Stainless Steel" && x.Grade == "316")
+            .Select(x => x.ThicknessIn).OrderBy(t => t).ToListAsync();
+
+        Assert.Equal(21, thickness304.Count);
+        Assert.Equal(thickness304, thickness316);
+    }
+
+    [Fact]
+    public async Task SeedAsync_Aluminum5052ThirtyGauge_HasGaugeLabelStored()
+    {
+        await using var db = _fixture.CreateContext();
+        var seeder = new MaterialSpecSeeder(new MaterialSpecService(db));
+
+        await seeder.SeedAsync();
+
+        var spec = await db.MaterialSpecs.SingleAsync(x =>
+            x.MaterialFamily == "Aluminum" && x.Grade == "5052" && x.ThicknessIn == 0.0100m);
+        Assert.Equal("30ga", spec.GaugeLabel);
     }
 
     [Fact]

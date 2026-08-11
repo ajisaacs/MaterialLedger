@@ -38,22 +38,11 @@ public static class GaugeTable
         new("1", 1.0000m)
     ];
 
-    private static readonly string[] PlateGrades = ["A36", "A572 GR50", "Floor Plate"];
-
-    public static string? FindLabel(string materialFamily, string? grade, decimal thicknessIn)
-    {
-        var table = Resolve(materialFamily, grade);
-        return table is null ? null : Array.Find(table, e => e.ThicknessIn == thicknessIn)?.Label;
-    }
-
-    private static Entry[]? Resolve(string materialFamily, string? grade)
-    {
-        if (string.Equals(materialFamily, "Aluminum", StringComparison.OrdinalIgnoreCase))
-            return Aluminum;
-        if (string.Equals(materialFamily, "Stainless Steel", StringComparison.OrdinalIgnoreCase))
-            return Stainless;
-        if (string.Equals(materialFamily, "Steel", StringComparison.OrdinalIgnoreCase))
-            return grade is not null && PlateGrades.Contains(grade) ? Plate : Steel;
-        return null;
-    }
+    // Fractional-only plate thicknesses (no gauge-numbered sizes), used for Stainless Steel plate.
+    public static readonly Entry[] FractionalPlate =
+    [
+        new("3/16", 0.1875m), new("1/4", 0.2500m), new("5/16", 0.3125m),
+        new("3/8", 0.3750m), new("1/2", 0.5000m), new("5/8", 0.6250m), new("3/4", 0.7500m),
+        new("1", 1.0000m)
+    ];
 }

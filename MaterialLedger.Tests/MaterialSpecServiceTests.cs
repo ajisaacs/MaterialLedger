@@ -37,6 +37,28 @@ public class MaterialSpecServiceTests : IClassFixture<SqlServerTestDatabaseFixtu
     }
 
     [Fact]
+    public async Task GetOrCreateAsync_WithGaugeLabel_StoresLabelOnRow()
+    {
+        await using var db = _fixture.CreateContext();
+        var service = new MaterialSpecService(db);
+
+        var spec = await service.GetOrCreateAsync("Stainless Steel", "410", null, 0.1875m, "Stainless Steel 410 — 3/16 (0.1875\")", gaugeLabel: "3/16");
+
+        Assert.Equal("3/16", spec.GaugeLabel);
+    }
+
+    [Fact]
+    public async Task GetOrCreateAsync_WithoutGaugeLabel_LeavesLabelNull()
+    {
+        await using var db = _fixture.CreateContext();
+        var service = new MaterialSpecService(db);
+
+        var spec = await service.GetOrCreateAsync("Stainless Steel", "410", null, 0.0625m, "Stainless Steel 410 0.0625 in");
+
+        Assert.Null(spec.GaugeLabel);
+    }
+
+    [Fact]
     public async Task SearchAsync_FiltersByGradeSubstring()
     {
         await using var db = _fixture.CreateContext();

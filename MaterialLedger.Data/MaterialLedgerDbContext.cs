@@ -47,6 +47,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.Finish).HasMaxLength(80);
             e.Property(x => x.ThicknessIn).HasColumnType("decimal(9,4)").IsRequired();
             e.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.GaugeLabel).HasMaxLength(20);
             e.Property(x => x.NormalizedKey)
                 .HasMaxLength(400)
                 .HasComputedColumnSql(

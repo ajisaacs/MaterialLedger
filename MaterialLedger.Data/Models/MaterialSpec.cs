@@ -8,6 +8,7 @@ public class MaterialSpec
     public string? Finish { get; set; }
     public decimal ThicknessIn { get; set; }
     public string DisplayName { get; set; } = string.Empty;
+    public string? GaugeLabel { get; set; }
     public bool IsActive { get; set; }
 
     // Persisted computed column; set by the database, never by app code.

@@ -19,7 +19,7 @@ public class MaterialSpecService(MaterialLedgerDbContext db)
         return await specs.OrderBy(x => x.MaterialFamily).ThenBy(x => x.Grade).ThenBy(x => x.ThicknessIn).ToListAsync();
     }
 
-    public async Task<MaterialSpec> GetOrCreateAsync(string materialFamily, string? grade, string? finish, decimal thicknessIn, string displayName)
+    public async Task<MaterialSpec> GetOrCreateAsync(string materialFamily, string? grade, string? finish, decimal thicknessIn, string displayName, string? gaugeLabel = null)
     {
         var existing = await db.MaterialSpecs.FirstOrDefaultAsync(x =>
             x.MaterialFamily == materialFamily && x.Grade == grade && x.Finish == finish && x.ThicknessIn == thicknessIn);
@@ -33,6 +33,7 @@ public class MaterialSpecService(MaterialLedgerDbContext db)
             Finish = finish,
             ThicknessIn = thicknessIn,
             DisplayName = displayName,
+            GaugeLabel = gaugeLabel,
             IsActive = true
         };
         db.MaterialSpecs.Add(spec);

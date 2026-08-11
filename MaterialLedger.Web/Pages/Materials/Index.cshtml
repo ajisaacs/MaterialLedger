@@ -35,6 +35,7 @@
             <label>Grade <input asp-for="NewMaterial.Grade" maxlength="100" /></label>
             <label>Finish <input asp-for="NewMaterial.Finish" maxlength="100" /></label>
             <label>Thickness (in) <input asp-for="NewMaterial.ThicknessIn" type="number" step="0.0001" min="0.0001" required /></label>
+            <label>Gauge / label <input asp-for="NewMaterial.GaugeLabel" maxlength="20" placeholder="e.g. 16ga or 3/16" /></label>
         </fieldset>
         <div class="dialog-actions"><button type="submit">Add material</button><button type="button" class="button-secondary" onclick="document.getElementById('add-material-dialog').close()">Cancel</button></div>
     </form>
@@ -50,10 +51,9 @@
     <tbody>
     @foreach (var spec in Model.AvailableSpecs)
     {
-        var gauge = MaterialLedger.Web.Pages.Materials.IndexModel.GaugeLabel(spec);
         <tr>
             <td>@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</td>
-            <td>@(gauge is null ? "" : $"{gauge} — ")@spec.ThicknessIn.ToString("0.####") in</td>
+            <td>@(spec.GaugeLabel is null ? "" : $"{spec.GaugeLabel} — ")@spec.ThicknessIn.ToString("0.####") in</td>
         </tr>
     }
     </tbody>
