@@ -2,80 +2,110 @@
 @page
 @model MaterialLedger.Web.Pages.Census.NewOpeningBalanceModel
 @using MaterialLedger.Web.Shared
-@{ Layout = "Shared/_Layout"; }
-<h1>Opening balance — @Model.Location?.LocationCode</h1>
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Record counted balance"; }
+
+<header class="page-heading opening-balance-heading">
+    <p class="eyebrow">Inventory setup</p>
+    <h1>Record counted balance</h1>
+    <p>Add a new item to <strong>@Model.Location?.LocationCode</strong>. Record each distinct stack, sheet, or drop separately.</p>
+</header>
 
 @if (Model.ExistingActiveItems.Count > 0)
 {
-    <div style="border:1px solid #900; padding:0.5em; margin-bottom:1em;">
-        <strong>Already recorded at this slot — confirm this is a NEW item before continuing:</strong>
+    <aside class="opening-balance-warning" aria-labelledby="existing-items-title">
+        <div>
+            <p class="eyebrow">Check before adding</p>
+            <h2 id="existing-items-title">Items already recorded here</h2>
+            <p>Only continue if this is a separate item. You can copy an item’s details to save time.</p>
+        </div>
         <ul>
         @foreach (var item in Model.ExistingActiveItems)
         {
             <li>
-                @item.PublicItemCode — @item.MaterialSpec?.DisplayName — qty @DisplayFormat.Quantity(item.QuantityOnHand) — @item.Status
-                (<a asp-page="NewOpeningBalance" asp-route-locationId="@Model.LocationId" asp-route-copyFromItemId="@item.InventoryItemId">copy as new item</a>)
+                <div>
+                    <strong>@item.PublicItemCode</strong>
+                    <span>@item.MaterialSpec?.DisplayName &middot; @DisplayFormat.Quantity(item.QuantityOnHand) on hand &middot; @item.Status</span>
+                </div>
+                <a asp-page="NewOpeningBalance" asp-route-locationId="@Model.LocationId" asp-route-copyFromItemId="@item.InventoryItemId">Copy details<span class="visually-hidden"> for @item.PublicItemCode</span></a>
             </li>
         }
         </ul>
-    </div>
+    </aside>
 }
 
 @if (Model.Error is not null)
 {
-    <p style="color:red">@Model.Error</p>
+    <p class="form-error" role="alert">@Model.Error</p>
 }
 
-<form method="post">
+<form method="post" class="opening-balance-form">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="LocationId" />
     <input type="hidden" asp-for="CorrelationId" />
 
-    <fieldset>
-        <legend>Material</legend>
-        <label>Material family / grade / finish
-            <select id="opening-balance-material" required>
-                <option value="">Choose material</option>
-                @foreach (var material in Model.AvailableSpecs.GroupBy(spec => $"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}"))
-                {
-                    var spec = material.First();
-                    <option value="@material.Key">@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</option>
-                }
-            </select>
-        </label>
-        <label>Thickness
-            <select asp-for="ExistingMaterialSpecId" id="opening-balance-thickness" required disabled>
-                <option value="">Choose thickness</option>
-                @foreach (var spec in Model.AvailableSpecs)
-                {
-                    <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.DisplayName</option>
-                }
-            </select>
-        </label>
-        <p>Need a material that is not listed? <a asp-page="/Materials/Index">Add it to the material catalog</a>.</p>
-    </fieldset>
+    <section class="opening-balance-section" aria-labelledby="material-title">
+        <div class="opening-balance-section-heading">
+            <div><p class="eyebrow">Step 1</p><h2 id="material-title">Choose material</h2></div>
+            <span>Required</span>
+        </div>
+        <div class="opening-balance-grid">
+            <label>Material family / grade / finish
+                <select id="opening-balance-material" required>
+                    <option value="">Choose material</option>
+                    @foreach (var material in Model.AvailableSpecs.GroupBy(spec => $"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}"))
+                    {
+                        var spec = material.First();
+                        <option value="@material.Key">@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</option>
+                    }
+                </select>
+            </label>
+            <label>Thickness
+                <select asp-for="ExistingMaterialSpecId" id="opening-balance-thickness" required disabled>
+                    <option value="">Choose thickness</option>
+                    @foreach (var spec in Model.AvailableSpecs)
+                    {
+                        <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.DisplayName</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <p class="opening-balance-catalog-link">Need a material that is not listed? <a asp-page="/Materials/Index">Add it to the material catalog</a>.</p>
+    </section>
 
-    <fieldset>
-        <legend>Item</legend>
-        <label><input type="radio" asp-for="ItemKind" value="FullSheetBundle" /> Full sheet / bundle</label>
-        <label><input type="radio" asp-for="ItemKind" value="FullSheet" /> Single full sheet</label>
-        <label><input type="radio" asp-for="ItemKind" value="Drop" /> Drop</label>
-        <label>Quantity <input asp-for="Quantity" type="number" step="1" /></label>
-        <label>Usable width (in) <input asp-for="UsableWidthIn" type="number" step="0.001" /></label>
-        <label>Usable length (in) <input asp-for="UsableLengthIn" type="number" step="0.001" /></label>
-        <label>Shape
-            <select asp-for="ShapeClassification">
-                <option value="Rectangular">Rectangular</option>
-                <option value="IrregularConservativeRectangle">Irregular (conservative rectangle)</option>
-                <option value="Unknown">Unknown</option>
-            </select>
-        </label>
-    </fieldset>
+    <section class="opening-balance-section" aria-labelledby="item-title">
+        <div class="opening-balance-section-heading">
+            <div><p class="eyebrow">Step 2</p><h2 id="item-title">Describe the item</h2></div>
+            <span>Required fields marked</span>
+        </div>
+        <fieldset class="opening-balance-kind">
+            <legend>Item type</legend>
+            <div class="opening-balance-kind-options">
+                <label><input type="radio" asp-for="ItemKind" value="FullSheetBundle" /><span><strong>Full sheet / bundle</strong><small>A stack or bundled full sheets</small></span></label>
+                <label><input type="radio" asp-for="ItemKind" value="FullSheet" /><span><strong>Single full sheet</strong><small>One uncut sheet</small></span></label>
+                <label><input type="radio" asp-for="ItemKind" value="Drop" /><span><strong>Drop</strong><small>A usable remnant or offcut</small></span></label>
+            </div>
+        </fieldset>
+        <div class="opening-balance-grid opening-balance-item-grid">
+            <label>Quantity <input asp-for="Quantity" type="number" step="1" min="1" inputmode="numeric" required /></label>
+            <label>Shape
+                <select asp-for="ShapeClassification">
+                    <option value="Rectangular">Rectangular</option>
+                    <option value="IrregularConservativeRectangle">Irregular (conservative rectangle)</option>
+                    <option value="Unknown">Unknown</option>
+                </select>
+            </label>
+            <label>Usable width <span class="input-with-unit"><input asp-for="UsableWidthIn" type="number" step="0.001" min="0" inputmode="decimal" /><small>in</small></span></label>
+            <label>Usable length <span class="input-with-unit"><input asp-for="UsableLengthIn" type="number" step="0.001" min="0" inputmode="decimal" /><small>in</small></span></label>
+        </div>
+    </section>
 
-    <label><input type="checkbox" asp-for="IsQuarantined" /> Unknown / mixed — quarantine (not available for reservation)</label>
-    <label>Notes <textarea asp-for="Notes"></textarea></label>
+    <section class="opening-balance-section opening-balance-notes" aria-labelledby="notes-title">
+        <div><p class="eyebrow">Step 3</p><h2 id="notes-title">Availability and notes</h2></div>
+        <label class="opening-balance-quarantine"><input type="checkbox" asp-for="IsQuarantined" /><span><strong>Quarantine this item</strong><small>Use for unknown or mixed material. It won’t be available for reservation.</small></span></label>
+        <label>Notes <textarea asp-for="Notes" maxlength="1000" placeholder="Optional count, condition, or identification notes"></textarea></label>
+    </section>
 
-    <button type="submit">Save opening balance</button>
+    <div class="opening-balance-submit"><button type="submit">Save counted balance</button></div>
 </form>
 <script src="~/js/dependent-select.js" asp-append-version="true"></script>
 <script>
