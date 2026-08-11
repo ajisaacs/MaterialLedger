@@ -34,6 +34,13 @@ public class AccountModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> ha
             return Page();
         }
 
+        if (trimmed.Length > 100)
+        {
+            ProfileError = "Display name must be 100 characters or fewer.";
+            DisplayName = user.DisplayName;
+            return Page();
+        }
+
         user.DisplayName = trimmed;
         await db.SaveChangesAsync();
 

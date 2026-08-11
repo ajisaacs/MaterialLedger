@@ -76,4 +76,21 @@ public class AccountPageTests : IClassFixture<SqlServerTestDatabaseFixture>
         Assert.False(model.ProfileSuccess);
         Assert.Equal("Display name is required.", model.ProfileError);
     }
+
+    [Fact]
+    public async Task OnPostProfileAsync_NameTooLong_SetsErrorAndDoesNotSave()
+    {
+        await using var db = _fixture.CreateContext();
+        var hasher = new PasswordHasher<AppUser>();
+        var userId = await SeedUserAsync(db, hasher);
+        var model = NewModel(db, hasher, userId);
+        model.DisplayName = new string('a', 101);
+
+        await model.OnPostProfileAsync();
+
+        var reloaded = await db.AppUsers.AsNoTracking().SingleAsync(x => x.AppUserId == userId);
+        Assert.Equal("Original Name", reloaded.DisplayName);
+        Assert.False(model.ProfileSuccess);
+        Assert.Equal("Display name must be 100 characters or fewer.", model.ProfileError);
+    }
 }
