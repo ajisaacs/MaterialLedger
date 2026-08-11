@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using MaterialLedger.Data;
 using MaterialLedger.Data.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +45,17 @@ public class AccountModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> ha
 
         user.DisplayName = trimmed;
         await db.SaveChangesAsync();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.AppUserId.ToString()),
+            new(ClaimTypes.Name, user.DisplayName),
+            new(ClaimTypes.Role, user.Role.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity),
+            new AuthenticationProperties { IsPersistent = true });
 
         DisplayName = trimmed;
         ProfileSuccess = true;

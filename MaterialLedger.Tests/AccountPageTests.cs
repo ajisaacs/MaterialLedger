@@ -2,10 +2,12 @@ using System.Security.Claims;
 using MaterialLedger.Data;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Web.Pages;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace MaterialLedger.Tests;
@@ -34,11 +36,30 @@ public class AccountPageTests : IClassFixture<SqlServerTestDatabaseFixture>
     private static AccountModel NewModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> hasher, int userId) =>
         new(db, hasher) { PageContext = NewPageContext(userId) };
 
+    private sealed class FakeAuthenticationService : Microsoft.AspNetCore.Authentication.IAuthenticationService
+    {
+        public ClaimsPrincipal? LastSignedInPrincipal { get; private set; }
+
+        public Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
+            Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.NoResult());
+        public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+        public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+        public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties)
+        {
+            LastSignedInPrincipal = principal;
+            return Task.CompletedTask;
+        }
+        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+    }
+
     private static PageContext NewPageContext(int userId)
     {
+        var services = new ServiceCollection();
+        services.AddSingleton<Microsoft.AspNetCore.Authentication.IAuthenticationService>(new FakeAuthenticationService());
         var context = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test")),
+            RequestServices = services.BuildServiceProvider()
         };
         return new PageContext { HttpContext = context };
     }
@@ -92,5 +113,24 @@ public class AccountPageTests : IClassFixture<SqlServerTestDatabaseFixture>
         Assert.Equal("Original Name", reloaded.DisplayName);
         Assert.False(model.ProfileSuccess);
         Assert.Equal("Display name must be 100 characters or fewer.", model.ProfileError);
+    }
+
+    [Fact]
+    public async Task OnPostProfileAsync_ValidName_ReissuesAuthCookieWithNewName()
+    {
+        await using var db = _fixture.CreateContext();
+        var hasher = new PasswordHasher<AppUser>();
+        var userId = await SeedUserAsync(db, hasher);
+        var model = NewModel(db, hasher, userId);
+        model.DisplayName = "Renamed Person";
+
+        await model.OnPostProfileAsync();
+
+        var auth = (FakeAuthenticationService)model.HttpContext.RequestServices
+            .GetRequiredService<Microsoft.AspNetCore.Authentication.IAuthenticationService>();
+        Assert.NotNull(auth.LastSignedInPrincipal);
+        Assert.Equal("Renamed Person", auth.LastSignedInPrincipal!.FindFirst(ClaimTypes.Name)?.Value);
+        Assert.Equal(userId.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        Assert.Equal(AppUserRole.Operator.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.Role)?.Value);
     }
 }
