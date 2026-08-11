@@ -85,7 +85,7 @@ else
 {
 <table>
     <thead>
-        <tr><th>Item</th><th>Material</th><th>Kind</th><th>Qty</th><th>Usable size</th><th>Location</th><th>Last observed</th><th>Status</th><th></th></tr>
+        <tr><th>Item</th><th>Material</th><th>Thickness</th><th>Qty</th><th>Usable size</th><th>Location</th><th>Last observed</th><th>Status</th><th></th></tr>
     </thead>
     <tbody>
     @foreach (var r in Model.Results)
@@ -93,11 +93,18 @@ else
         <tr>
             <td><a asp-page="Details" asp-route-id="@r.InventoryItemId">@r.PublicItemCode</a></td>
             <td>@r.MaterialSpecDisplayName</td>
-            <td>@r.ItemKind</td>
+            <td>@DisplayFormat.Thickness(r.ThicknessIn, r.GaugeLabel)</td>
             <td>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</td>
-            <td>@(r.UsableWidthIn is not null ? $"{r.UsableWidthIn} x {r.UsableLengthIn}" : "-")</td>
+            <td>@if (r.UsableWidthIn is not null)
+                {
+                    <span class="usable-size"><span class="usable-size-dim">@DisplayFormat.Quantity(r.UsableWidthIn.Value)</span><span class="usable-size-x">x</span><span class="usable-size-dim">@DisplayFormat.Quantity(r.UsableLengthIn!.Value)</span></span>
+                }
+                else
+                {
+                    @:-
+                }</td>
             <td>@r.LocationCode</td>
-            <td>@r.LastObservedAtUtc.ToString("u") by @r.LastObservedByDisplayName @(r.IsStale ? "(STALE)" : "")</td>
+            <td>@DisplayFormat.LocalDateTime(r.LastObservedAtUtc) by @r.LastObservedByDisplayName @(r.IsStale ? "(STALE)" : "")</td>
             <td><span class="inventory-status inventory-status-@r.Status.ToString().ToLowerInvariant() @(r.IsStale ? "inventory-status-stale" : "")">@r.Status@(r.IsStale ? " — review before use" : "")</span></td>
             <td>
             @if (Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined)

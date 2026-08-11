@@ -517,6 +517,24 @@ tr:last-child td {
 .selected-material-summary td {
   font-weight: 650;
 }
+.usable-size {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.usable-size-dim {
+  display: inline-block;
+  min-width: 3.5em;
+  text-align: right;
+}
+.usable-size-dim:last-child {
+  min-width: 0;
+  text-align: left;
+}
+.usable-size-x {
+  color: var(--muted, #6b7a80);
+  padding: 0 0.35em;
+}
 form:not(.account) {
   max-width: 940px;
 }

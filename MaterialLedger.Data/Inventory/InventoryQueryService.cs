@@ -25,6 +25,8 @@ public class InventoryItemSummary
     public required long InventoryItemId { get; init; }
     public required string PublicItemCode { get; init; }
     public required string MaterialSpecDisplayName { get; init; }
+    public required decimal ThicknessIn { get; init; }
+    public string? GaugeLabel { get; init; }
     public required InventoryItemKind ItemKind { get; init; }
     public required InventoryItemStatus Status { get; init; }
     public required decimal QuantityOnHand { get; init; }
@@ -140,6 +142,8 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
         InventoryItemId = row.Item.InventoryItemId,
         PublicItemCode = row.Item.PublicItemCode,
         MaterialSpecDisplayName = row.Spec.DisplayName,
+        ThicknessIn = row.Spec.ThicknessIn,
+        GaugeLabel = row.Spec.GaugeLabel,
         ItemKind = row.Item.ItemKind,
         Status = row.Item.Status,
         QuantityOnHand = row.Item.QuantityOnHand,
@@ -173,6 +177,8 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                     InventoryItemId = item.InventoryItemId,
                     PublicItemCode = item.PublicItemCode,
                     MaterialSpecDisplayName = spec.DisplayName,
+                    ThicknessIn = spec.ThicknessIn,
+                    GaugeLabel = spec.GaugeLabel,
                     ItemKind = item.ItemKind,
                     Status = item.Status,
                     QuantityOnHand = item.QuantityOnHand,
