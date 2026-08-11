@@ -38,8 +38,8 @@ public sealed class PepNestPresentationTests
         Assert.Contains("<select asp-for=\"Status\">", page);
         Assert.DoesNotContain("list=\"statusOptions\"", page);
         Assert.Contains("All statuses", page);
-        Assert.Contains("\"To be cut\"", page);
-        Assert.Contains("\"Has been cut\"", page);
+        Assert.Contains("IndexModel.StatusOptions", page);
+        Assert.Contains("@foreach (var status in IndexModel.StatusOptions)", page);
 
         Assert.Contains("Status { get; set; } = \"To be cut\";", model);
         Assert.Contains("\"To be cut\", \"Quote\", \"Has been cut\", \"Hold\",", model);
