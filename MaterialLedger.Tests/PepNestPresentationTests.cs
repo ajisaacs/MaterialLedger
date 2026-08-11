@@ -30,6 +30,25 @@ public sealed class PepNestPresentationTests
     }
 
     [Fact]
+    public void PEP_nest_browser_status_filter_is_a_dropdown_defaulting_to_To_be_cut()
+    {
+        var page = ReadPage("PepNests", "Index.cshtml");
+        var model = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "PepNests", "Index.cshtml.cs"));
+
+        Assert.Contains("<select asp-for=\"Status\">", page);
+        Assert.DoesNotContain("list=\"statusOptions\"", page);
+        Assert.Contains("All statuses", page);
+        Assert.Contains("IndexModel.StatusOptions", page);
+        Assert.Contains("@foreach (var status in IndexModel.StatusOptions)", page);
+
+        Assert.Contains("Status { get; set; } = \"To be cut\";", model);
+        Assert.Contains("\"To be cut\", \"Quote\", \"Has been cut\", \"Hold\",", model);
+        Assert.Contains("\"Quote, accepted, to be cut\", \"Quote, accepted, has been cut\",", model);
+        Assert.Contains("\"Quote, accepted, hold\", \"Quote, accepted, moved to wip\",", model);
+        Assert.Contains("\"Quote, rejected\", \"Quote, timed out\", \"Deleted\", \"N/A\",", model);
+    }
+
+    [Fact]
     public void PEP_nest_details_shows_material_mapping_and_hands_off_to_a_material_hold()
     {
         var page = ReadPage("PepNests", "Details.cshtml");
@@ -41,6 +60,16 @@ public sealed class PepNestPresentationTests
         Assert.Contains("asp-route-pepNestName", page);
         Assert.Contains("asp-route-pepMaterialNumber", page);
         Assert.Contains("Create material hold", page);
+    }
+
+    [Fact]
+    public void PEP_nest_details_shows_a_warning_when_the_program_has_been_cut()
+    {
+        var page = ReadPage("PepNests", "Details.cshtml");
+
+        Assert.Contains("warning-banner", page);
+        Assert.Contains("Contains(\"has been cut\", StringComparison.OrdinalIgnoreCase)", page);
+        Assert.Contains("already been cut", page);
     }
 
     [Fact]
