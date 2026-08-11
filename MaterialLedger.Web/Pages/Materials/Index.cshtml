@@ -45,16 +45,33 @@
     <script>document.addEventListener('DOMContentLoaded', () => document.getElementById('add-material-dialog').showModal());</script>
 }
 
-<h2>Active materials</h2>
-<table>
-    <thead><tr><th>Material</th><th>Thickness</th></tr></thead>
-    <tbody>
-    @foreach (var spec in Model.AvailableSpecs)
+<section class="material-catalog" aria-labelledby="active-materials-title">
+    <div class="material-catalog-heading">
+        <div>
+            <h2 id="active-materials-title">Active materials</h2>
+            <p>Choose a material family, then use its available thicknesses when entering a sheet.</p>
+        </div>
+        <span class="material-catalog-count">@Model.MaterialGroups.Count material types</span>
+    </div>
+
+    <div class="material-catalog-grid">
+    @foreach (var material in Model.MaterialGroups)
     {
-        <tr>
-            <td>@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</td>
-            <td>@(spec.GaugeLabel is null ? "" : $"{spec.GaugeLabel} — ")@spec.ThicknessIn.ToString("0.####") in</td>
-        </tr>
+        <article class="material-catalog-card">
+            <h3>@material.Name</h3>
+            <div class="material-thicknesses" aria-label="Available thicknesses">
+            @foreach (var spec in material.Thicknesses)
+            {
+                <span class="thickness-badge" aria-label="@($"{spec.GaugeLabel ?? "No gauge"}, {spec.ThicknessIn:0.####} inches")">
+                    @if (spec.GaugeLabel is not null)
+                    {
+                        <span class="thickness-badge-gauge">@spec.GaugeLabel</span>
+                    }
+                    <span class="thickness-badge-decimal@(spec.GaugeLabel is null ? " thickness-badge-decimal-only" : "")">@spec.ThicknessIn.ToString("0.####")<small>in</small></span>
+                </span>
+            }
+            </div>
+        </article>
     }
-    </tbody>
-</table>
+    </div>
+</section>

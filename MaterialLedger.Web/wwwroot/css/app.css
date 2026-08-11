@@ -508,6 +508,79 @@ td {
 tr:last-child td {
   border-bottom: 0;
 }
+.material-catalog {
+  margin-top: 2.1rem;
+}
+.material-catalog-heading {
+  align-items: end;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+.material-catalog-heading p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.4rem 0 0;
+}
+.material-catalog-count {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.material-catalog-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.material-catalog-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 1rem;
+}
+.material-catalog-card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.8rem;
+}
+.material-thicknesses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.thickness-badge {
+  border: 1px solid #b9d7dc;
+  border-radius: 4px;
+  display: inline-flex;
+  font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
+  font-size: 0.77rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  line-height: 1;
+  overflow: hidden;
+}
+.thickness-badge-gauge {
+  background: #0a5261;
+  color: #fff;
+  padding: 0.43rem 0.5rem;
+}
+.thickness-badge-decimal {
+  background: #e6f3f5;
+  color: #0a5261;
+  padding: 0.43rem 0.45rem;
+}
+.thickness-badge-decimal small {
+  font-family: Inter, "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 800;
+  margin-left: 0.18rem;
+}
+.thickness-badge-decimal-only {
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
+}
 .selected-material-summary {
   max-width: 620px;
 }
