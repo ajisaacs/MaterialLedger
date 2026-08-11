@@ -47,13 +47,21 @@ public class IndexModel(MaterialSpecService materialSpecs) : PageModel
             .GroupBy(spec => new { spec.MaterialFamily, spec.Grade, spec.Finish })
             .Select(group => new MaterialCatalogGroup(
                 string.Join(" ", new[] { group.Key.MaterialFamily, group.Key.Grade, group.Key.Finish }.Where(value => !string.IsNullOrWhiteSpace(value))),
+                group.Key.MaterialFamily,
+                group.Key.Grade,
+                group.Key.Finish,
                 group.OrderBy(spec => spec.ThicknessIn).ToList()))
             .ToList();
     }
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
-public sealed record MaterialCatalogGroup(string Name, IReadOnlyList<MaterialSpec> Thicknesses);
+public sealed record MaterialCatalogGroup(
+    string Name,
+    string MaterialFamily,
+    string? Grade,
+    string? Finish,
+    IReadOnlyList<MaterialSpec> Thicknesses);
 
 public class NewMaterialInput
 {

@@ -8,7 +8,7 @@
         <p>Add a catalog material before recording a received or counted sheet.</p>
     </div>
     <div class="control-header-actions">
-        <button class="button button-primary" type="button" onclick="document.getElementById('add-material-dialog').showModal()">Add material</button>
+        <button class="button button-primary" type="button" onclick="openAddMaterial()">Add material</button>
     </div>
 </section>
 
@@ -37,7 +37,7 @@
             <label>Thickness (in) <input asp-for="NewMaterial.ThicknessIn" type="number" step="0.0001" min="0.0001" required /></label>
             <label>Gauge / label <input asp-for="NewMaterial.GaugeLabel" maxlength="20" placeholder="e.g. 16ga or 3/16" /></label>
         </fieldset>
-        <div class="dialog-actions"><button type="submit">Add material</button><button type="button" class="button-secondary" onclick="document.getElementById('add-material-dialog').close()">Cancel</button></div>
+        <div class="dialog-actions"><button id="add-material-submit" type="submit">Add material</button><button type="button" class="button-secondary" onclick="document.getElementById('add-material-dialog').close()">Cancel</button></div>
     </form>
 </dialog>
 @if (Model.ShowAddMaterialDialog)
@@ -57,21 +57,52 @@
     <div class="material-catalog-grid">
     @foreach (var material in Model.MaterialGroups)
     {
-        <article class="material-catalog-card">
+        <article class="material-catalog-card" data-material-family="@material.MaterialFamily" data-grade="@material.Grade" data-finish="@material.Finish">
             <h3>@material.Name</h3>
-            <div class="material-thicknesses" aria-label="Available thicknesses">
+            <table class="material-thickness-table">
+                <tbody>
             @foreach (var spec in material.Thicknesses)
             {
-                <span class="thickness-badge" aria-label="@($"{spec.GaugeLabel ?? "No gauge"}, {spec.ThicknessIn:0.####} inches")">
-                    @if (spec.GaugeLabel is not null)
-                    {
-                        <span class="thickness-badge-gauge">@spec.GaugeLabel</span>
-                    }
-                    <span class="thickness-badge-decimal@(spec.GaugeLabel is null ? " thickness-badge-decimal-only" : "")">@spec.ThicknessIn.ToString("0.####")<small>in</small></span>
-                </span>
+                <tr>
+                    <th scope="row">@spec.GaugeLabel</th>
+                    <td>@spec.ThicknessIn.ToString("0.####") in</td>
+                </tr>
             }
-            </div>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2"><button class="button button-secondary material-add-thickness" type="button" onclick="openAddThickness(this)">Add thickness</button></td>
+                    </tr>
+                </tfoot>
+            </table>
         </article>
     }
     </div>
 </section>
+
+<script>
+    function openAddMaterial() {
+        document.getElementById('NewMaterial_MaterialFamily').value = '';
+        document.getElementById('NewMaterial_Grade').value = '';
+        document.getElementById('NewMaterial_Finish').value = '';
+        document.getElementById('NewMaterial_ThicknessIn').value = '';
+        document.getElementById('NewMaterial_GaugeLabel').value = '';
+        document.getElementById('add-material-title').textContent = 'Add material';
+        document.getElementById('add-material-submit').textContent = 'Add material';
+        document.getElementById('add-material-dialog').showModal();
+        document.getElementById('NewMaterial_MaterialFamily').focus();
+    }
+
+    function openAddThickness(button) {
+        const material = button.closest('.material-catalog-card').dataset;
+        document.getElementById('NewMaterial_MaterialFamily').value = material.materialFamily;
+        document.getElementById('NewMaterial_Grade').value = material.grade;
+        document.getElementById('NewMaterial_Finish').value = material.finish;
+        document.getElementById('NewMaterial_ThicknessIn').value = '';
+        document.getElementById('NewMaterial_GaugeLabel').value = '';
+        document.getElementById('add-material-title').textContent = 'Add thickness — ' + button.closest('.material-catalog-card').querySelector('h3').textContent;
+        document.getElementById('add-material-submit').textContent = 'Add thickness';
+        document.getElementById('add-material-dialog').showModal();
+        document.getElementById('NewMaterial_ThicknessIn').focus();
+    }
+</script>

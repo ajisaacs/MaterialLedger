@@ -545,41 +545,34 @@ tr:last-child td {
   font-size: 1rem;
   margin-bottom: 0.8rem;
 }
-.material-thicknesses {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+.material-thickness-table {
+  margin: 0;
 }
-.thickness-badge {
-  border: 1px solid #b9d7dc;
-  border-radius: 4px;
-  display: inline-flex;
+.material-thickness-table th,
+.material-thickness-table td {
+  padding: 0.45rem 0.5rem;
+}
+.material-thickness-table th {
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: none;
+  width: 48%;
+}
+.material-thickness-table td {
   font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
-  font-size: 0.77rem;
+  font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
-  line-height: 1;
-  overflow: hidden;
+  font-weight: 700;
 }
-.thickness-badge-gauge {
-  background: #0a5261;
-  color: #fff;
-  padding: 0.43rem 0.5rem;
+.material-thickness-table tfoot td {
+  border-bottom: 0;
+  padding: 0.65rem 0 0;
 }
-.thickness-badge-decimal {
-  background: #e6f3f5;
-  color: #0a5261;
-  padding: 0.43rem 0.45rem;
-}
-.thickness-badge-decimal small {
-  font-family: Inter, "IBM Plex Sans", "Segoe UI", sans-serif;
-  font-size: 0.65rem;
-  font-weight: 800;
-  margin-left: 0.18rem;
-}
-.thickness-badge-decimal-only {
-  padding-left: 0.55rem;
-  padding-right: 0.55rem;
+.material-add-thickness {
+  font-size: 0.78rem;
+  padding: 0.48rem 0.65rem;
 }
 .selected-material-summary {
   max-width: 620px;
