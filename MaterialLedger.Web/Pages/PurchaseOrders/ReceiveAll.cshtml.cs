@@ -53,6 +53,85 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
         return Page();
     }
 
+    public async Task<IActionResult> OnPostAsync()
+    {
+        Order = await LoadOrderAsync();
+        if (Order is null) return NotFound();
+        LeafLocations = await ActiveMaterialSlotQuery.Create(db).ToListAsync();
+
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        foreach (var row in Rows)
+        {
+            row.Error = null;
+            row.Warning = null;
+            if (!row.Selected) continue;
+
+            if (row.LocationId is null)
+            {
+                row.Error = "Choose a location.";
+                continue;
+            }
+            if (row.Quantity < 1 || row.Quantity != decimal.Truncate(row.Quantity))
+            {
+                row.Error = "Quantity must be a whole number of at least 1.";
+                continue;
+            }
+
+            var line = Order.Lines.FirstOrDefault(x => x.PurchaseOrderLineId == row.PurchaseOrderLineId);
+            if (line is null)
+            {
+                row.Error = "This line no longer exists.";
+                continue;
+            }
+
+            try
+            {
+                var request = new ReceiveMaterialRequest(
+                    InventoryLocationId: row.LocationId.Value,
+                    MaterialSpecId: line.MaterialSpecId,
+                    ItemKind: InventoryItemKind.FullSheetBundle,
+                    Quantity: row.Quantity,
+                    UsableWidthIn: line.UsableWidthIn,
+                    UsableLengthIn: line.UsableLengthIn,
+                    ShapeClassification: ShapeClassification.Rectangular,
+                    IsQuarantined: row.IsQuarantined,
+                    VendorName: Order.VendorName,
+                    PurchaseOrderNumber: Order.PurchaseOrderNumber,
+                    ReceiptNumber: null,
+                    VendorPartNumber: line.VendorPartNumber,
+                    HeatLotNumber: row.HeatLotNumber,
+                    CostPerUnit: row.CostPerUnit,
+                    Notes: row.Notes,
+                    PurchaseOrderLineId: line.PurchaseOrderLineId);
+
+                var result = await receiveMaterial.ReceiveMaterialAsync(row.CorrelationId, request, userId);
+                row.SucceededItemCode = result.PublicItemCode;
+                row.LocationDisplay = LeafLocations.FirstOrDefault(x => x.InventoryLocationId == row.LocationId)?.LocationCode;
+
+                if (row.AllocationId is not null)
+                {
+                    try
+                    {
+                        await purchaseOrderService.RemoveLocationAllocationAsync(Guid.NewGuid(), row.AllocationId.Value, userId);
+                    }
+                    catch (Exception)
+                    {
+                        row.Warning = "Received, but its plan entry couldn't be cleared — remove it manually.";
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or OperationConflictException)
+            {
+                row.Error = ex is OperationConflictException
+                    ? "This row was already submitted with different values — please review and resubmit."
+                    : ex.Message;
+            }
+        }
+
+        return Page();
+    }
+
     private Task<PurchaseOrder?> LoadOrderAsync() => db.PurchaseOrders
         .Include(x => x.Lines).ThenInclude(x => x.MaterialSpec)
         .Include(x => x.Lines).ThenInclude(x => x.LocationAllocations).ThenInclude(x => x.InventoryLocation)
