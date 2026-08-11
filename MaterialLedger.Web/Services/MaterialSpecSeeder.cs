@@ -27,7 +27,7 @@ public class MaterialSpecSeeder(MaterialSpecService materialSpecService)
         .. ForMaterial("Steel", "HRPO", null, GaugeTable.Steel),
         .. ForMaterial("Steel", "A36", null, GaugeTable.Plate),
         .. ForMaterial("Steel", "A572 GR50", null, GaugeTable.Plate),
-        new SeedSpec("Steel", "Floor Plate", null, 0.1875m, "Steel Floor Plate — 3/16 (0.1875\")", "3/16")
+        .. ForMaterial("Steel", "Floor Plate", null, GaugeTable.FractionalPlate)
     ];
 
     public async Task SeedAsync()

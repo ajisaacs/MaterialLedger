@@ -12,7 +12,7 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
     public MaterialSpecSeederTests(SqlServerTestDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task SeedAsync_EmptyDatabase_CreatesOneHundredThirtyNineSpecs()
+    public async Task SeedAsync_EmptyDatabase_CreatesOneHundredFortySixSpecs()
     {
         await using var db = _fixture.CreateContext();
         var seeder = new MaterialSpecSeeder(new MaterialSpecService(db));
@@ -20,7 +20,7 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
         await seeder.SeedAsync();
 
         var count = await db.MaterialSpecs.CountAsync();
-        Assert.Equal(139, count);
+        Assert.Equal(146, count);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
         await seeder.SeedAsync();
 
         var count = await db.MaterialSpecs.CountAsync();
-        Assert.Equal(139, count);
+        Assert.Equal(146, count);
     }
 
     [Fact]
@@ -131,9 +131,26 @@ public class MaterialSpecSeederTests : IClassFixture<SqlServerTestDatabaseFixtur
         await seeder.SeedAsync();
 
         var spec = await db.MaterialSpecs.SingleAsync(x =>
-            x.MaterialFamily == "Steel" && x.Grade == "Floor Plate");
+            x.MaterialFamily == "Steel" && x.Grade == "Floor Plate" && x.ThicknessIn == 0.1875m);
         Assert.Null(spec.Finish);
-        Assert.Equal(0.1875m, spec.ThicknessIn);
+        Assert.Equal("3/16", spec.GaugeLabel);
+    }
+
+    [Fact]
+    public async Task SeedAsync_FloorPlate_CoversAllFractionalThicknessesUpToOneInch()
+    {
+        await using var db = _fixture.CreateContext();
+        var seeder = new MaterialSpecSeeder(new MaterialSpecService(db));
+
+        await seeder.SeedAsync();
+
+        var thicknesses = await db.MaterialSpecs
+            .Where(x => x.MaterialFamily == "Steel" && x.Grade == "Floor Plate")
+            .Select(x => x.ThicknessIn).OrderBy(t => t).ToListAsync();
+
+        Assert.Equal(
+            [0.1875m, 0.2500m, 0.3125m, 0.3750m, 0.5000m, 0.6250m, 0.7500m, 1.0000m],
+            thicknesses);
     }
 
     [Fact]
