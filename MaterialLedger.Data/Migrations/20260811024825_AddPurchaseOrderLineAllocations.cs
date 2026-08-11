@@ -29,6 +29,13 @@ namespace MaterialLedger.Data.Migrations
                     table.PrimaryKey("PK_PurchaseOrderLineAllocations", x => x.PurchaseOrderLineAllocationId);
                     table.CheckConstraint("CK_PurchaseOrderLineAllocation_QuantityPlanned", "[QuantityPlanned] = FLOOR([QuantityPlanned]) AND [QuantityPlanned] >= 1");
                     table.ForeignKey(
+                        name: "FK_PurchaseOrderLineAllocations_AppUsers_CreatedBy",
+                        column: x => x.CreatedBy,
+                        principalSchema: "material",
+                        principalTable: "AppUsers",
+                        principalColumn: "AppUserId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_PurchaseOrderLineAllocations_InventoryLocations_InventoryLocationId",
                         column: x => x.InventoryLocationId,
                         principalSchema: "material",
@@ -43,6 +50,12 @@ namespace MaterialLedger.Data.Migrations
                         principalColumn: "PurchaseOrderLineId",
                         onDelete: ReferentialAction.Restrict);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PurchaseOrderLineAllocations_CreatedBy",
+                schema: "material",
+                table: "PurchaseOrderLineAllocations",
+                column: "CreatedBy");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PurchaseOrderLineAllocations_InventoryLocationId",

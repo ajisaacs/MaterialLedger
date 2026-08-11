@@ -821,6 +821,8 @@ namespace MaterialLedger.Data.Migrations
 
                     b.HasKey("PurchaseOrderLineAllocationId");
 
+                    b.HasIndex("CreatedBy");
+
                     b.HasIndex("InventoryLocationId");
 
                     b.HasIndex("PurchaseOrderLineId");
@@ -1143,6 +1145,12 @@ namespace MaterialLedger.Data.Migrations
 
             modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLineAllocation", b =>
                 {
+                    b.HasOne("MaterialLedger.Data.Models.AppUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("MaterialLedger.Data.Models.InventoryLocation", "InventoryLocation")
                         .WithMany()
                         .HasForeignKey("InventoryLocationId")
@@ -1154,6 +1162,8 @@ namespace MaterialLedger.Data.Migrations
                         .HasForeignKey("PurchaseOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CreatedByUser");
 
                     b.Navigation("InventoryLocation");
 

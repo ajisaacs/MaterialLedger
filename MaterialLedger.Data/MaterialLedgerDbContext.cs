@@ -137,6 +137,8 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
                 .HasForeignKey(x => x.PurchaseOrderLineId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.InventoryLocation).WithMany()
                 .HasForeignKey(x => x.InventoryLocationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.CreatedByUser).WithMany()
+                .HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<InventoryItem>(e =>

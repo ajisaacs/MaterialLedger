@@ -45,4 +45,5 @@ public class PurchaseOrderLineAllocation
     public decimal QuantityPlanned { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public int CreatedBy { get; set; }
+    public AppUser? CreatedByUser { get; set; }
 }
