@@ -133,4 +133,80 @@ public class AccountPageTests : IClassFixture<SqlServerTestDatabaseFixture>
         Assert.Equal(userId.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         Assert.Equal(AppUserRole.Operator.ToString(), auth.LastSignedInPrincipal.FindFirst(ClaimTypes.Role)?.Value);
     }
+
+    [Fact]
+    public async Task OnPostPasswordAsync_ValidChange_RehashesPassword()
+    {
+        await using var db = _fixture.CreateContext();
+        var hasher = new PasswordHasher<AppUser>();
+        var userId = await SeedUserAsync(db, hasher, "correct-password");
+        var model = NewModel(db, hasher, userId);
+        model.CurrentPassword = "correct-password";
+        model.NewPassword = "brand-new-password";
+        model.ConfirmPassword = "brand-new-password";
+
+        var result = await model.OnPostPasswordAsync();
+
+        Assert.True(model.PasswordSuccess);
+        Assert.Null(model.PasswordError);
+        var reloaded = await db.AppUsers.AsNoTracking().SingleAsync(x => x.AppUserId == userId);
+        Assert.Equal(PasswordVerificationResult.Success,
+            hasher.VerifyHashedPassword(reloaded, reloaded.PasswordHash, "brand-new-password"));
+        Assert.Equal(PasswordVerificationResult.Failed,
+            hasher.VerifyHashedPassword(reloaded, reloaded.PasswordHash, "correct-password"));
+    }
+
+    [Fact]
+    public async Task OnPostPasswordAsync_WrongCurrentPassword_SetsErrorAndDoesNotChange()
+    {
+        await using var db = _fixture.CreateContext();
+        var hasher = new PasswordHasher<AppUser>();
+        var userId = await SeedUserAsync(db, hasher, "correct-password");
+        var model = NewModel(db, hasher, userId);
+        model.CurrentPassword = "wrong-password";
+        model.NewPassword = "brand-new-password";
+        model.ConfirmPassword = "brand-new-password";
+
+        await model.OnPostPasswordAsync();
+
+        Assert.False(model.PasswordSuccess);
+        Assert.Equal("Current password is incorrect.", model.PasswordError);
+        var reloaded = await db.AppUsers.AsNoTracking().SingleAsync(x => x.AppUserId == userId);
+        Assert.Equal(PasswordVerificationResult.Success,
+            hasher.VerifyHashedPassword(reloaded, reloaded.PasswordHash, "correct-password"));
+    }
+
+    [Fact]
+    public async Task OnPostPasswordAsync_NewPasswordTooShort_SetsError()
+    {
+        await using var db = _fixture.CreateContext();
+        var hasher = new PasswordHasher<AppUser>();
+        var userId = await SeedUserAsync(db, hasher, "correct-password");
+        var model = NewModel(db, hasher, userId);
+        model.CurrentPassword = "correct-password";
+        model.NewPassword = "short1";
+        model.ConfirmPassword = "short1";
+
+        await model.OnPostPasswordAsync();
+
+        Assert.False(model.PasswordSuccess);
+        Assert.Equal("New password must be at least 8 characters.", model.PasswordError);
+    }
+
+    [Fact]
+    public async Task OnPostPasswordAsync_ConfirmationMismatch_SetsError()
+    {
+        await using var db = _fixture.CreateContext();
+        var hasher = new PasswordHasher<AppUser>();
+        var userId = await SeedUserAsync(db, hasher, "correct-password");
+        var model = NewModel(db, hasher, userId);
+        model.CurrentPassword = "correct-password";
+        model.NewPassword = "brand-new-password";
+        model.ConfirmPassword = "does-not-match";
+
+        await model.OnPostPasswordAsync();
+
+        Assert.False(model.PasswordSuccess);
+        Assert.Equal("New password and confirmation do not match.", model.PasswordError);
+    }
 }

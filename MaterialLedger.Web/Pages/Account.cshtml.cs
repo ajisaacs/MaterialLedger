@@ -18,6 +18,12 @@ public class AccountModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> ha
     public string? ProfileError { get; set; }
     public bool ProfileSuccess { get; set; }
 
+    [BindProperty] public string CurrentPassword { get; set; } = string.Empty;
+    [BindProperty] public string NewPassword { get; set; } = string.Empty;
+    [BindProperty] public string ConfirmPassword { get; set; } = string.Empty;
+    public string? PasswordError { get; set; }
+    public bool PasswordSuccess { get; set; }
+
     public async Task OnGetAsync()
     {
         var user = await LoadCurrentUserAsync();
@@ -59,6 +65,37 @@ public class AccountModel(MaterialLedgerDbContext db, PasswordHasher<AppUser> ha
 
         DisplayName = trimmed;
         ProfileSuccess = true;
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostPasswordAsync()
+    {
+        var user = await LoadCurrentUserAsync();
+        DisplayName = user.DisplayName;
+
+        var verification = hasher.VerifyHashedPassword(user, user.PasswordHash, CurrentPassword);
+        if (verification == PasswordVerificationResult.Failed)
+        {
+            PasswordError = "Current password is incorrect.";
+            return Page();
+        }
+
+        if (NewPassword.Length < 8)
+        {
+            PasswordError = "New password must be at least 8 characters.";
+            return Page();
+        }
+
+        if (NewPassword != ConfirmPassword)
+        {
+            PasswordError = "New password and confirmation do not match.";
+            return Page();
+        }
+
+        user.PasswordHash = hasher.HashPassword(user, NewPassword);
+        await db.SaveChangesAsync();
+
+        PasswordSuccess = true;
         return Page();
     }
 
