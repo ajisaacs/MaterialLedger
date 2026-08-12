@@ -305,6 +305,29 @@ p {
 .dialog-actions button {
   margin: 0;
 }
+.sheet-entry-log {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  margin-bottom: 0.9rem;
+  max-height: 8rem;
+  overflow-y: auto;
+  padding: 0.7rem 0.9rem;
+}
+.sheet-entry-log p {
+  margin: 0 0 0.4rem;
+}
+.sheet-entry-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sheet-entry-log li {
+  border-top: 1px solid var(--line);
+  padding: 0.3rem 0;
+}
+.sheet-entry-log li:first-child {
+  border-top: none;
+}
 .button-secondary {
   background: var(--surface);
   border: 1px solid var(--blue);

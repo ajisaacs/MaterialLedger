@@ -30,8 +30,6 @@ public class IndexModel(
     [BindProperty] public NewSheetInput NewSheet { get; set; } = new();
     public List<InventoryLocation> MaterialLocations { get; private set; } = [];
     public List<MaterialSpec> AvailableSpecs { get; private set; } = [];
-    public string? NewSheetError { get; private set; }
-    public bool ShowAddSheetDialog { get; private set; }
 
     public async Task OnGetAsync()
     {
@@ -44,33 +42,24 @@ public class IndexModel(
         if (!User.IsInRole("Programmer") && !User.IsInRole("Manager"))
             return Forbid();
 
-        Summary = await workQueue.GetAsync();
         await LoadNewSheetOptionsAsync();
-        ShowAddSheetDialog = true;
 
-        if (MaterialLocations.All(x => x.InventoryLocationId != NewSheet.LocationId))
-        {
-            NewSheetError = "Choose an active material slot.";
-            return Page();
-        }
+        var slot = MaterialLocations.FirstOrDefault(x => x.InventoryLocationId == NewSheet.LocationId);
+        if (slot is null)
+            return new JsonResult(new AddSheetResponse(false, "Choose an active material slot."));
 
         if (NewSheet.ExistingMaterialSpecId is null)
-        {
-            NewSheetError = "Choose a material and thickness from the catalog.";
-            return Page();
-        }
+            return new JsonResult(new AddSheetResponse(false, "Choose a material and thickness from the catalog."));
 
-        if (AvailableSpecs.All(x => x.MaterialSpecId != NewSheet.ExistingMaterialSpecId))
-        {
-            NewSheetError = "The selected material is no longer available. Please choose another.";
-            return Page();
-        }
+        var spec = AvailableSpecs.FirstOrDefault(x => x.MaterialSpecId == NewSheet.ExistingMaterialSpecId);
+        if (spec is null)
+            return new JsonResult(new AddSheetResponse(false, "The selected material is no longer available. Please choose another."));
 
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var result = await openingBalance.RecordOpeningBalanceAsync(
-                NewSheet.CorrelationId,
+                Guid.NewGuid(),
                 new OpeningBalanceRequest(
                     NewSheet.LocationId,
                     NewSheet.ExistingMaterialSpecId.Value,
@@ -83,15 +72,17 @@ public class IndexModel(
                     NewSheet.Notes),
                 userId);
 
-            return RedirectToPage("/Census/Success", new { code = result.PublicItemCode });
+            return new JsonResult(new AddSheetResponse(
+                true, null, result.PublicItemCode, slot.LocationCode, spec.DisplayName,
+                NewSheet.UsableWidthIn, NewSheet.UsableLengthIn));
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException
             or MaterialLedger.Data.Idempotency.OperationConflictException)
         {
-            NewSheetError = ex is MaterialLedger.Data.Idempotency.OperationConflictException
+            var message = ex is MaterialLedger.Data.Idempotency.OperationConflictException
                 ? "This form was already submitted with different values — please review and resubmit."
                 : ex.Message;
-            return Page();
+            return new JsonResult(new AddSheetResponse(false, message));
         }
     }
 
@@ -109,10 +100,18 @@ public class IndexModel(
 public class NewSheetInput
 {
     public long LocationId { get; set; }
-    public Guid CorrelationId { get; set; } = Guid.NewGuid();
     public long? ExistingMaterialSpecId { get; set; }
     public decimal? UsableWidthIn { get; set; }
     public decimal? UsableLengthIn { get; set; }
     public bool IsQuarantined { get; set; }
     public string? Notes { get; set; }
 }
+
+public record AddSheetResponse(
+    bool Success,
+    string? Error,
+    string? ItemCode = null,
+    string? SlotCode = null,
+    string? MaterialDisplayName = null,
+    decimal? UsableWidthIn = null,
+    decimal? UsableLengthIn = null);

@@ -29,13 +29,13 @@
             </div>
             <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close add sheet">×</button></form>
         </div>
-        @if (Model.NewSheetError is not null)
-        {
-            <p class="form-error" role="alert">@Model.NewSheetError</p>
-        }
+        <div id="add-sheet-log" class="sheet-entry-log" hidden>
+            <p class="form-hint">Added this session:</p>
+            <ul id="add-sheet-log-list"></ul>
+        </div>
+        <p id="add-sheet-error" class="form-error" role="alert" hidden></p>
         <form method="post" action="?handler=AddSheet" class="sheet-entry-form">
             @Html.AntiForgeryToken()
-            <input type="hidden" asp-for="NewSheet.CorrelationId" />
             <label>Rack
                 <select id="new-sheet-rack" required>
                     <option value="">Choose rack</option>
@@ -95,10 +95,10 @@
         initDependentSelect(document.getElementById('new-sheet-material'), document.getElementById('new-sheet-thickness'), 'materialKey');
         initDependentSelect(document.getElementById('new-sheet-rack'), document.getElementById('new-sheet-slot'), 'rackId');
     </script>
-    @if (Model.ShowAddSheetDialog)
-    {
-        <script>document.addEventListener('DOMContentLoaded', () => document.getElementById('add-sheet-dialog').showModal());</script>
-    }
+    <script src="~/js/quick-sheet-entry.js" asp-append-version="true"></script>
+    <script>
+        initAddSheetForm(document.getElementById('add-sheet-dialog'));
+    </script>
 }
 
 <section class="summary-grid" aria-label="Current material work">

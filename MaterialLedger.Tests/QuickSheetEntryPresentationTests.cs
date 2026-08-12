@@ -63,5 +63,17 @@ public sealed class QuickSheetEntryPresentationTests
         Assert.DoesNotContain("filterThicknesses", page);
     }
 
+    [Fact]
+    public void Add_sheet_dialog_has_no_client_bound_correlation_id_and_provides_a_session_log_and_error_slot()
+    {
+        var page = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Index.cshtml"));
+
+        Assert.DoesNotContain("NewSheet.CorrelationId", page);
+        Assert.DoesNotContain("Model.ShowAddSheetDialog", page);
+        Assert.Contains("id=\"add-sheet-log\"", page);
+        Assert.Contains("id=\"add-sheet-log-list\"", page);
+        Assert.Contains("id=\"add-sheet-error\"", page);
+    }
+
     private static string RepositoryRoot => Path.GetFullPath("../../../../", AppContext.BaseDirectory);
 }
