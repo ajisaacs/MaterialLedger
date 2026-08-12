@@ -163,6 +163,23 @@ public sealed class NavigationPresentationTests
     }
 
     [Fact]
+    public void Workboard_uses_compact_queue_rows_and_remains_usable_on_mobile()
+    {
+        var controlBoard = ReadPage("Index.cshtml");
+        var css = CssTestHelper.ReadEffectiveAppCss();
+
+        Assert.Contains("class=\"workboard-toolbar\"", controlBoard);
+        Assert.Contains("class=\"action-queue\"", controlBoard);
+        Assert.Contains("class=\"action-queue-row action-queue-row-alert\"", controlBoard);
+        Assert.Contains("class=\"workboard-search\"", controlBoard);
+        Assert.Contains("class=\"quick-actions\"", controlBoard);
+        Assert.Matches("\\.action-queue-row\\s*\\{[\\s\\S]*?display: grid;[\\s\\S]*?grid-template-columns: minmax\\(12rem, 1fr\\) minmax\\(8rem, 1fr\\) auto", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.action-queue-row\\s*\\{[\\s\\S]*?grid-template-columns: 1fr auto", css);
+        Assert.Matches("\\.workboard-search\\s*\\{[\\s\\S]*?display: grid;[\\s\\S]*?grid-template-columns: 16rem minmax\\(0, 1fr\\) auto", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.workboard-search\\s*\\{[\\s\\S]*?grid-template-columns: 1fr auto;[\\s\\S]*?width: 100%", css);
+    }
+
+    [Fact]
     public void Material_catalog_collapses_mobile_thickness_lists_without_changing_desktop_table()
     {
         var catalog = ReadPage("Materials", "Index.cshtml");

@@ -1,3 +1,103 @@
+.workboard-toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1.25rem;
+  justify-content: space-between;
+  padding: 0 0 1rem;
+}
+.workboard-toolbar h1,
+.workboard-section-heading h2 {
+  margin: 0;
+}
+.workboard-toolbar h1 {
+  font-size: 1.7rem;
+}
+.workboard-toolbar p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0.35rem 0 0;
+}
+.workboard-toolbar-actions,
+.quick-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.workboard-toolbar-actions .button,
+.quick-actions .button {
+  margin: 0;
+}
+.workboard-section {
+  margin-top: 2rem;
+}
+.workboard-section-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.workboard-section-heading a {
+  font-size: 0.85rem;
+  font-weight: 750;
+}
+.action-queue {
+  border: 1px solid var(--line);
+}
+.action-queue-row {
+  align-items: center;
+  background: var(--surface);
+  border-left: 4px solid transparent;
+  color: var(--ink);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 1fr) auto;
+  padding: 0.9rem 1rem;
+  text-decoration: none;
+}
+.action-queue-row + .action-queue-row {
+  border-top: 1px solid var(--line);
+}
+.action-queue-row:hover {
+  background: #f7fbfb;
+}
+.action-queue-row span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.action-queue-row b {
+  color: var(--blue-dark);
+  font-size: 0.82rem;
+}
+.action-queue-row-warning {
+  border-left-color: var(--amber);
+}
+.action-queue-row-alert {
+  border-left-color: var(--red);
+}
+.action-queue .empty-state {
+  border: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 0.15rem 0;
+}
+.workboard-search {
+  align-items: center;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: 16rem minmax(0, 1fr) auto;
+}
+.workboard-search label {
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+.workboard-search input[type="search"] {
+  min-width: 0;
+}
+
 .summary-grid {
   display: grid;
   gap: 1px;

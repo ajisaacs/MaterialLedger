@@ -129,9 +129,37 @@
     margin-top: 0.85rem;
   }
   .control-header,
-  .section-heading {
+  .section-heading,
+  .workboard-toolbar,
+  .workboard-section-heading {
     align-items: start;
     flex-direction: column;
+  }
+  .workboard-toolbar-actions,
+  .quick-actions {
+    align-items: stretch;
+    width: 100%;
+  }
+  .workboard-toolbar-actions .button,
+  .quick-actions .button {
+    flex: 1;
+    text-align: center;
+  }
+  .workboard-search {
+    align-items: center;
+    grid-template-columns: 1fr auto;
+    width: 100%;
+  }
+  .workboard-search label {
+    grid-column: 1 / -1;
+  }
+  .action-queue-row {
+    align-items: start;
+    grid-template-columns: 1fr auto;
+  }
+  .action-queue-row span {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
   .summary-grid,
   .workflow-grid,
