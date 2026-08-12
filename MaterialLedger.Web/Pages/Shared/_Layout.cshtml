@@ -13,25 +13,28 @@
         <aside class="sidebar">
             <a class="brand" asp-page="/Index"><span class="brand-mark">ML</span><span>Material<small>Ledger</small></span></a>
             <p class="rail-caption">Material control</p>
-            <nav class="primary-nav" aria-label="Primary navigation">
-                <p>Cutting workflow</p>
-                <a asp-page="/Index">Control board</a>
-                <a asp-page="/Inventory/Search">Find material</a>
-                <a asp-page="/PepNests/Index">PEP nests</a>
-                <a asp-page="/Reservations/Index">Material holds</a>
-                @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Record cut result</a> }
-                <p>Inventory setup</p>
-                @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
-                {
-                    <a asp-page="/PurchaseOrders/Index">Order material</a>
-                    <a asp-page="/Receiving/SelectLocation">Receive delivery</a>
-                    <a asp-page="/Census/SelectSlot">Count existing material</a>
-                    <a asp-page="/Materials/Index">Material catalog</a>
-                }
-                <a asp-page="/Locations/Index">Material locations</a>
-                <p>Review</p>
-                <a asp-page="/Exceptions/Index">Attention needed</a>
-            </nav>
+            <details class="primary-nav-container">
+                <summary><span>Menu</span><span class="mobile-nav-icon" aria-hidden="true"></span></summary>
+                <nav class="primary-nav" aria-label="Primary navigation">
+                    <p>Cutting workflow</p>
+                    <a asp-page="/Index">Control board</a>
+                    <a asp-page="/Inventory/Search">Find material</a>
+                    <a asp-page="/PepNests/Index">PEP nests</a>
+                    <a asp-page="/Reservations/Index">Material holds</a>
+                    @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Record cut result</a> }
+                    <p>Inventory setup</p>
+                    @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+                    {
+                        <a asp-page="/PurchaseOrders/Index">Order material</a>
+                        <a asp-page="/Receiving/SelectLocation">Receive delivery</a>
+                        <a asp-page="/Census/SelectSlot">Count existing material</a>
+                        <a asp-page="/Materials/Index">Material catalog</a>
+                    }
+                    <a asp-page="/Locations/Index">Material locations</a>
+                    <p>Review</p>
+                    <a asp-page="/Exceptions/Index">Attention needed</a>
+                </nav>
+            </details>
             <div class="account"><span class="account-avatar">@User.Identity.Name?.Substring(0, 1).ToUpper()</span><div><a class="account-name" asp-page="/Account"><strong>@User.Identity.Name</strong></a><small>@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</small></div><form method="post" action="/Logout">@Html.AntiForgeryToken()<button class="signout" type="submit">Sign out</button></form></div>
         </aside>
         <main class="workspace"><article class="content">@RenderBody()</article></main>
