@@ -34,7 +34,15 @@ public class DetailsModel(MaterialLedgerDbContext db, IReservationService reserv
         return Page();
     }
 
-    public async Task<IActionResult> OnPostApproveAsync(long id)
+    public Task<IActionResult> OnPostApproveAsync(long id) =>
+        ExecuteActionAsync(id, userId =>
+            reservations.ApproveReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId));
+
+    public Task<IActionResult> OnPostReleaseAsync(long id) =>
+        ExecuteActionAsync(id, userId =>
+            reservations.ReleaseReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId, ReleaseNotes));
+
+    private async Task<IActionResult> ExecuteActionAsync(long id, Func<int, Task> action)
     {
         if (!User.IsInRole("Programmer") && !User.IsInRole("Manager"))
             return Forbid();
@@ -42,31 +50,10 @@ public class DetailsModel(MaterialLedgerDbContext db, IReservationService reserv
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await reservations.ApproveReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId);
+            await action(userId);
         }
         catch (Exception ex) when (ex is FormatException or InvalidOperationException or ReservationBalanceException
             or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
-        {
-            var message = ex is DbUpdateException
-                ? "This reservation was changed by someone else — refresh and try again."
-                : ex.Message;
-            return await ShowErrorAsync(id, message);
-        }
-
-        return RedirectToPage("Details", new { id, Status, Equipment });
-    }
-
-    public async Task<IActionResult> OnPostReleaseAsync(long id)
-    {
-        if (!User.IsInRole("Programmer") && !User.IsInRole("Manager"))
-            return Forbid();
-
-        try
-        {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await reservations.ReleaseReservationAsync(CorrelationId, id, Convert.FromBase64String(ExpectedRowVersionBase64), userId, ReleaseNotes);
-        }
-        catch (Exception ex) when (ex is FormatException or InvalidOperationException or ReservationConcurrencyException or OperationConflictException or DbUpdateException)
         {
             var message = ex is DbUpdateException
                 ? "This reservation was changed by someone else — refresh and try again."

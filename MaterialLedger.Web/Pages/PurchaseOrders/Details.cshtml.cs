@@ -50,37 +50,11 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
         return RedirectToPage(new { id = Id });
     }
 
-    public async Task<IActionResult> OnPostCancelLineAsync(long lineId)
-    {
-        try
-        {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await purchaseOrderService.CancelLineAsync(CorrelationId, lineId, userId);
-            return RedirectToPage(new { id = Id });
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException)
-        {
-            if (!await LoadAsync()) return NotFound();
-            Error = ex.Message;
-            return Page();
-        }
-    }
+    public Task<IActionResult> OnPostCancelLineAsync(long lineId) =>
+        ExecuteLineActionAsync(userId => purchaseOrderService.CancelLineAsync(CorrelationId, lineId, userId));
 
-    public async Task<IActionResult> OnPostCloseRemainingAsync()
-    {
-        try
-        {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await purchaseOrderService.CloseRemainingAsync(CorrelationId, Id, userId);
-            return RedirectToPage(new { id = Id });
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException)
-        {
-            if (!await LoadAsync()) return NotFound();
-            Error = ex.Message;
-            return Page();
-        }
-    }
+    public Task<IActionResult> OnPostCloseRemainingAsync() =>
+        ExecuteLineActionAsync(userId => purchaseOrderService.CloseRemainingAsync(CorrelationId, Id, userId));
 
     public async Task<IActionResult> OnPostAddAllocationAsync(long lineId, long inventoryLocationId, decimal quantity)
     {
@@ -99,12 +73,15 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
         }
     }
 
-    public async Task<IActionResult> OnPostRemoveAllocationAsync(long allocationId)
+    public Task<IActionResult> OnPostRemoveAllocationAsync(long allocationId) =>
+        ExecuteLineActionAsync(userId => purchaseOrderService.RemoveLocationAllocationAsync(CorrelationId, allocationId, userId));
+
+    private async Task<IActionResult> ExecuteLineActionAsync(Func<int, Task> action)
     {
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await purchaseOrderService.RemoveLocationAllocationAsync(CorrelationId, allocationId, userId);
+            await action(userId);
             return RedirectToPage(new { id = Id });
         }
         catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException)
