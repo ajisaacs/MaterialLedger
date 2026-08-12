@@ -4,27 +4,70 @@
   margin: 1.1rem 0;
   padding: 1rem 1.1rem;
 }
+.inventory-filter-heading {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.inventory-filter-heading .eyebrow {
+  margin-bottom: 0.15rem;
+}
+.inventory-filter-heading h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.inventory-filter-heading button {
+  margin: 0;
+  white-space: nowrap;
+}
+.active-filter-list {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.4rem;
+  margin: 0.8rem 0 0;
+  padding-left: 1.2rem;
+}
+.active-filter-list li {
+  padding-left: 0.05rem;
+}
+.active-filter-list strong {
+  color: var(--ink);
+}
+.clear-filters {
+  display: inline-block;
+  font-size: 0.84rem;
+  font-weight: 800;
+  margin-top: 0.85rem;
+}
+.inventory-filter-dialog {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  max-height: calc(100vh - 2rem);
+  max-width: min(760px, calc(100vw - 2rem));
+  padding: 1.4rem;
+  width: 100%;
+}
+.inventory-filter-dialog::backdrop {
+  background: rgb(18 36 43 / 65%);
+}
 .inventory-filter-form {
   max-width: none !important;
 }
-.primary-filters {
-  align-items: end;
+.inventory-filter-fields {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem 1rem;
+  gap: 0.8rem 1rem;
+  margin-top: 1rem;
 }
-.primary-filters label,
-.advanced-filter-fields label {
+.inventory-filter-fields > label {
   margin: 0;
   min-width: 9.5rem;
 }
-.primary-filters input,
-.advanced-filter-fields input,
-.advanced-filter-fields select {
+.inventory-filter-fields input,
+.inventory-filter-fields select {
   width: 100%;
-}
-.primary-filters button {
-  margin: 0;
 }
 .dimension-filter {
   align-items: end;
@@ -57,47 +100,6 @@
 }
 .available-toggle input {
   width: auto !important;
-}
-.advanced-filters {
-  border-top: 1px solid var(--line);
-  margin-top: 1rem;
-  padding-top: 0.85rem;
-}
-.advanced-filters summary {
-  color: var(--blue-dark);
-  cursor: pointer;
-  font-size: 0.84rem;
-  font-weight: 800;
-  width: max-content;
-}
-.advanced-filter-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem 1rem;
-  margin-top: 0.9rem;
-}
-.active-filter-summary {
-  align-items: center;
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.78rem;
-  gap: 0.45rem;
-  margin-top: 0.9rem;
-}
-.active-filter-summary > span:first-child {
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.filter-chip {
-  background: #e6edef;
-  border: 1px solid var(--line);
-  color: var(--ink);
-  padding: 0.25rem 0.45rem;
-}
-.active-filter-summary a {
-  font-weight: 800;
-  margin-left: 0.3rem;
 }
 .result-count {
   color: var(--muted);

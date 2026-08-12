@@ -5,16 +5,18 @@ namespace MaterialLedger.Tests;
 public class InventorySearchPresentationTests
 {
     [Fact]
-    public void SearchPage_UsesCompactFilterBarWithExpandableAdvancedFilters()
+    public void SearchPage_ShowsAppliedFiltersAndMovesTheFullFormIntoAModal()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../"));
         var markup = File.ReadAllText(Path.Combine(repositoryRoot, "MaterialLedger.Web", "Pages", "Inventory", "Search.cshtml"));
 
-        Assert.Contains("class=\"inventory-search-bar\"", markup);
-        Assert.Contains("class=\"dimension-filter\"", markup);
-        Assert.Contains("<details class=\"advanced-filters\"", markup);
-        Assert.Contains("<summary>More filters</summary>", markup);
-        Assert.Contains("class=\"active-filter-summary\"", markup);
-        Assert.Contains("Clear all", markup);
+        Assert.Contains("class=\"active-filter-list\"", markup);
+        Assert.Contains("<strong>Availability:</strong>", markup);
+        Assert.Contains("id=\"inventory-filter-dialog\"", markup);
+        Assert.Contains("class=\"inventory-filter-dialog\"", markup);
+        Assert.Contains("Filter material", markup);
+        Assert.Contains("Apply filters", markup);
+        Assert.Contains("Clear all filters", markup);
+        Assert.DoesNotContain("advanced-filters", markup);
     }
 }

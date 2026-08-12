@@ -4,16 +4,23 @@
 @using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
 @{
-    var hasAdvancedFilters = !string.IsNullOrWhiteSpace(Model.Grade)
-        || !string.IsNullOrWhiteSpace(Model.Finish)
-        || Model.ItemKind is not null
-        || !string.IsNullOrWhiteSpace(Model.LocationCode);
-    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.MaterialFamily)
-        || Model.ThicknessIn is not null
-        || Model.MinUsableWidthIn is not null
-        || Model.MinUsableLengthIn is not null
-        || hasAdvancedFilters
-        || !Model.AvailableOnly;
+    var appliedFilterCount = 0;
+    if (!string.IsNullOrWhiteSpace(Model.MaterialFamily)) { appliedFilterCount++; }
+    if (Model.ThicknessIn is not null) { appliedFilterCount++; }
+    if (Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) { appliedFilterCount++; }
+    if (!string.IsNullOrWhiteSpace(Model.Grade)) { appliedFilterCount++; }
+    if (!string.IsNullOrWhiteSpace(Model.Finish)) { appliedFilterCount++; }
+    if (Model.ItemKind is not null) { appliedFilterCount++; }
+    if (!string.IsNullOrWhiteSpace(Model.LocationCode)) { appliedFilterCount++; }
+    if (!Model.AvailableOnly) { appliedFilterCount++; }
+
+    var itemKindLabel = Model.ItemKind switch
+    {
+        InventoryItemKind.FullSheetBundle => "Full sheet / bundle",
+        InventoryItemKind.FullSheet => "Single full sheet",
+        InventoryItemKind.Drop => "Drop",
+        _ => null
+    };
 }
 
 <header class="page-heading">
@@ -26,9 +33,44 @@
     <p class="alert-success" role="status">@message</p>
 }
 
-<section class="inventory-search-bar" aria-label="Inventory search filters">
+<section class="inventory-search-bar" aria-label="Applied inventory filters">
+    <div class="inventory-filter-heading">
+        <div>
+            <p class="eyebrow">Search filters</p>
+            <h2>Current filters</h2>
+        </div>
+        <button type="button" class="button button-primary" onclick="document.getElementById('inventory-filter-dialog').showModal()">Filters@(appliedFilterCount > 0 ? $" ({appliedFilterCount})" : "")</button>
+    </div>
+
+    <ul class="active-filter-list">
+        @if (!string.IsNullOrWhiteSpace(Model.MaterialFamily)) { <li><strong>Material:</strong> @Model.MaterialFamily</li> }
+        @if (Model.ThicknessIn is not null) { <li><strong>Thickness:</strong> @Model.ThicknessIn in</li> }
+        @if (Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) { <li><strong>Minimum usable size:</strong> ≥ @(Model.MinUsableWidthIn?.ToString() ?? "any") × @(Model.MinUsableLengthIn?.ToString() ?? "any") in</li> }
+        @if (!string.IsNullOrWhiteSpace(Model.Grade)) { <li><strong>Grade:</strong> @Model.Grade</li> }
+        @if (!string.IsNullOrWhiteSpace(Model.Finish)) { <li><strong>Finish:</strong> @Model.Finish</li> }
+        @if (itemKindLabel is not null) { <li><strong>Kind:</strong> @itemKindLabel</li> }
+        @if (!string.IsNullOrWhiteSpace(Model.LocationCode)) { <li><strong>Location:</strong> @Model.LocationCode</li> }
+        <li><strong>Availability:</strong> @(Model.AvailableOnly ? "Available only" : "All inventory")</li>
+    </ul>
+
+    @if (appliedFilterCount > 0)
+    {
+        <a class="clear-filters" asp-page="/Inventory/Search">Clear all filters</a>
+    }
+</section>
+
+<dialog id="inventory-filter-dialog" class="inventory-filter-dialog" aria-labelledby="inventory-filter-dialog-title">
+    <div class="dialog-heading">
+        <div>
+            <p class="eyebrow">Inventory search</p>
+            <h2 id="inventory-filter-dialog-title">Filter material</h2>
+            <p>Set one or more criteria, then apply them to the inventory list.</p>
+        </div>
+        <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close filters">×</button></form>
+    </div>
+
     <form method="get" class="inventory-filter-form">
-        <div class="primary-filters">
+        <div class="inventory-filter-fields">
             <label>Material family <input asp-for="MaterialFamily" /></label>
             <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
             <fieldset class="dimension-filter">
@@ -37,44 +79,26 @@
                 <span aria-hidden="true">×</span>
                 <label>Length <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
             </fieldset>
+            <label>Grade <input asp-for="Grade" /></label>
+            <label>Finish <input asp-for="Finish" /></label>
+            <label>Kind
+                <select asp-for="ItemKind">
+                    <option value="">-- any --</option>
+                    <option value="FullSheetBundle">Full sheet / bundle</option>
+                    <option value="FullSheet">Single full sheet</option>
+                    <option value="Drop">Drop</option>
+                </select>
+            </label>
+            <label>Location code <input asp-for="LocationCode" /></label>
             <label class="available-toggle"><input asp-for="AvailableOnly" type="checkbox" /> Available only</label>
-            <button type="submit">Search</button>
         </div>
-
-        <details class="advanced-filters" open="@(hasAdvancedFilters ? "open" : null)">
-            <summary>More filters</summary>
-            <div class="advanced-filter-fields">
-                <label>Grade <input asp-for="Grade" /></label>
-                <label>Finish <input asp-for="Finish" /></label>
-                <label>Kind
-                    <select asp-for="ItemKind">
-                        <option value="">-- any --</option>
-                        <option value="FullSheetBundle">Full sheet / bundle</option>
-                        <option value="FullSheet">Single full sheet</option>
-                        <option value="Drop">Drop</option>
-                    </select>
-                </label>
-                <label>Location code <input asp-for="LocationCode" /></label>
-            </div>
-        </details>
+        <div class="dialog-actions">
+            <button type="submit">Apply filters</button>
+            <a class="button button-secondary" asp-page="/Inventory/Search">Clear all</a>
+            <button type="button" class="button-secondary" onclick="document.getElementById('inventory-filter-dialog').close()">Cancel</button>
+        </div>
     </form>
-
-    @if (hasActiveFilters)
-    {
-        <div class="active-filter-summary" aria-label="Applied filters">
-            <span>Applied</span>
-            @if (!string.IsNullOrWhiteSpace(Model.MaterialFamily)) { <span class="filter-chip">@Model.MaterialFamily</span> }
-            @if (Model.ThicknessIn is not null) { <span class="filter-chip">@Model.ThicknessIn in</span> }
-            @if (Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) { <span class="filter-chip">≥ @Model.MinUsableWidthIn × @Model.MinUsableLengthIn in</span> }
-            @if (!string.IsNullOrWhiteSpace(Model.Grade)) { <span class="filter-chip">@Model.Grade</span> }
-            @if (!string.IsNullOrWhiteSpace(Model.Finish)) { <span class="filter-chip">@Model.Finish</span> }
-            @if (Model.ItemKind is not null) { <span class="filter-chip">@Model.ItemKind</span> }
-            @if (!string.IsNullOrWhiteSpace(Model.LocationCode)) { <span class="filter-chip">@Model.LocationCode</span> }
-            @if (!Model.AvailableOnly) { <span class="filter-chip">All inventory</span> }
-            <a asp-page="/Inventory/Search">Clear all</a>
-        </div>
-    }
-</section>
+</dialog>
 
 <p class="result-count">@Model.Results.Count matching item@(Model.Results.Count == 1 ? "" : "s")</p>
 @if (Model.Results.Count == 0)
