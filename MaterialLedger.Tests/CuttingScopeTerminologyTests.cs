@@ -14,8 +14,7 @@ public sealed class CuttingScopeTerminologyTests
         var details = ReadPage("Reservations", "Details.cshtml");
         var controlBoard = ReadPage("Index.cshtml");
 
-        Assert.Contains("<p class=\"rail-caption\">Material control</p>", layout);
-        Assert.Contains("<p>Cutting workflow</p>", layout);
+        Assert.Contains("<p>Operations</p>", layout);
         Assert.Contains("<p class=\"eyebrow\">Cutting workflow</p>", hold);
         Assert.Contains("<p class=\"eyebrow\">Cutting workflow</p>", search);
         Assert.Contains("<p class=\"eyebrow\">Cutting work queue</p>", closeout);

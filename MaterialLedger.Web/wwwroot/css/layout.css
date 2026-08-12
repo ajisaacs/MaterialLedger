@@ -53,17 +53,11 @@
   padding-bottom: 1rem;
   text-transform: uppercase;
 }
-.primary-nav-container {
-  min-height: 0;
-  margin-top: 1.35rem;
-}
-.primary-nav-container > summary {
+.mobile-primary-nav-container {
   display: none;
 }
-.primary-nav-container:not([open]) > .primary-nav {
-  display: block;
-}
 .primary-nav {
+  margin-top: 10px;
   min-height: 0;
   overflow-y: auto;
 }

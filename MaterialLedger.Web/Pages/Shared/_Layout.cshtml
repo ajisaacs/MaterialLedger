@@ -12,11 +12,29 @@
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" asp-page="/Index"><span class="brand-mark">ML</span><span>Material<small>Ledger</small></span></a>
-            <p class="rail-caption">Material control</p>
-            <details class="primary-nav-container">
+            <nav class="primary-nav" aria-label="Primary navigation">
+                <p>Operations</p>
+                <a asp-page="/Index">Control board</a>
+                <a asp-page="/Inventory/Search">Find material</a>
+                <a asp-page="/PepNests/Index">PEP nests</a>
+                <a asp-page="/Reservations/Index">Material holds</a>
+                @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Record cut result</a> }
+                <p>Inventory setup</p>
+                @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+                {
+                    <a asp-page="/PurchaseOrders/Index">Order material</a>
+                    <a asp-page="/Receiving/SelectLocation">Receive delivery</a>
+                    <a asp-page="/Census/SelectSlot">Count existing material</a>
+                    <a asp-page="/Materials/Index">Material catalog</a>
+                }
+                <a asp-page="/Locations/Index">Material locations</a>
+                <p>Review</p>
+                <a asp-page="/Exceptions/Index">Attention needed</a>
+            </nav>
+            <details class="mobile-primary-nav-container">
                 <summary><span>Menu</span><span class="mobile-nav-icon" aria-hidden="true"></span></summary>
-                <nav class="primary-nav" aria-label="Primary navigation">
-                    <p>Cutting workflow</p>
+                <nav class="primary-nav mobile-primary-nav" aria-label="Primary navigation">
+                    <p>Operations</p>
                     <a asp-page="/Index">Control board</a>
                     <a asp-page="/Inventory/Search">Find material</a>
                     <a asp-page="/PepNests/Index">PEP nests</a>

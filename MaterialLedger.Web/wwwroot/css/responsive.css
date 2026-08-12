@@ -42,10 +42,14 @@
   .rail-caption {
     display: none;
   }
-  .primary-nav-container {
+  .sidebar > .primary-nav {
+    display: none;
+  }
+  .mobile-primary-nav-container {
+    display: block;
     margin-top: 0.85rem;
   }
-  .primary-nav-container > summary {
+  .mobile-primary-nav-container > summary {
     align-items: center;
     background: #1a353c;
     border: 1px solid #31535c;
@@ -61,7 +65,7 @@
     padding: 0 0.85rem;
     text-transform: uppercase;
   }
-  .primary-nav-container > summary::-webkit-details-marker {
+  .mobile-primary-nav-container > summary::-webkit-details-marker {
     display: none;
   }
   .mobile-nav-icon,
@@ -86,13 +90,13 @@
   .mobile-nav-icon::after {
     top: 0.35rem;
   }
-  .primary-nav-container[open] > summary {
+  .mobile-primary-nav-container[open] > summary {
     border-bottom-color: transparent;
   }
-  .primary-nav-container:not([open]) > .primary-nav {
+  .mobile-primary-nav-container:not([open]) > .mobile-primary-nav {
     display: none;
   }
-  .primary-nav {
+  .mobile-primary-nav {
     background: #132a30;
     border: 1px solid #31535c;
     border-top: 0;

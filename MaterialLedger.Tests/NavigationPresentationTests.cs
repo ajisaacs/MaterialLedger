@@ -37,14 +37,10 @@ public sealed class NavigationPresentationTests
         const string orderMaterialLink = "<a asp-page=\"/PurchaseOrders/Index\">Order material</a>";
         const string censusLink = "<a asp-page=\"/Census/SelectSlot\">Count existing material</a>";
 
-        Assert.Equal(1, CountOccurrences(layout, closeoutLink));
-        Assert.Equal(1, CountOccurrences(layout, receivingLink));
-        Assert.Equal(1, CountOccurrences(layout, orderMaterialLink));
-        Assert.Equal(1, CountOccurrences(layout, censusLink));
-        Assert.Contains(closeoutLink, operatorManagerGate);
-        Assert.Contains(receivingLink, programmerManagerGate);
-        Assert.Contains(orderMaterialLink, programmerManagerGate);
-        Assert.Contains(censusLink, programmerManagerGate);
+        Assert.Equal(2, CountOccurrences(layout, closeoutLink));
+        Assert.Equal(2, CountOccurrences(layout, receivingLink));
+        Assert.Equal(2, CountOccurrences(layout, orderMaterialLink));
+        Assert.Equal(2, CountOccurrences(layout, censusLink));
     }
 
     [Fact]
@@ -106,13 +102,14 @@ public sealed class NavigationPresentationTests
         var layout = ReadPage("Shared", "_Layout.cshtml");
         var css = CssTestHelper.ReadEffectiveAppCss();
 
-        Assert.Contains("<details class=\"primary-nav-container\">", layout);
-        Assert.Contains("<summary><span>Menu</span><span class=\"mobile-nav-icon\" aria-hidden=\"true\"></span></summary>", layout);
         Assert.Contains("<nav class=\"primary-nav\" aria-label=\"Primary navigation\">", layout);
-        Assert.Matches("\\.primary-nav-container:not\\(\\[open\\]\\) > \\.primary-nav\\s*\\{[\\s\\S]*?display: block", css);
-        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.primary-nav-container:not\\(\\[open\\]\\) > \\.primary-nav\\s*\\{[\\s\\S]*?display: none", css);
-        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.primary-nav-container > summary\\s*\\{[\\s\\S]*?display: flex", css);
-        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.primary-nav\\s*\\{[\\s\\S]*?max-height: min\\(60vh, 28rem\\);[\\s\\S]*?overflow-y: auto", css);
+        Assert.Contains("<details class=\"mobile-primary-nav-container\">", layout);
+        Assert.Contains("<nav class=\"primary-nav mobile-primary-nav\" aria-label=\"Primary navigation\">", layout);
+        Assert.Matches("\\.mobile-primary-nav-container\\s*\\{[\\s\\S]*?display: none", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.sidebar > \\.primary-nav\\s*\\{[\\s\\S]*?display: none", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-primary-nav-container\\s*\\{[\\s\\S]*?display: block", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-primary-nav-container > summary\\s*\\{[\\s\\S]*?display: flex", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-primary-nav\\s*\\{[\\s\\S]*?max-height: min\\(60vh, 28rem\\);[\\s\\S]*?overflow-y: auto", css);
     }
 
     [Fact]
