@@ -1,0 +1,53 @@
+.sheet-entry-dialog {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  max-height: calc(100vh - 2rem);
+  max-width: min(760px, calc(100vw - 2rem));
+  padding: 1.4rem;
+  width: 100%;
+}
+.sheet-entry-dialog::backdrop {
+  background: rgb(18 36 43 / 65%);
+}
+.dialog-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.dialog-heading p:last-child {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+.dialog-close {
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.65rem;
+  line-height: 1;
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+}
+.sheet-entry-form {
+  max-width: none !important;
+}
+.sheet-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sheet-entry-grid label,
+.sheet-entry-form > label {
+  display: flex;
+}
+.checkbox-label {
+  align-items: center;
+  flex-direction: row !important;
+}
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+}
+.dialog-actions button {
+  margin: 0;
+}

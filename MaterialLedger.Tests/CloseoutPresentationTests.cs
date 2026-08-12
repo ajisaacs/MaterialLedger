@@ -328,8 +328,7 @@ public sealed class CloseoutPresentationTests
     private static string ReadCloseoutPage(string fileName) => File.ReadAllText(
         Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Closeout", fileName));
 
-    private static string ReadAppCss() => File.ReadAllText(
-        Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "app.css"));
+    private static string ReadAppCss() => CssTestHelper.ReadEffectiveAppCss();
 
     private static string RepositoryRoot => Path.GetFullPath("../../../../", AppContext.BaseDirectory);
 

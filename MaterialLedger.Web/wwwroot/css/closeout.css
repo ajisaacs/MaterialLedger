@@ -1,0 +1,109 @@
+.closeout-detail {
+  max-width: 940px;
+}
+.closeout-detail > p:not(.eyebrow):not(.form-error) {
+  color: var(--muted);
+  margin-bottom: 1.4rem;
+}
+.closeout-context,
+.detail-grid {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.35fr) 1fr;
+  margin: 1.25rem 0 1.5rem;
+  padding: 1rem;
+}
+.closeout-context dt,
+.detail-grid dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.closeout-context dd,
+.detail-grid dd {
+  margin: 0 0 0.75rem;
+}
+.closeout-context dd:last-child,
+.detail-grid dd:last-child {
+  margin-bottom: 0;
+}
+.closeout-decision {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 1.25rem;
+}
+.form-hint {
+  color: var(--muted);
+  font-size: 0.86rem;
+  margin: 0 0 0.8rem;
+}
+.outcome-options {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.outcome-option {
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.85rem;
+}
+.outcome-option:has(input:checked) {
+  background: #e6f3f5;
+  border-color: var(--blue);
+}
+.outcome-option input {
+  margin-top: 0.22rem;
+}
+.outcome-option strong,
+.outcome-option small {
+  display: block;
+}
+.outcome-option small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  margin-top: 0.2rem;
+}
+.remnant-entry {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+}
+.remnant-entry label {
+  display: flex;
+}
+.closeout-drop-fields > .button {
+  margin-top: 0.9rem;
+}
+.closeout-notes {
+  display: flex;
+  margin-top: 0.8rem;
+}
+.closeout-notes textarea {
+  width: 100%;
+}
+.queue-action form {
+  margin: 0;
+}
+.queue-action .button {
+  margin: 0;
+}
+@supports selector(.closeout-decision:has(#outcome-drop:checked)) {
+  .closeout-decision .closeout-drop-fields {
+    display: none;
+  }
+  .closeout-decision:has(#outcome-drop:checked) .closeout-drop-fields {
+    display: block;
+  }
+}

@@ -1,0 +1,178 @@
+.app-shell {
+  min-height: 100vh;
+}
+.sidebar {
+  background: var(--rail);
+  color: #dce7e8;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  left: 0;
+  overflow: hidden;
+  padding: 1.5rem 1rem;
+  position: fixed;
+  top: 0;
+  width: 246px;
+}
+.brand {
+  align-items: center;
+  color: #f5fbfb;
+  display: inline-flex;
+  font-size: 1.08rem;
+  font-weight: 800;
+  gap: 0.7rem;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+.brand small {
+  color: #9fcbd1;
+  display: block;
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  margin-top: 0.1rem;
+  text-transform: uppercase;
+}
+.brand-mark {
+  align-items: center;
+  background: var(--blue);
+  border-radius: 4px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  height: 2.15rem;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  width: 2.15rem;
+}
+.rail-caption {
+  border-bottom: 1px solid var(--rail-line);
+  color: #92abb0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 1.6rem 0 0;
+  padding-bottom: 1rem;
+  text-transform: uppercase;
+}
+.primary-nav {
+  min-height: 0;
+  margin-top: 1.35rem;
+  overflow-y: auto;
+}
+.primary-nav p {
+  color: #78949a;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 1.5rem 0.65rem 0.45rem;
+  text-transform: uppercase;
+}
+.primary-nav p:first-child {
+  margin-top: 0;
+}
+.primary-nav a {
+  border-left: 2px solid transparent;
+  color: #d5e1e2;
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 650;
+  margin: 0.12rem 0;
+  padding: 0.67rem 0.7rem;
+  text-decoration: none;
+}
+.primary-nav a:hover {
+  background: #1a353c;
+  border-left-color: #54b3c5;
+  color: #fff;
+}
+.account {
+  align-items: center;
+  border-top: 1px solid var(--rail-line);
+  display: flex;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  gap: 0.55rem;
+  margin-top: auto;
+  padding: 0.95rem 0.25rem 0;
+}
+.account-avatar {
+  align-items: center;
+  background: #31535c;
+  border-radius: 50%;
+  display: flex;
+  font-weight: 800;
+  height: 1.9rem;
+  justify-content: center;
+  width: 1.9rem;
+}
+.account strong,
+.account small {
+  display: block;
+}
+.account small {
+  color: #8ca8ad;
+}
+.account-name {
+  color: inherit;
+  text-decoration: none;
+}
+.account-name:hover {
+  text-decoration: underline;
+}
+.signout {
+  background: none;
+  border: 0;
+  color: #a8c4c9;
+  cursor: pointer;
+  font: inherit;
+  margin-left: auto;
+  padding: 0.2rem;
+}
+.workspace {
+  margin-left: 246px;
+  min-width: 0;
+  width: calc(100% - 246px);
+}
+.content {
+  padding: clamp(1.4rem, 3vw, 3.4rem);
+}
+.control-header {
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  padding: 1rem 0 2.4rem;
+}
+.control-header > div {
+  max-width: 760px;
+}
+.control-header > div > p:last-child {
+  color: var(--muted);
+  font-size: 1.04rem;
+  margin: 1rem 0 0;
+}
+.control-header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.control-header-actions button {
+  margin: 0;
+}
+.page-heading {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.35rem;
+  padding: 1rem 0 1.35rem;
+}
+.page-heading p:last-child {
+  color: var(--muted);
+  margin: 0.7rem 0 0;
+  max-width: 48rem;
+}
+.page-heading-title {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

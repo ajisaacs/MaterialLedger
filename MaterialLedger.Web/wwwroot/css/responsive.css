@@ -1,0 +1,139 @@
+@media (max-width: 1050px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .workflow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .support-row {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    width: 215px;
+  }
+  .workspace {
+    margin-left: 215px;
+    width: calc(100% - 215px);
+  }
+}
+@media (max-width: 720px) {
+  .app-shell {
+    display: block;
+  }
+  .sidebar {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    position: static;
+    width: auto;
+  }
+  .workspace {
+    margin-left: 0;
+    width: 100%;
+  }
+  .primary-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 1rem;
+  }
+  .primary-nav p {
+    display: none;
+  }
+  .primary-nav a {
+    font-size: 0.77rem;
+    padding: 0.45rem;
+  }
+  .account {
+    margin-top: 1rem;
+  }
+  .control-header,
+  .section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .summary-grid,
+  .workflow-grid,
+  .support-links {
+    grid-template-columns: 1fr;
+  }
+  .content {
+    padding: 1.25rem;
+  }
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+  .login-intro {
+    gap: 4rem;
+    min-height: 55vh;
+  }
+  .login-panel {
+    padding: 2rem 1.3rem;
+  }
+}
+@media (max-width: 720px) {
+  .inventory-search-bar {
+    padding: 0.9rem;
+  }
+  .primary-filters,
+  .advanced-filter-fields {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .primary-filters label,
+  .advanced-filter-fields label,
+  .dimension-filter {
+    width: 100%;
+  }
+  .dimension-filter label {
+    min-width: 0;
+  }
+  .primary-filters button {
+    width: 100%;
+  }
+  .available-toggle {
+    min-height: auto;
+    width: auto !important;
+  }
+  .opening-balance-section {
+    margin-left: -0.15rem;
+    margin-right: -0.15rem;
+    padding: 1rem;
+  }
+  .opening-balance-section-heading > span {
+    max-width: 8rem;
+  }
+  .opening-balance-grid,
+  .opening-balance-kind-options {
+    grid-template-columns: 1fr;
+  }
+  .opening-balance-kind-options label {
+    min-height: 3.8rem;
+  }
+  .opening-balance-warning {
+    margin-left: -0.15rem;
+    margin-right: -0.15rem;
+  }
+  .opening-balance-warning li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .opening-balance-submit {
+    background: var(--canvas);
+    bottom: 0;
+    margin: 0 -1.25rem;
+    padding: 0.8rem 1.25rem calc(0.8rem + env(safe-area-inset-bottom));
+    position: sticky;
+    z-index: 1;
+  }
+  .opening-balance-submit button {
+    min-height: 3rem;
+    width: 100%;
+  }
+}

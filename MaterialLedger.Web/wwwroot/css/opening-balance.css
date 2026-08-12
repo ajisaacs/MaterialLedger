@@ -1,0 +1,181 @@
+.opening-balance-heading {
+  max-width: 940px;
+}
+.opening-balance-warning {
+  background: #fff8e8;
+  border: 1px solid #e4c68c;
+  border-left: 4px solid var(--amber);
+  margin: 1.25rem 0;
+  max-width: 940px;
+  padding: 1rem 1.1rem;
+}
+.opening-balance-warning h2 {
+  font-size: 1.2rem;
+}
+.opening-balance-warning > div > p:last-child {
+  color: #695328;
+  font-size: 0.86rem;
+  margin: 0.45rem 0 0;
+}
+.opening-balance-warning ul {
+  border-top: 1px solid #e7d5aa;
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0.2rem 0 0;
+}
+.opening-balance-warning li {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.65rem 0;
+}
+.opening-balance-warning li + li {
+  border-top: 1px solid #eadcb9;
+}
+.opening-balance-warning li strong,
+.opening-balance-warning li span {
+  display: block;
+}
+.opening-balance-warning li span {
+  color: #695328;
+  font-size: 0.8rem;
+  margin-top: 0.16rem;
+}
+.opening-balance-warning a {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.opening-balance-form {
+  max-width: 940px !important;
+}
+.opening-balance-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  margin: 1rem 0;
+  padding: 1.15rem;
+}
+.opening-balance-section-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+.opening-balance-section-heading > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-align: right;
+  text-transform: uppercase;
+}
+.opening-balance-grid {
+  display: grid;
+  gap: 0.25rem 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.opening-balance-grid--quantity {
+  grid-template-columns: minmax(0, 220px);
+  margin-bottom: 0.7rem;
+}
+.opening-balance-dimensions-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.opening-balance-grid label,
+.opening-balance-notes > label:last-child {
+  display: flex;
+  margin-right: 0;
+}
+.opening-balance-grid input,
+.opening-balance-grid select,
+.opening-balance-notes textarea {
+  min-height: 2.8rem;
+  width: 100%;
+}
+.opening-balance-catalog-link {
+  color: var(--muted);
+  font-size: 0.83rem;
+  margin: 0.85rem 0 0;
+}
+.opening-balance-kind {
+  border: 0;
+  margin: 0 0 0.7rem;
+  padding: 0;
+}
+.opening-balance-kind legend {
+  font-size: 0.82rem;
+  padding: 0 0 0.35rem;
+}
+.opening-balance-kind-options {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.opening-balance-kind-options label,
+.opening-balance-quarantine {
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.8rem;
+}
+.opening-balance-kind-options label:has(input:checked),
+.opening-balance-quarantine:has(input:checked) {
+  background: #e6f3f5;
+  border-color: var(--blue);
+}
+.opening-balance-kind-options input,
+.opening-balance-quarantine input {
+  margin-top: 0.2rem;
+}
+.opening-balance-kind-options strong,
+.opening-balance-kind-options small,
+.opening-balance-quarantine strong,
+.opening-balance-quarantine small {
+  display: block;
+}
+.opening-balance-kind-options small,
+.opening-balance-quarantine small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  margin-top: 0.18rem;
+}
+.input-with-unit {
+  align-items: stretch;
+  display: flex;
+}
+.input-with-unit input {
+  min-width: 0;
+}
+.input-with-unit small {
+  align-items: center;
+  background: #e6edef;
+  border: 1px solid #afbdc2;
+  border-left: 0;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0 0.7rem;
+}
+.opening-balance-notes > div {
+  margin-bottom: 0.8rem;
+}
+.opening-balance-quarantine {
+  margin-bottom: 0.75rem;
+}
+.opening-balance-submit {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1.1rem 0 2rem;
+}
+.opening-balance-submit button {
+  margin: 0;
+  min-height: 2.9rem;
+}

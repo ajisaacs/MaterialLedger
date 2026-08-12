@@ -1,0 +1,143 @@
+.summary-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 2.1rem 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.summary-card {
+  background: var(--surface);
+  color: var(--ink);
+  display: block;
+  padding: 1.2rem 1.25rem;
+  text-decoration: none;
+}
+.summary-card:hover {
+  background: #f7fbfb;
+}
+.summary-card span,
+.summary-card small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.summary-card strong {
+  display: block;
+  font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
+  font-size: 2.35rem;
+  letter-spacing: -0.08em;
+  margin: 0.5rem 0;
+}
+.summary-card small {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.summary-card-warning {
+  box-shadow: inset 4px 0 var(--amber);
+}
+.summary-card-alert {
+  box-shadow: inset 4px 0 var(--red);
+}
+.workflow-section {
+  margin-top: 3.4rem;
+}
+.section-heading {
+  align-items: end;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  margin-bottom: 1.15rem;
+}
+.section-heading > p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  max-width: 400px;
+}
+.workflow-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.workflow-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 235px;
+  padding: 1.35rem;
+  text-decoration: none;
+  transition:
+    border-color 0.12s,
+    transform 0.12s;
+}
+.workflow-card:hover {
+  border-color: var(--blue);
+  transform: translateY(-2px);
+}
+.workflow-number {
+  color: var(--blue);
+  font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.workflow-card h3 {
+  margin-top: 1.4rem;
+}
+.workflow-card p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.65rem 0 1.3rem;
+}
+.workflow-card b {
+  color: var(--blue-dark);
+  font-size: 0.82rem;
+  margin-top: auto;
+}
+.workflow-card-primary {
+  border-top: 4px solid var(--blue);
+}
+.workflow-card-closeout {
+  border-top: 4px solid var(--amber);
+}
+.support-row {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(210px, 0.8fr) 2fr;
+  margin-top: 3.4rem;
+  padding-top: 2rem;
+}
+.support-links {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.support-links a {
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 1rem;
+  text-decoration: none;
+}
+.support-links a:hover {
+  background: #f7fbfb;
+}
+.support-links span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 500;
+  margin-top: 0.3rem;
+}
