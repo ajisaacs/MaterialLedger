@@ -52,6 +52,8 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
         InventoryLocationType.Quarantine, InventoryLocationType.Scrap
     ];
 
+    private readonly record struct ClosingContext(long ReservationId, DateTime Now, int ActorId, string? Notes);
+
     public async Task<ReservationResult> MarkReservationAwaitingCloseoutAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int actorId)
     {
         var payloadHash = HashPayload(new { materialReservationId, expectedRowVersion = Convert.ToHexString(expectedRowVersion) });
@@ -120,6 +122,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
         var item = await db.InventoryItems.FirstAsync(x => x.InventoryItemId == reservation.InventoryItemId);
         var now = DateTime.UtcNow;
         var remnants = new List<InventoryItem>();
+        var ctx = new ClosingContext(reservation.MaterialReservationId, now, confirmedBy, request.Notes);
 
         switch (request.Outcome)
         {
@@ -130,11 +133,11 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
                 if (isIndividuallyTracked)
                     item.Status = InventoryItemStatus.Depleted;
 
-                var txn = NewTransaction(MaterialTransactionType.Consumption, item, reservation.MaterialReservationId, -1m, now, confirmedBy, request.Notes);
+                var txn = NewTransaction(MaterialTransactionType.Consumption, item, -1m, ctx);
                 db.MaterialTransactions.Add(txn);
                 await db.SaveChangesAsync();
 
-                db.ProductionConsumptions.Add(NewProductionConsumption(reservation.MaterialReservationId, txn.MaterialTransactionId, request.Outcome, 1m, now, confirmedBy, request.Notes));
+                db.ProductionConsumptions.Add(NewProductionConsumption(txn.MaterialTransactionId, request.Outcome, 1m, ctx));
                 reservation.Status = ReservationStatus.ClosedConsumed;
                 break;
             }
@@ -146,11 +149,11 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
                 item.LastObservedAtUtc = now;
                 item.LastObservedBy = confirmedBy;
 
-                var txn = NewTransaction(MaterialTransactionType.Return, item, reservation.MaterialReservationId, 0m, now, confirmedBy, request.Notes);
+                var txn = NewTransaction(MaterialTransactionType.Return, item, 0m, ctx);
                 db.MaterialTransactions.Add(txn);
                 await db.SaveChangesAsync();
 
-                db.ProductionConsumptions.Add(NewProductionConsumption(reservation.MaterialReservationId, txn.MaterialTransactionId, request.Outcome, 0m, now, confirmedBy, request.Notes));
+                db.ProductionConsumptions.Add(NewProductionConsumption(txn.MaterialTransactionId, request.Outcome, 0m, ctx));
                 reservation.Status = ReservationStatus.ClosedReturned;
                 break;
             }
@@ -161,14 +164,14 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
                 if (isIndividuallyTracked)
                     item.Status = InventoryItemStatus.Depleted;
 
-                var consumeTxn = NewTransaction(MaterialTransactionType.Consumption, item, reservation.MaterialReservationId, -1m, now, confirmedBy, request.Notes);
+                var consumeTxn = NewTransaction(MaterialTransactionType.Consumption, item, -1m, ctx);
                 db.MaterialTransactions.Add(consumeTxn);
                 await db.SaveChangesAsync();
 
                 foreach (var remnant in GetRemnants(request))
-                    remnants.Add(await CreateRemnantAsync(item, reservation.MaterialReservationId, remnant, now, confirmedBy, request.Notes));
+                    remnants.Add(await CreateRemnantAsync(item, remnant, ctx));
 
-                db.ProductionConsumptions.Add(NewProductionConsumption(reservation.MaterialReservationId, consumeTxn.MaterialTransactionId, request.Outcome, 1m, now, confirmedBy, request.Notes));
+                db.ProductionConsumptions.Add(NewProductionConsumption(consumeTxn.MaterialTransactionId, request.Outcome, 1m, ctx));
                 reservation.Status = ReservationStatus.ClosedConsumed;
                 break;
             }
@@ -176,11 +179,11 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
             {
                 item.Status = InventoryItemStatus.Quarantined;
 
-                var txn = NewTransaction(MaterialTransactionType.Quarantine, item, reservation.MaterialReservationId, 0m, now, confirmedBy, request.Notes);
+                var txn = NewTransaction(MaterialTransactionType.Quarantine, item, 0m, ctx);
                 db.MaterialTransactions.Add(txn);
                 await db.SaveChangesAsync();
 
-                db.ProductionConsumptions.Add(NewProductionConsumption(reservation.MaterialReservationId, txn.MaterialTransactionId, request.Outcome, null, now, confirmedBy, request.Notes));
+                db.ProductionConsumptions.Add(NewProductionConsumption(txn.MaterialTransactionId, request.Outcome, null, ctx));
                 reservation.Status = ReservationStatus.Exception;
 
                 var dedupeKey = $"OutcomeUnknown:Reservation:{reservation.MaterialReservationId}";
@@ -221,32 +224,32 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
         return result;
     }
 
-    private static MaterialTransaction NewTransaction(MaterialTransactionType type, InventoryItem item, long reservationId, decimal quantityDelta, DateTime now, int actorId, string? notes) => new()
+    private static MaterialTransaction NewTransaction(MaterialTransactionType type, InventoryItem item, decimal quantityDelta, ClosingContext ctx) => new()
     {
-        OccurredAtUtc = now,
-        RecordedAtUtc = now,
-        RecordedBy = actorId,
+        OccurredAtUtc = ctx.Now,
+        RecordedAtUtc = ctx.Now,
+        RecordedBy = ctx.ActorId,
         TransactionType = type,
         InventoryItemId = item.InventoryItemId,
-        MaterialReservationId = reservationId,
+        MaterialReservationId = ctx.ReservationId,
         SheetLotId = item.SheetLotId,
         QuantityDelta = quantityDelta,
-        Notes = notes,
+        Notes = ctx.Notes,
         SourceSystem = MaterialTransactionSourceSystem.OperatorUI
     };
 
-    private static ProductionConsumption NewProductionConsumption(long reservationId, long primaryTransactionId, ProductionConsumptionOutcome outcome, decimal? actualConsumedQuantity, DateTime now, int actorId, string? notes) => new()
+    private static ProductionConsumption NewProductionConsumption(long primaryTransactionId, ProductionConsumptionOutcome outcome, decimal? actualConsumedQuantity, ClosingContext ctx) => new()
     {
-        MaterialReservationId = reservationId,
+        MaterialReservationId = ctx.ReservationId,
         PrimaryMaterialTransactionId = primaryTransactionId,
-        ConfirmedAtUtc = now,
-        ConfirmedBy = actorId,
+        ConfirmedAtUtc = ctx.Now,
+        ConfirmedBy = ctx.ActorId,
         Outcome = outcome,
         ActualConsumedQuantity = actualConsumedQuantity,
-        Notes = notes
+        Notes = ctx.Notes
     };
 
-    private async Task<InventoryItem> CreateRemnantAsync(InventoryItem sourceItem, long reservationId, UsableDropRequest request, DateTime now, int actorId, string? notes)
+    private async Task<InventoryItem> CreateRemnantAsync(InventoryItem sourceItem, UsableDropRequest request, ClosingContext ctx)
     {
         var destination = await db.InventoryLocations.FirstOrDefaultAsync(x => x.InventoryLocationId == request.DestinationLocationId)
             ?? throw new InvalidOperationException($"Destination location {request.DestinationLocationId} does not exist.");
@@ -263,17 +266,17 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
             InventoryLocationId = destination.InventoryLocationId, ItemKind = InventoryItemKind.Drop,
             Status = InventoryItemStatus.Available, QuantityOnHand = 1,
             UsableWidthIn = request.MeasuredUsableWidthIn, UsableLengthIn = request.MeasuredUsableLengthIn,
-            ShapeClassification = ShapeClassification.Rectangular, LastObservedAtUtc = now, LastObservedBy = actorId, Notes = notes
+            ShapeClassification = ShapeClassification.Rectangular, LastObservedAtUtc = ctx.Now, LastObservedBy = ctx.ActorId, Notes = ctx.Notes
         };
         db.InventoryItems.Add(remnant);
         await db.SaveChangesAsync();
         db.MaterialTransactions.Add(new MaterialTransaction
         {
-            OccurredAtUtc = now, RecordedAtUtc = now, RecordedBy = actorId, TransactionType = MaterialTransactionType.RemnantCreated,
+            OccurredAtUtc = ctx.Now, RecordedAtUtc = ctx.Now, RecordedBy = ctx.ActorId, TransactionType = MaterialTransactionType.RemnantCreated,
             InventoryItemId = remnant.InventoryItemId, RelatedInventoryItemId = sourceItem.InventoryItemId,
-            MaterialReservationId = reservationId, SheetLotId = sourceItem.SheetLotId, QuantityDelta = 1m,
+            MaterialReservationId = ctx.ReservationId, SheetLotId = sourceItem.SheetLotId, QuantityDelta = 1m,
             GeometryWidthInSnapshot = request.MeasuredUsableWidthIn, GeometryLengthInSnapshot = request.MeasuredUsableLengthIn,
-            Notes = notes, SourceSystem = MaterialTransactionSourceSystem.OperatorUI
+            Notes = ctx.Notes, SourceSystem = MaterialTransactionSourceSystem.OperatorUI
         });
         await db.SaveChangesAsync();
         return remnant;

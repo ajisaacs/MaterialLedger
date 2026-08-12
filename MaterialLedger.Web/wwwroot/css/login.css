@@ -1,0 +1,44 @@
+.login-page {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  min-height: 100vh;
+}
+.login-intro {
+  background: var(--rail);
+  color: #edf6f7;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4rem, 16vh, 11rem);
+  padding: clamp(2rem, 7vw, 7rem);
+}
+.login-intro > div {
+  max-width: 590px;
+}
+.login-intro .eyebrow {
+  color: #9fcbd1;
+}
+.login-intro h1 {
+  font-size: clamp(2.5rem, 5vw, 5rem);
+}
+.login-intro p:last-child {
+  color: #b5c8cb;
+  font-size: 1.08rem;
+}
+.login-panel {
+  align-self: center;
+  margin: auto;
+  max-width: 440px;
+  padding: 2rem;
+  width: min(100%, 32rem);
+}
+.login-panel h2 {
+  margin-bottom: 1.4rem;
+}
+.stacked-form label {
+  display: flex;
+  margin: 0.75rem 0;
+}
+.stacked-form button {
+  margin-top: 1rem;
+  width: 100%;
+}

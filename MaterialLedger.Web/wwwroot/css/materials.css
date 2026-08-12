@@ -1,0 +1,93 @@
+.material-catalog {
+  margin-top: 2.1rem;
+}
+.material-catalog-heading {
+  align-items: end;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+.material-catalog-heading p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.4rem 0 0;
+}
+.material-catalog-count {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.material-catalog-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.material-catalog-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 1rem;
+}
+.material-catalog-card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.8rem;
+}
+.material-thickness-table {
+  margin: 0;
+}
+.material-thickness-table th,
+.material-thickness-table td {
+  padding: 0.45rem 0.5rem;
+}
+.material-thickness-table th {
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: none;
+  width: 48%;
+}
+.material-thickness-table td {
+  font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.material-thickness-table tfoot td {
+  border-bottom: 0;
+  padding: 0.65rem 0 0;
+}
+.material-add-thickness {
+  font-size: 0.78rem;
+  padding: 0.48rem 0.65rem;
+}
+.selected-material-summary {
+  max-width: 620px;
+}
+.selected-material-summary th {
+  width: 38%;
+}
+.selected-material-summary td {
+  font-weight: 650;
+}
+.usable-size {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.usable-size-dim {
+  display: inline-block;
+  min-width: 3.5em;
+  text-align: right;
+}
+.usable-size-dim:last-child {
+  min-width: 0;
+  text-align: left;
+}
+.usable-size-x {
+  color: var(--muted, #6b7a80);
+  padding: 0 0.35em;
+}

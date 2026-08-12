@@ -5,6 +5,7 @@ using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.Reservations;
 using MaterialLedger.Web.Authorization;
+using MaterialLedger.Web.Pages.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -26,17 +27,7 @@ public class IndexModel(MaterialLedgerDbContext db, ICloseoutService closeout) :
         await LoadAsync();
     }
 
-    public string WorkReference(MaterialReservation reservation)
-    {
-        if (!string.IsNullOrWhiteSpace(reservation.ShopOpsJobId)) return reservation.ShopOpsJobId;
-        if (!string.IsNullOrWhiteSpace(reservation.DrawingId))
-            return string.IsNullOrWhiteSpace(reservation.DrawingRevision)
-                ? reservation.DrawingId
-                : $"{reservation.DrawingId} rev {reservation.DrawingRevision}";
-        if (!string.IsNullOrWhiteSpace(reservation.PepNestName))
-            return reservation.PepNestYear is null ? reservation.PepNestName : $"{reservation.PepNestYear} {reservation.PepNestName}";
-        return "No work reference recorded";
-    }
+    public string WorkReference(MaterialReservation reservation) => ReservationWorkReference.Describe(reservation);
 
     public string UsableSize(MaterialReservation reservation)
     {

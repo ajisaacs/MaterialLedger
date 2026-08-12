@@ -1,0 +1,16 @@
+:root {
+  --ink: #17222b;
+  --muted: #5d6b73;
+  --canvas: #edf1f2;
+  --surface: #fff;
+  --line: #d4dde0;
+  --blue: #126b82;
+  --blue-dark: #0b4f62;
+  --focus-ring: #005a9c;
+  --rail-focus-ring: #7ee7f5;
+  --rail: #12242b;
+  --rail-line: #294047;
+  --amber: #a85b00;
+  --red: #a4382c;
+  --green: #17704b;
+}

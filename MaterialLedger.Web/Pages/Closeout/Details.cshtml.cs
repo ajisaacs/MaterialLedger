@@ -5,6 +5,7 @@ using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.Reservations;
 using MaterialLedger.Web.Authorization;
+using MaterialLedger.Web.Pages.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -41,7 +42,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
     public MaterialReservation? Reservation { get; set; }
     public List<InventoryLocation> DestinationChoices { get; set; } = [];
     public string? Error { get; set; }
-    public string WorkReference => Reservation is null ? string.Empty : DescribeWorkReference(Reservation);
+    public string WorkReference => Reservation is null ? string.Empty : ReservationWorkReference.Describe(Reservation);
 
     public async Task<IActionResult> OnGetAsync(long id)
     {
@@ -100,18 +101,5 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
             .Where(x => x.IsActive && DestinationChoiceTypes.Contains(x.LocationType))
             .OrderBy(x => x.LocationCode)
             .ToListAsync();
-    }
-
-    private static string DescribeWorkReference(MaterialReservation reservation)
-    {
-        if (!string.IsNullOrWhiteSpace(reservation.ShopOpsJobId))
-            return reservation.ShopOpsJobId;
-        if (!string.IsNullOrWhiteSpace(reservation.DrawingId))
-            return string.IsNullOrWhiteSpace(reservation.DrawingRevision)
-                ? reservation.DrawingId
-                : $"{reservation.DrawingId} rev {reservation.DrawingRevision}";
-        if (!string.IsNullOrWhiteSpace(reservation.PepNestName))
-            return reservation.PepNestYear is null ? reservation.PepNestName : $"{reservation.PepNestYear} {reservation.PepNestName}";
-        return "No work reference recorded";
     }
 }
