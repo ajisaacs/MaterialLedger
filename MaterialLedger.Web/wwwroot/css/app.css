@@ -204,8 +204,6 @@ p {
   width: calc(100% - 246px);
 }
 .content {
-  margin: 0 auto;
-  max-width: 1450px;
   padding: clamp(1.4rem, 3vw, 3.4rem);
 }
 .control-header {
