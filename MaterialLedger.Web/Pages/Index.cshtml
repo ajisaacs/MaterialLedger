@@ -150,7 +150,7 @@
     }
     else
     {
-        <table>
+        <table class="recent-work-table desktop-table">
             <thead><tr><th>Material item</th><th>Material</th><th>Location</th><th>Work</th><th>Equipment</th><th>Workflow</th><th>When</th></tr></thead>
             <tbody>
             @foreach (var work in Model.Summary.RecentWork)
@@ -167,5 +167,23 @@
             }
             </tbody>
         </table>
+        <div class="recent-work-card-grid mobile-card">
+            @foreach (var work in Model.Summary.RecentWork)
+            {
+                <article class="recent-work-card">
+                    <header class="recent-work-card-header">
+                        <strong>@work.PublicItemCode</strong>
+                        <span>@work.WorkflowLabel</span>
+                    </header>
+                    <dl class="recent-work-card-body">
+                        <div><dt>Material</dt><dd>@work.MaterialDisplayName</dd></div>
+                        <div><dt>Location</dt><dd>@work.LocationCode</dd></div>
+                        <div><dt>Work</dt><dd>@work.WorkReference</dd></div>
+                        <div><dt>Equipment</dt><dd>@work.Equipment</dd></div>
+                        <div><dt>When</dt><dd>@work.TimestampUtc.ToString("u")</dd></div>
+                    </dl>
+                </article>
+            }
+        </div>
     }
 </section>

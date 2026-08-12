@@ -64,6 +64,28 @@
   font-size: 0.78rem;
   padding: 0.48rem 0.65rem;
 }
+.material-thickness-disclosure > summary {
+  align-items: center;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  display: flex;
+  font-weight: 700;
+  justify-content: space-between;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+}
+.material-thickness-disclosure > summary span:last-child {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.material-thickness-disclosure[open] > summary {
+  border-bottom: 0;
+}
+.material-thickness-disclosure > .material-thickness-table {
+  border: 1px solid var(--line);
+  border-top: 0;
+}
 .selected-material-summary {
   max-width: 620px;
 }

@@ -59,7 +59,7 @@
     {
         <article class="material-catalog-card" data-material-family="@material.MaterialFamily" data-grade="@material.Grade" data-finish="@material.Finish">
             <h3>@material.Name</h3>
-            <table class="material-thickness-table">
+            <table class="material-thickness-table desktop-table">
                 <tbody>
             @foreach (var spec in material.Thicknesses)
             {
@@ -75,6 +75,25 @@
                     </tr>
                 </tfoot>
             </table>
+            <details class="material-thickness-disclosure mobile-card">
+                <summary><span>Available thicknesses</span><span>@material.Thicknesses.Count options</span></summary>
+                <table class="material-thickness-table">
+                    <tbody>
+                @foreach (var spec in material.Thicknesses)
+                {
+                    <tr>
+                        <th scope="row">@spec.GaugeLabel</th>
+                        <td>@spec.ThicknessIn.ToString("0.####") in</td>
+                    </tr>
+                }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2"><button class="button button-secondary material-add-thickness" type="button" onclick="openAddThickness(this)">Add thickness</button></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </details>
         </article>
     }
     </div>

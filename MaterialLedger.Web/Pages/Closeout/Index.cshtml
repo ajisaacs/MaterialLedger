@@ -13,7 +13,7 @@
 }
 else
 {
-<table>
+<table class="desktop-table">
     <thead><tr><th>Material</th><th>Location</th><th>Work reference</th><th>Equipment</th><th>Workflow status</th><th>Next action</th></tr></thead>
     <tbody>
     @foreach (var r in Model.Reservations)
@@ -31,4 +31,27 @@ else
     }
     </tbody>
 </table>
+
+<div class="mobile-card-grid mobile-card" aria-label="Cut results awaiting entry">
+@foreach (var r in Model.Reservations)
+{
+    var workflow = ReservationWorkflowDisplay.For(r.Status);
+    <article class="closeout-card">
+        <div class="closeout-card-header">
+            <strong class="closeout-card-material">@r.InventoryItem?.PublicItemCode</strong>
+            <span class="workflow-status @workflow.CssClass">@workflow.Label</span>
+        </div>
+        <p class="closeout-card-description">@r.InventoryItem?.MaterialSpec?.DisplayName</p>
+        <dl class="closeout-card-body">
+            <dt>Usable size</dt><dd>@Model.UsableSize(r)</dd>
+            <dt>Location</dt><dd>@r.InventoryItem?.InventoryLocation?.LocationCode</dd>
+            <dt>Work</dt><dd>@Model.WorkReference(r)</dd>
+            <dt>Equipment</dt><dd>@r.Equipment</dd>
+        </dl>
+        <div class="closeout-card-action">
+            <a class="button button-primary" asp-page="Details" asp-route-id="@r.MaterialReservationId" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Record cut result</a>
+        </div>
+    </article>
+}
+</div>
 }

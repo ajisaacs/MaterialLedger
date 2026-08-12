@@ -1,3 +1,7 @@
+.mobile-card {
+  display: none;
+}
+
 @media (max-width: 1050px) {
   table {
     display: block;
@@ -207,5 +211,230 @@
   .opening-balance-submit button {
     min-height: 3rem;
     width: 100%;
+  }
+
+  /* ── Mobile cards: visibility contract ── */
+
+  /* Desktop table — hide at mobile breakpoint */
+  .desktop-table {
+    display: none;
+  }
+
+  /* Mobile cards — show at mobile breakpoint */
+  .mobile-card {
+    display: block;
+  }
+
+  .mobile-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .inventory-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .inventory-card-header {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: space-between;
+  }
+
+  .inventory-card-item {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .inventory-card-item a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .inventory-card-body {
+    color: var(--muted);
+    font-size: 0.84rem;
+    margin: 0.6rem 0;
+  }
+
+  .inventory-card-body dt {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .inventory-card-body dd {
+    margin: 0.15rem 0 0.45rem 0;
+  }
+
+  .inventory-card-actions {
+    display: flex;
+    gap: 0.55rem;
+    margin-top: 0.65rem;
+  }
+
+  .inventory-card-actions a {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* ── Reservation queue mobile cards ── */
+
+  .workflow-queue-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .workflow-card-header {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    justify-content: space-between;
+    margin-bottom: 0.55rem;
+  }
+
+  .workflow-card-material {
+    font-weight: 700;
+  }
+
+  .workflow-card-body {
+    color: var(--muted);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem 1rem;
+    font-size: 0.84rem;
+  }
+
+  .workflow-card-body dt {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .workflow-card-body dd {
+    margin: 0;
+  }
+
+  .workflow-card-description,
+  .closeout-card-description {
+    color: var(--muted);
+    font-size: 0.84rem;
+    margin: 0 0 0.65rem;
+  }
+
+  .workflow-card-action {
+    margin-top: 0.75rem;
+  }
+
+  .workflow-card-action .button {
+    display: block;
+    text-align: center;
+    width: 100%;
+  }
+
+  /* ── Control-board recent-work mobile cards ── */
+
+  .recent-work-card-grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: 1fr;
+  }
+
+  .recent-work-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .recent-work-card-header {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .recent-work-card-header strong {
+    font-size: 1rem;
+  }
+
+  .recent-work-card-header span {
+    color: var(--muted);
+    font-size: 0.84rem;
+  }
+
+  .recent-work-card-body {
+    color: var(--muted);
+    display: grid;
+    gap: 0.55rem 1rem;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+  }
+
+  .recent-work-card-body dt {
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .recent-work-card-body dd {
+    margin: 0.1rem 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* ── Closeout queue mobile cards ── */
+
+  .closeout-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .closeout-card-header {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .closeout-card-material {
+    font-weight: 700;
+  }
+
+  .closeout-card-body {
+    color: var(--muted);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem 1rem;
+    font-size: 0.84rem;
+  }
+
+  .closeout-card-body dt {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .closeout-card-body dd {
+    margin: 0;
+  }
+
+  .closeout-card-action {
+    margin-top: 0.75rem;
+  }
+
+  .closeout-card-action .button {
+    display: block;
+    width: 100%;
+    text-align: center;
   }
 }

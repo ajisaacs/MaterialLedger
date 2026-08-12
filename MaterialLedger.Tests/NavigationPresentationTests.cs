@@ -87,6 +87,8 @@ public sealed class NavigationPresentationTests
         Assert.Contains("position: fixed", css);
         Assert.Contains(".primary-nav {", css);
         Assert.Contains("overflow-y: auto", css);
+        Assert.Matches("\\.brand\\s*\\{[\\s\\S]*?border-bottom: 1px solid var\\(--rail-line\\)", css);
+        Assert.Matches("\\.primary-nav p:first-child\\s*\\{[\\s\\S]*?border-bottom: 1px solid var\\(--rail-line\\)", css);
         Assert.Contains(".account {", css);
         Assert.Contains("flex-shrink: 0", css);
         Assert.Contains("outline: 3px solid var(--rail-focus-ring)", css);
@@ -94,6 +96,16 @@ public sealed class NavigationPresentationTests
         Assert.Contains(".alert-error", css);
         Assert.Contains(".inventory-status", css);
         Assert.Matches("@media \\(max-width: 1050px\\)[\\s\\S]*?table \\{[\\s\\S]*?overflow-x: auto", css);
+    }
+
+    [Fact]
+    public void Authenticated_layout_references_an_existing_favicon_to_avoid_browser_asset_errors()
+    {
+        var layout = ReadPage("Shared", "_Layout.cshtml");
+        var faviconPath = Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "favicon.svg");
+
+        Assert.Contains("href=\"~/favicon.svg\"", layout);
+        Assert.True(File.Exists(faviconPath), $"Missing favicon asset: {faviconPath}");
     }
 
     [Fact]
@@ -110,6 +122,60 @@ public sealed class NavigationPresentationTests
         Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-primary-nav-container\\s*\\{[\\s\\S]*?display: block", css);
         Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-primary-nav-container > summary\\s*\\{[\\s\\S]*?display: flex", css);
         Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-primary-nav\\s*\\{[\\s\\S]*?max-height: min\\(60vh, 28rem\\);[\\s\\S]*?overflow-y: auto", css);
+    }
+
+    [Fact]
+    public void Queue_pages_render_mobile_card_equivalents_without_changing_desktop_tables()
+    {
+        var search = ReadPage("Inventory", "Search.cshtml");
+        var reservations = ReadPage("Reservations", "Index.cshtml");
+        var closeout = ReadPage("Closeout", "Index.cshtml");
+        var css = CssTestHelper.ReadEffectiveAppCss();
+
+        Assert.Contains("class=\"desktop-table\"", search);
+        Assert.Contains("mobile-card-grid mobile-card", search);
+        Assert.Contains("class=\"inventory-card\"", search);
+        Assert.Contains("class=\"desktop-table\"", reservations);
+        Assert.Contains("mobile-card-grid mobile-card", reservations);
+        Assert.Contains("class=\"workflow-queue-card\"", reservations);
+        Assert.Contains("class=\"desktop-table\"", closeout);
+        Assert.Contains("mobile-card-grid mobile-card", closeout);
+        Assert.Contains("class=\"closeout-card\"", closeout);
+        Assert.Matches("\\.mobile-card\\s*\\{[\\s\\S]*?display: none", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.desktop-table\\s*\\{[\\s\\S]*?display: none", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-card\\s*\\{[\\s\\S]*?display: block", css);
+    }
+
+    [Fact]
+    public void Control_board_recent_work_uses_mobile_cards_without_changing_desktop_table()
+    {
+        var controlBoard = ReadPage("Index.cshtml");
+        var css = CssTestHelper.ReadEffectiveAppCss();
+
+        Assert.Contains("class=\"recent-work-table desktop-table\"", controlBoard);
+        Assert.Contains("class=\"recent-work-card-grid mobile-card\"", controlBoard);
+        Assert.Contains("class=\"recent-work-card\"", controlBoard);
+        Assert.Contains("Material item", controlBoard);
+        Assert.Contains("Workflow", controlBoard);
+        Assert.Matches("\\.recent-work-card\\s*\\{[\\s\\S]*?border: 1px solid var\\(--line\\)", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.desktop-table\\s*\\{[\\s\\S]*?display: none", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-card\\s*\\{[\\s\\S]*?display: block", css);
+    }
+
+    [Fact]
+    public void Material_catalog_collapses_mobile_thickness_lists_without_changing_desktop_table()
+    {
+        var catalog = ReadPage("Materials", "Index.cshtml");
+        var css = CssTestHelper.ReadEffectiveAppCss();
+
+        Assert.Contains("class=\"material-thickness-table desktop-table\"", catalog);
+        Assert.Contains("class=\"material-thickness-disclosure mobile-card\"", catalog);
+        Assert.Contains("Available thicknesses", catalog);
+        Assert.Contains("@material.Thicknesses.Count options", catalog);
+        Assert.Contains("openAddThickness(this)", catalog);
+        Assert.Matches("\\.material-thickness-disclosure > summary\\s*\\{[\\s\\S]*?display: flex", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.desktop-table\\s*\\{[\\s\\S]*?display: none", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.mobile-card\\s*\\{[\\s\\S]*?display: block", css);
     }
 
     [Fact]

@@ -107,7 +107,7 @@
 }
 else
 {
-<table>
+<table class="desktop-table">
     <thead>
         <tr><th>Item</th><th>Material</th><th>Thickness</th><th>Qty</th><th>Usable size</th><th>Location</th><th>Last observed</th><th>Status</th><th></th></tr>
     </thead>
@@ -140,4 +140,42 @@ else
     }
     </tbody>
 </table>
+
+<div class="mobile-card-grid mobile-card" aria-label="Matching inventory items">
+@foreach (var r in Model.Results)
+{
+    var canReserve = Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined;
+    <article class="inventory-card">
+        <div class="inventory-card-header">
+            <a class="inventory-card-item" asp-page="Details" asp-route-id="@r.InventoryItemId">@r.PublicItemCode</a>
+            <span class="inventory-status inventory-status-@r.Status.ToString().ToLowerInvariant() @(r.IsStale ? "inventory-status-stale" : "")">@r.Status@(r.IsStale ? " — review" : "")</span>
+        </div>
+        <dl class="inventory-card-body">
+            <dt>Material</dt><dd>@r.MaterialDescription</dd>
+            <dt>Thickness</dt><dd>@DisplayFormat.Thickness(r.ThicknessIn, r.GaugeLabel)</dd>
+            <dt>Available</dt><dd>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</dd>
+            <dt>Usable size</dt>
+            <dd>
+                @if (r.UsableWidthIn is not null)
+                {
+                    <span>@DisplayFormat.Quantity(r.UsableWidthIn.Value) × @DisplayFormat.Quantity(r.UsableLengthIn!.Value)</span>
+                }
+                else
+                {
+                    <span>-</span>
+                }
+            </dd>
+            <dt>Location</dt><dd>@r.LocationCode</dd>
+            <dt>Last observed</dt><dd>@DisplayFormat.LocalDateTime(r.LastObservedAtUtc) by @r.LastObservedByDisplayName</dd>
+        </dl>
+        <div class="inventory-card-actions">
+            <a class="button button-secondary" asp-page="Details" asp-route-id="@r.InventoryItemId">View item</a>
+            @if (canReserve)
+            {
+                <a class="button button-primary" asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Hold for work</a>
+            }
+        </div>
+    </article>
+}
+</div>
 }

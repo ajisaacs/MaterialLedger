@@ -39,7 +39,7 @@
         }
         else
         {
-            <table>
+            <table class="desktop-table">
                 <thead><tr><th>Material item</th><th>Material</th><th>Usable size</th><th>Location</th><th>Work reference</th><th>Equipment</th><th>Workflow status</th><th>Since</th><th>Next action</th></tr></thead>
                 <tbody>
                 @foreach (var row in queueSection.Rows)
@@ -76,6 +76,46 @@
                 }
                 </tbody>
             </table>
+
+            <div class="mobile-card-grid mobile-card" aria-label="@queueSection.Title">
+            @foreach (var row in queueSection.Rows)
+            {
+                var workflow = ReservationWorkflowDisplay.For(row.Reservation.Status);
+                <article class="workflow-queue-card">
+                    <div class="workflow-card-header">
+                        <strong class="workflow-card-material">@row.Reservation.InventoryItem?.PublicItemCode</strong>
+                        <span class="workflow-status @workflow.CssClass">@workflow.Label</span>
+                    </div>
+                    <p class="workflow-card-description">@row.Reservation.InventoryItem?.MaterialSpec?.DisplayName</p>
+                    <dl class="workflow-card-body">
+                        <dt>Usable size</dt><dd>@row.UsableSize</dd>
+                        <dt>Location</dt><dd>@row.Reservation.InventoryItem?.InventoryLocation?.LocationCode</dd>
+                        <dt>Work</dt><dd>@row.WorkReference</dd>
+                        <dt>Equipment</dt><dd>@(row.Reservation.Equipment?.ToString() ?? "Not assigned")</dd>
+                        <dt>Since</dt><dd>@row.TimestampUtc.ToString("u")</dd>
+                    </dl>
+                    <p class="workflow-card-description">@workflow.Description</p>
+                    <div class="workflow-card-action">
+                        @if (queueSection.Kind == ReservationQueueKind.ApprovalNeeded && (User.IsInRole("Programmer") || User.IsInRole("Manager")))
+                        {
+                            <a class="button button-primary" asp-page="Details" asp-route-id="@row.Reservation.MaterialReservationId" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">Review approval</a>
+                        }
+                        else if (queueSection.Kind == ReservationQueueKind.ReadyForCutting && (User.IsInRole("Operator") || User.IsInRole("Manager")))
+                        {
+                            <a class="button button-primary" asp-page="/Closeout/Index" asp-route-Status="Approved" asp-route-Equipment="@row.Reservation.Equipment">Open cut queue</a>
+                        }
+                        else if (queueSection.Kind == ReservationQueueKind.CutResultNeeded && (User.IsInRole("Operator") || User.IsInRole("Manager")))
+                        {
+                            <a class="button button-primary" asp-page="/Closeout/Details" asp-route-id="@row.Reservation.MaterialReservationId" asp-route-Status="AwaitingCloseout" asp-route-Equipment="@row.Reservation.Equipment">Record cut result</a>
+                        }
+                        else
+                        {
+                            <a class="button" asp-page="Details" asp-route-id="@row.Reservation.MaterialReservationId" asp-route-Status="@Model.Status" asp-route-Equipment="@Model.Equipment">View hold</a>
+                        }
+                    </div>
+                </article>
+            }
+            </div>
         }
     </section>
 }
