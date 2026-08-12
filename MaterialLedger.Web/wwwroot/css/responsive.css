@@ -89,6 +89,9 @@
   .primary-nav-container[open] > summary {
     border-bottom-color: transparent;
   }
+  .primary-nav-container:not([open]) > .primary-nav {
+    display: none;
+  }
   .primary-nav {
     background: #132a30;
     border: 1px solid #31535c;

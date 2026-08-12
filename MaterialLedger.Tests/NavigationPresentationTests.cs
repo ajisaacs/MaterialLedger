@@ -109,6 +109,8 @@ public sealed class NavigationPresentationTests
         Assert.Contains("<details class=\"primary-nav-container\">", layout);
         Assert.Contains("<summary><span>Menu</span><span class=\"mobile-nav-icon\" aria-hidden=\"true\"></span></summary>", layout);
         Assert.Contains("<nav class=\"primary-nav\" aria-label=\"Primary navigation\">", layout);
+        Assert.Matches("\\.primary-nav-container:not\\(\\[open\\]\\) > \\.primary-nav\\s*\\{[\\s\\S]*?display: block", css);
+        Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.primary-nav-container:not\\(\\[open\\]\\) > \\.primary-nav\\s*\\{[\\s\\S]*?display: none", css);
         Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.primary-nav-container > summary\\s*\\{[\\s\\S]*?display: flex", css);
         Assert.Matches("@media \\(max-width: 720px\\)[\\s\\S]*?\\.primary-nav\\s*\\{[\\s\\S]*?max-height: min\\(60vh, 28rem\\);[\\s\\S]*?overflow-y: auto", css);
     }

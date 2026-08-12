@@ -60,6 +60,9 @@
 .primary-nav-container > summary {
   display: none;
 }
+.primary-nav-container:not([open]) > .primary-nav {
+  display: block;
+}
 .primary-nav {
   min-height: 0;
   overflow-y: auto;
