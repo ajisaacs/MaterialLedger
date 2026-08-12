@@ -35,7 +35,6 @@ public class CloseoutResult
 
 public interface ICloseoutService
 {
-    Task<ReservationResult> MarkReservationAwaitingCloseoutAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int actorId);
     Task<CloseoutResult> CloseoutConsumptionAsync(Guid correlationId, CloseoutConsumptionRequest request, int confirmedBy);
 }
 
@@ -54,44 +53,6 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
 
     private readonly record struct ClosingContext(long ReservationId, DateTime Now, int ActorId, string? Notes);
 
-    public async Task<ReservationResult> MarkReservationAwaitingCloseoutAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int actorId)
-    {
-        var payloadHash = HashPayload(new { materialReservationId, expectedRowVersion = Convert.ToHexString(expectedRowVersion) });
-
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-        var outcome = await operationLog.CheckAsync(correlationId, "MarkReservationAwaitingCloseout", payloadHash);
-        if (outcome.Kind == OperationLogOutcomeKind.Replay)
-        {
-            var replay = JsonSerializer.Deserialize<ReservationResult>(outcome.ResultSummary!)!;
-            await transaction.CommitAsync();
-            return replay;
-        }
-
-        var reservation = await db.MaterialReservations.FirstOrDefaultAsync(x => x.MaterialReservationId == materialReservationId)
-            ?? throw new InvalidOperationException($"Reservation {materialReservationId} does not exist.");
-
-        if (!reservation.RowVersion.SequenceEqual(expectedRowVersion))
-            throw new ReservationConcurrencyException(
-                $"Reservation {materialReservationId} was changed by someone else since it was loaded. Refresh and try again.");
-
-        if (reservation.Status != ReservationStatus.Approved)
-            throw new InvalidOperationException(
-                $"Reservation {materialReservationId} is {reservation.Status}, not Approved — only an Approved reservation can be marked awaiting closeout.");
-
-        reservation.Status = ReservationStatus.AwaitingCloseout;
-
-        var item = await db.InventoryItems.FirstAsync(x => x.InventoryItemId == reservation.InventoryItemId);
-        if (item.ItemKind is InventoryItemKind.Drop or InventoryItemKind.FullSheet)
-            item.Status = InventoryItemStatus.AwaitingCloseout;
-
-        var result = new ReservationResult { MaterialReservationId = reservation.MaterialReservationId, Status = reservation.Status };
-        operationLog.Record(correlationId, "MarkReservationAwaitingCloseout", payloadHash, JsonSerializer.Serialize(result), actorId);
-
-        await db.SaveChangesAsync();
-        await transaction.CommitAsync();
-        return result;
-    }
 
     public async Task<CloseoutResult> CloseoutConsumptionAsync(Guid correlationId, CloseoutConsumptionRequest request, int confirmedBy)
     {

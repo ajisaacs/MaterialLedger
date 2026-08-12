@@ -23,8 +23,9 @@ public sealed class CloseoutPresentationTests
         Assert.Contains("<th>Material</th>", page);
         Assert.Contains("<th>Location</th>", page);
         Assert.Contains("<th>Work reference</th>", page);
-        Assert.Contains("Mark cut started", page);
         Assert.Contains("Record cut result", page);
+        Assert.DoesNotContain("Pending", page);
+        Assert.DoesNotContain("StartJob", page);
         Assert.DoesNotContain("Close material", page);
     }
 
@@ -61,11 +62,38 @@ public sealed class CloseoutPresentationTests
     {
         var page = ReadCloseoutPage("Details.cshtml");
 
-        Assert.Contains("name=\"Remnants[0].MeasuredUsableWidthIn\"", page);
-        Assert.Contains("name=\"Remnants[0].MeasuredUsableLengthIn\"", page);
-        Assert.Contains("name=\"Remnants[0].DestinationLocationId\"", page);
+        Assert.Contains("name=\"Remnants[@index].MeasuredUsableWidthIn\"", page);
+        Assert.Contains("name=\"Remnants[@index].MeasuredUsableLengthIn\"", page);
+        Assert.Contains("name=\"Remnants[@index].DestinationLocationId\"", page);
+        Assert.Contains("sizes are prefilled", page);
         Assert.Contains("id=\"add-remnant\"", page);
         Assert.Contains("Add another drop", page);
+    }
+
+    [Fact]
+    public async Task Detail_get_prefills_every_expected_drop_so_the_operator_can_accept_or_adjust_it()
+    {
+        await using var db = CreateDb();
+        await AddReservationAsync(db, 42, expectedDrops: [(12.5m, 24m), (8m, 16.25m)]);
+        var model = NewDetailsModel(db, new RecordingCloseoutService());
+
+        var action = await model.OnGetAsync(42);
+
+        Assert.IsType<PageResult>(action);
+        Assert.Equal(ProductionConsumptionOutcome.UsableDropCreated, model.Outcome);
+        Assert.Collection(model.Remnants,
+            drop =>
+            {
+                Assert.Equal(12.5m, drop.MeasuredUsableWidthIn);
+                Assert.Equal(24m, drop.MeasuredUsableLengthIn);
+                Assert.Null(drop.DestinationLocationId);
+            },
+            drop =>
+            {
+                Assert.Equal(8m, drop.MeasuredUsableWidthIn);
+                Assert.Equal(16.25m, drop.MeasuredUsableLengthIn);
+                Assert.Null(drop.DestinationLocationId);
+            });
     }
 
     [Fact]
@@ -169,68 +197,6 @@ public sealed class CloseoutPresentationTests
         Assert.Null(closeout.CloseoutRequest);
     }
 
-    [Fact]
-    public async Task Start_job_post_preserves_queue_filters_on_success_prg()
-    {
-        await using var db = CreateDb();
-        var closeout = new RecordingCloseoutService();
-        var model = NewIndexModel(db, closeout);
-        var correlationId = Guid.NewGuid();
-        model.Status = ReservationStatus.Approved;
-        model.Equipment = ReservationEquipment.Laser;
-
-        var action = await model.OnPostStartJobAsync(42, correlationId, Convert.ToBase64String([5, 6, 7]));
-
-        var redirect = Assert.IsType<RedirectToPageResult>(action);
-        Assert.Equal("Index", redirect.PageName);
-        Assert.Equal(ReservationStatus.Approved, redirect.RouteValues!["Status"]);
-        Assert.Equal(ReservationEquipment.Laser, redirect.RouteValues["Equipment"]);
-        Assert.Equal(correlationId, closeout.StartCorrelationId);
-        Assert.Equal(42L, closeout.StartReservationId);
-        Assert.Equal(new byte[] { 5, 6, 7 }, closeout.StartExpectedRowVersion);
-    }
-
-    [Fact]
-    public async Task Start_job_post_preserves_queue_filters_when_concurrency_error_reloads_page()
-    {
-        await using var db = CreateDb();
-        await AddReservationAsync(db, 42, ReservationStatus.Approved, ReservationEquipment.Laser);
-        var closeout = new RecordingCloseoutService
-        {
-            StartException = new ReservationConcurrencyException("stale row version")
-        };
-        var model = NewIndexModel(db, closeout);
-        model.Status = ReservationStatus.Approved;
-        model.Equipment = ReservationEquipment.Laser;
-
-        var action = await model.OnPostStartJobAsync(42, Guid.NewGuid(), Convert.ToBase64String([5, 6, 7]));
-
-        Assert.IsType<PageResult>(action);
-        Assert.Equal("stale row version", model.Error);
-        Assert.Equal(ReservationStatus.Approved, model.Status);
-        Assert.Equal(ReservationEquipment.Laser, model.Equipment);
-        Assert.Single(model.Reservations);
-    }
-
-    [Fact]
-    public async Task Start_job_post_malformed_row_version_reloads_queue_with_filters()
-    {
-        await using var db = CreateDb();
-        await AddReservationAsync(db, 42, ReservationStatus.Approved, ReservationEquipment.Laser);
-        var closeout = new RecordingCloseoutService();
-        var model = NewIndexModel(db, closeout);
-        model.Status = ReservationStatus.Approved;
-        model.Equipment = ReservationEquipment.Laser;
-
-        var action = await model.OnPostStartJobAsync(42, Guid.NewGuid(), "not valid base64!");
-
-        Assert.IsType<PageResult>(action);
-        Assert.NotNull(model.Error);
-        Assert.Equal(ReservationStatus.Approved, model.Status);
-        Assert.Equal(ReservationEquipment.Laser, model.Equipment);
-        Assert.Single(model.Reservations);
-        Assert.Null(closeout.StartExpectedRowVersion);
-    }
 
     [Fact]
     public void Closeout_navigation_posts_and_links_queue_filters()
@@ -238,8 +204,6 @@ public sealed class CloseoutPresentationTests
         var index = ReadCloseoutPage("Index.cshtml");
         var details = ReadCloseoutPage("Details.cshtml");
 
-        Assert.Contains("asp-for=\"Status\"", index);
-        Assert.Contains("asp-for=\"Equipment\"", index);
         Assert.Contains("asp-route-Status=\"@Model.Status\"", index);
         Assert.Contains("asp-route-Equipment=\"@Model.Equipment\"", index);
         Assert.Contains("[BindProperty(SupportsGet = true)] public ReservationStatus? Status", ReadCloseoutPage("Details.cshtml.cs"));
@@ -254,8 +218,6 @@ public sealed class CloseoutPresentationTests
     private static DetailsModel NewDetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout) =>
         new(db, closeout) { PageContext = NewPageContext() };
 
-    private static IndexModel NewIndexModel(MaterialLedgerDbContext db, ICloseoutService closeout) =>
-        new(db, closeout) { PageContext = NewPageContext() };
 
     private static PageContext NewPageContext()
     {
@@ -267,7 +229,8 @@ public sealed class CloseoutPresentationTests
     }
 
     private static async Task AddReservationAsync(MaterialLedgerDbContext db, long id,
-        ReservationStatus status = ReservationStatus.Approved, ReservationEquipment equipment = ReservationEquipment.Laser)
+        ReservationStatus status = ReservationStatus.Approved, ReservationEquipment equipment = ReservationEquipment.Laser,
+        IReadOnlyList<(decimal WidthIn, decimal LengthIn)>? expectedDrops = null)
     {
         var user = new AppUser { AppUserId = 7, Username = "operator", DisplayName = "Operator", PasswordHash = "hash" };
         var spec = new MaterialSpec { MaterialSpecId = 1, MaterialFamily = "Steel", DisplayName = "Steel", ThicknessIn = 0.25m, IsActive = true };
@@ -291,6 +254,13 @@ public sealed class CloseoutPresentationTests
             InventoryItem = item,
             Status = status,
             Equipment = equipment,
+            ExpectedRemnants = expectedDrops?.Select((drop, index) => new ExpectedRemnant
+            {
+                Sequence = index + 1,
+                WidthIn = drop.WidthIn,
+                LengthIn = drop.LengthIn,
+                SourceType = ExpectedRemainderSource.Manual
+            }).ToList() ?? [],
             CreatedAtUtc = DateTime.UtcNow,
             CreatedByUser = user
         });
@@ -299,22 +269,10 @@ public sealed class CloseoutPresentationTests
 
     private sealed class RecordingCloseoutService : ICloseoutService
     {
-        public Exception? StartException { get; init; }
         public Exception? CloseoutException { get; init; }
-        public Guid StartCorrelationId { get; private set; }
-        public long StartReservationId { get; private set; }
-        public byte[]? StartExpectedRowVersion { get; private set; }
         public Guid CloseoutCorrelationId { get; private set; }
         public CloseoutConsumptionRequest? CloseoutRequest { get; private set; }
 
-        public Task<ReservationResult> MarkReservationAwaitingCloseoutAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int actorId)
-        {
-            if (StartException is not null) throw StartException;
-            StartCorrelationId = correlationId;
-            StartReservationId = materialReservationId;
-            StartExpectedRowVersion = expectedRowVersion;
-            return Task.FromResult(new ReservationResult { MaterialReservationId = materialReservationId, Status = ReservationStatus.AwaitingCloseout });
-        }
 
         public Task<CloseoutResult> CloseoutConsumptionAsync(Guid correlationId, CloseoutConsumptionRequest request, int confirmedBy)
         {

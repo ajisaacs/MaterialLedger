@@ -50,6 +50,7 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
         if (Reservation is null)
             return NotFound();
         CorrelationId = Guid.NewGuid();
+        PrefillExpectedRemnants();
         return Page();
     }
 
@@ -88,6 +89,33 @@ public class DetailsModel(MaterialLedgerDbContext db, ICloseoutService closeout)
         CorrelationId = Guid.NewGuid();
         Error = error;
         return Page();
+    }
+
+    private void PrefillExpectedRemnants()
+    {
+        var expectedRemnants = Reservation!.ExpectedRemnants
+            .OrderBy(x => x.Sequence)
+            .Select(x => new CloseoutRemnantInput
+            {
+                MeasuredUsableWidthIn = x.WidthIn,
+                MeasuredUsableLengthIn = x.LengthIn
+            })
+            .ToList();
+
+        if (expectedRemnants.Count == 0 && Reservation.ExpectedRemainderWidthIn is not null && Reservation.ExpectedRemainderLengthIn is not null)
+        {
+            expectedRemnants.Add(new CloseoutRemnantInput
+            {
+                MeasuredUsableWidthIn = Reservation.ExpectedRemainderWidthIn,
+                MeasuredUsableLengthIn = Reservation.ExpectedRemainderLengthIn
+            });
+        }
+
+        if (expectedRemnants.Count == 0)
+            return;
+
+        Outcome = ProductionConsumptionOutcome.UsableDropCreated;
+        Remnants = expectedRemnants;
     }
 
     private async Task LoadPageAsync(long id)

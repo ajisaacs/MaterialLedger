@@ -74,21 +74,24 @@
 
         <fieldset class="closeout-drop-fields" data-outcome="UsableDropCreated">
             <legend>Usable drop details</legend>
-            <p class="form-hint">Record every usable rectangular drop. Measurements and destination are validated on submit.</p>
+            <p class="form-hint">Record every usable rectangular drop. Estimated sizes are prefilled from the job; accept them as-is or adjust them to match the material on hand, then select the destination for each drop.</p>
             <div id="remnant-list">
-                <div class="remnant-entry">
-                    <label>Measured usable width (in) <input name="Remnants[0].MeasuredUsableWidthIn" value="@Model.Remnants[0].MeasuredUsableWidthIn" type="number" min="0.001" step="0.001" /></label>
-                    <label>Measured usable length (in) <input name="Remnants[0].MeasuredUsableLengthIn" value="@Model.Remnants[0].MeasuredUsableLengthIn" type="number" min="0.001" step="0.001" /></label>
-                    <label>Destination slot
-                        <select name="Remnants[0].DestinationLocationId">
-                            <option value="">-- select --</option>
-                            @foreach (var loc in Model.DestinationChoices)
-                            {
-                                <option value="@loc.InventoryLocationId" selected="@(Model.Remnants[0].DestinationLocationId == loc.InventoryLocationId)">@loc.LocationCode — @loc.DisplayName</option>
-                            }
-                        </select>
-                    </label>
-                </div>
+                @for (var index = 0; index < Model.Remnants.Count; index++)
+                {
+                    <div class="remnant-entry">
+                        <label>Measured usable width (in) <input name="Remnants[@index].MeasuredUsableWidthIn" value="@Model.Remnants[index].MeasuredUsableWidthIn" type="number" min="0.001" step="0.001" /></label>
+                        <label>Measured usable length (in) <input name="Remnants[@index].MeasuredUsableLengthIn" value="@Model.Remnants[index].MeasuredUsableLengthIn" type="number" min="0.001" step="0.001" /></label>
+                        <label>Destination slot
+                            <select name="Remnants[@index].DestinationLocationId">
+                                <option value="">-- select --</option>
+                                @foreach (var loc in Model.DestinationChoices)
+                                {
+                                    <option value="@loc.InventoryLocationId" selected="@(Model.Remnants[index].DestinationLocationId == loc.InventoryLocationId)">@loc.LocationCode — @loc.DisplayName</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                }
             </div>
             <button id="add-remnant" type="button" class="button button-secondary">Add another drop</button>
             <template id="remnant-template">
