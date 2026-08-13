@@ -1,4 +1,5 @@
 using MaterialLedger.Data;
+using MaterialLedger.Web.Api;
 using MaterialLedger.Web.Authorization;
 using MaterialLedger.Web.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -76,8 +77,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromDays(3650); // "sessions do not expire on a timer"
         options.SlidingExpiration = true;
         options.Cookie.IsEssential = true;
+        ApiAuthenticationEvents.Configure(options.Events);
     });
 builder.Services.AddAuthorization(options => options.AddMaterialLedgerPolicies());
+builder.Services.AddProblemDetails();
 builder.Services.AddRazorPages();
 
 var app = builder.Build();
@@ -101,7 +104,12 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStaticFiles();
 app.UseRouting();
+app.UseMiddleware<ApiExceptionHandler>();
+app.UseApiProblemResponses();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapMaterialLedgerApi(app.Environment);
 app.MapRazorPages();
 app.Run();
+
+public partial class Program;
