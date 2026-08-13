@@ -181,29 +181,16 @@
   }
 }
 @media (max-width: 720px) {
-  .inventory-search-bar {
-    padding: 0.9rem;
-  }
-  .inventory-filter-fields {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .inventory-filter-fields > label,
-  .dimension-filter {
-    width: 100%;
-  }
-  .dimension-filter label {
-    min-width: 0;
-  }
-  .available-toggle {
-    min-height: auto;
-    width: auto !important;
-  }
-  .inventory-filter-dialog {
-    max-height: 100vh;
-    max-width: 100vw;
-    min-height: 100vh;
-  }
+  .inventory-search-bar { align-items: stretch; }
+  .inventory-filter-toolbar { justify-content: space-between; width: 100%; }
+  .inventory-filter-columns { flex-basis: 100%; }
+  .inventory-filter-column { flex: 1 1 auto; }
+  .dimension-filter { width: 100%; }
+  .dimension-filter label { min-width: 0; }
+  .available-toggle { min-height: auto; width: auto !important; }
+  .filter-summary { align-self: center; }
+  .inventory-option-dialog { max-height: 100vh; max-width: 100vw; min-height: 100vh; }
+  .inventory-option-list { grid-template-columns: 1fr; max-height: none; }
   .opening-balance-section {
     margin-left: -0.15rem;
     margin-right: -0.15rem;

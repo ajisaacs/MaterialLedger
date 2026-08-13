@@ -1,0 +1,34 @@
+@model MaterialLedger.Web.Pages.Inventory.InventoryOptionFilterViewModel
+@{
+    var selected = Model.SelectedValues.ToHashSet(StringComparer.Ordinal);
+    var options = Model.Options.ToList();
+}
+<dialog id="@Model.DialogId" class="inventory-option-dialog" aria-labelledby="@($"{Model.DialogId}-title")">
+    <div class="dialog-heading">
+        <div>
+            <p class="eyebrow">Inventory search</p>
+            <h2 id="@($"{Model.DialogId}-title")">Select @Model.Label</h2>
+            <p>Choose the values to include in this column.</p>
+        </div>
+        <button class="dialog-close" type="button" data-close-filter aria-label="Close @Model.Label filter">×</button>
+    </div>
+    <input type="hidden" name="@Model.ActiveFieldName" value="@(Model.IsActive ? "true" : "false")" />
+    <div class="inventory-option-toolbar">
+        <span data-selection-count aria-live="polite"></span>
+        <div><button type="button" class="button button-secondary" data-select-all>Select all</button><button type="button" class="button button-secondary" data-deselect-all>Deselect all</button></div>
+    </div>
+    @if (options.Count == 0)
+    {
+        <p class="empty-state">No @Model.Label.ToLowerInvariant() values exist in current inventory.</p>
+    }
+    else
+    {
+        <div class="inventory-option-list">
+        @foreach (var option in options)
+        {
+            <label><input type="checkbox" name="@Model.ValueFieldName" value="@option.Value" @(selected.Contains(option.Value) ? "checked" : null) /> <span>@option.Label</span></label>
+        }
+        </div>
+    }
+    <div class="dialog-actions"><button type="button" class="button button-primary" data-apply-filter>Done</button></div>
+</dialog>

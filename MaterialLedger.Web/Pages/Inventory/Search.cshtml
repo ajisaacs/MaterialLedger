@@ -4,101 +4,78 @@
 @using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; }
 @{
-    var appliedFilterCount = 0;
-    if (!string.IsNullOrWhiteSpace(Model.MaterialFamily)) { appliedFilterCount++; }
-    if (Model.ThicknessIn is not null) { appliedFilterCount++; }
-    if (Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) { appliedFilterCount++; }
-    if (!string.IsNullOrWhiteSpace(Model.Grade)) { appliedFilterCount++; }
-    if (!string.IsNullOrWhiteSpace(Model.Finish)) { appliedFilterCount++; }
-    if (Model.ItemKind is not null) { appliedFilterCount++; }
-    if (!string.IsNullOrWhiteSpace(Model.LocationCode)) { appliedFilterCount++; }
-    if (!Model.AvailableOnly) { appliedFilterCount++; }
-
-    var itemKindLabel = Model.ItemKind switch
+    var filterCount = new[]
     {
-        InventoryItemKind.FullSheetBundle => "Full sheet / bundle",
-        InventoryItemKind.FullSheet => "Single full sheet",
-        InventoryItemKind.Drop => "Drop",
-        _ => null
-    };
+        Model.FilterMaterialFamilies, Model.FilterGrades, Model.FilterFinishes,
+        Model.FilterThicknesses, Model.FilterItemKinds, Model.FilterLocationCodes,
+        Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null,
+        !Model.AvailableOnly
+    }.Count(x => x);
 }
 
 <header class="page-heading">
     <p class="eyebrow">Cutting workflow</p>
     <h1>Find material</h1>
-    <p>Search available stock and drops, then hold the selected item for work.</p>
+    <p>Choose material attributes, then hold the selected stock for work.</p>
 </header>
 @if (TempData["Message"] is string message)
 {
     <p class="alert-success" role="status">@message</p>
 }
 
-<section class="inventory-search-bar" aria-label="Applied inventory filters">
-    <div class="inventory-filter-heading">
-        <div>
-            <p class="eyebrow">Search filters</p>
-            <h2>Current filters</h2>
-        </div>
-        <button type="button" class="button button-primary" onclick="document.getElementById('inventory-filter-dialog').showModal()">Filters@(appliedFilterCount > 0 ? $" ({appliedFilterCount})" : "")</button>
+<form method="get" class="inventory-search-bar" id="inventory-search-form" aria-label="Inventory search filters">
+    <div class="inventory-filter-toolbar">
+        <span class="inventory-filter-label">Filter:</span>
+        <a class="clear-filters" asp-page="/Inventory/Search">Reset</a>
     </div>
 
-    <ul class="active-filter-list">
-        @if (!string.IsNullOrWhiteSpace(Model.MaterialFamily)) { <li><strong>Material:</strong> @Model.MaterialFamily</li> }
-        @if (Model.ThicknessIn is not null) { <li><strong>Thickness:</strong> @Model.ThicknessIn in</li> }
-        @if (Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) { <li><strong>Minimum usable size:</strong> ≥ @(Model.MinUsableWidthIn?.ToString() ?? "any") × @(Model.MinUsableLengthIn?.ToString() ?? "any") in</li> }
-        @if (!string.IsNullOrWhiteSpace(Model.Grade)) { <li><strong>Grade:</strong> @Model.Grade</li> }
-        @if (!string.IsNullOrWhiteSpace(Model.Finish)) { <li><strong>Finish:</strong> @Model.Finish</li> }
-        @if (itemKindLabel is not null) { <li><strong>Kind:</strong> @itemKindLabel</li> }
-        @if (!string.IsNullOrWhiteSpace(Model.LocationCode)) { <li><strong>Location:</strong> @Model.LocationCode</li> }
-        <li><strong>Availability:</strong> @(Model.AvailableOnly ? "Available only" : "All inventory")</li>
-    </ul>
-
-    @if (appliedFilterCount > 0)
-    {
-        <a class="clear-filters" asp-page="/Inventory/Search">Clear all filters</a>
-    }
-</section>
-
-<dialog id="inventory-filter-dialog" class="inventory-filter-dialog" aria-labelledby="inventory-filter-dialog-title">
-    <div class="dialog-heading">
-        <div>
-            <p class="eyebrow">Inventory search</p>
-            <h2 id="inventory-filter-dialog-title">Filter material</h2>
-            <p>Set one or more criteria, then apply them to the inventory list.</p>
-        </div>
-        <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close filters">×</button></form>
+    <div class="inventory-filter-columns" aria-label="Selectable inventory filter columns">
+        <button type="button" class="inventory-filter-column @(Model.FilterMaterialFamilies ? "is-filtered" : "")" data-filter-dialog="material-family-filter-dialog">
+            <span>Material</span><strong>@(Model.FilterMaterialFamilies ? $"{Model.MaterialFamilies.Count} selected" : "All")</strong>
+        </button>
+        <button type="button" class="inventory-filter-column @(Model.FilterGrades ? "is-filtered" : "")" data-filter-dialog="grade-filter-dialog">
+            <span>Grade</span><strong>@(Model.FilterGrades ? $"{Model.Grades.Count} selected" : "All")</strong>
+        </button>
+        <button type="button" class="inventory-filter-column @(Model.FilterFinishes ? "is-filtered" : "")" data-filter-dialog="finish-filter-dialog">
+            <span>Finish</span><strong>@(Model.FilterFinishes ? $"{Model.Finishes.Count} selected" : "All")</strong>
+        </button>
+        <button type="button" class="inventory-filter-column @(Model.FilterThicknesses ? "is-filtered" : "")" data-filter-dialog="thickness-filter-dialog">
+            <span>Thickness</span><strong>@(Model.FilterThicknesses ? $"{Model.ThicknessesIn.Count} selected" : "All")</strong>
+        </button>
+        <button type="button" class="inventory-filter-column @(Model.FilterItemKinds ? "is-filtered" : "")" data-filter-dialog="kind-filter-dialog">
+            <span>Kind</span><strong>@(Model.FilterItemKinds ? $"{Model.ItemKinds.Count} selected" : "All")</strong>
+        </button>
+        <button type="button" class="inventory-filter-column @(Model.FilterLocationCodes ? "is-filtered" : "")" data-filter-dialog="location-filter-dialog">
+            <span>Location</span><strong>@(Model.FilterLocationCodes ? $"{Model.LocationCodes.Count} selected" : "All")</strong>
+        </button>
+        <button type="button" class="inventory-filter-column @((Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null) ? "is-filtered" : "")" data-filter-dialog="size-filter-dialog">
+            <span>Size</span><strong>@(Model.MinUsableWidthIn is not null || Model.MinUsableLengthIn is not null ? $"≥ {Model.MinUsableWidthIn?.ToString() ?? "any"} × {Model.MinUsableLengthIn?.ToString() ?? "any"}" : "Any")</strong>
+        </button>
     </div>
 
-    <form method="get" class="inventory-filter-form">
-        <div class="inventory-filter-fields">
-            <label>Material family <input asp-for="MaterialFamily" /></label>
-            <label>Thickness (in) <input asp-for="ThicknessIn" type="number" step="0.0001" /></label>
-            <fieldset class="dimension-filter">
-                <legend>Minimum usable size (in)</legend>
-                <label>Width <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
-                <span aria-hidden="true">×</span>
-                <label>Length <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
-            </fieldset>
-            <label>Grade <input asp-for="Grade" /></label>
-            <label>Finish <input asp-for="Finish" /></label>
-            <label>Kind
-                <select asp-for="ItemKind">
-                    <option value="">-- any --</option>
-                    <option value="FullSheetBundle">Full sheet / bundle</option>
-                    <option value="FullSheet">Single full sheet</option>
-                    <option value="Drop">Drop</option>
-                </select>
-            </label>
-            <label>Location code <input asp-for="LocationCode" /></label>
-            <label class="available-toggle"><input asp-for="AvailableOnly" type="checkbox" /> Available only</label>
+    <label class="available-toggle"><input asp-for="AvailableOnly" type="checkbox" data-submit-on-change /> Available only</label>
+    <span class="filter-summary">@(filterCount == 0 ? "Showing all available inventory" : $"{filterCount} filter{(filterCount == 1 ? "" : "s")} applied")</span>
+
+    @await Html.PartialAsync("_InventoryOptionFilter", new InventoryOptionFilterViewModel("material-family-filter-dialog", "Material", "FilterMaterialFamilies", "MaterialFamilies", Model.FilterMaterialFamilies, Model.MaterialFamilies, Model.FilterOptions.MaterialFamilies.Select(x => new InventoryOptionFilterChoice(x, x))))
+    @await Html.PartialAsync("_InventoryOptionFilter", new InventoryOptionFilterViewModel("grade-filter-dialog", "Grade", "FilterGrades", "Grades", Model.FilterGrades, Model.Grades, Model.FilterOptions.Grades.Select(x => new InventoryOptionFilterChoice(x, x))))
+    @await Html.PartialAsync("_InventoryOptionFilter", new InventoryOptionFilterViewModel("finish-filter-dialog", "Finish", "FilterFinishes", "Finishes", Model.FilterFinishes, Model.Finishes, Model.FilterOptions.Finishes.Select(x => new InventoryOptionFilterChoice(x, x))))
+    @await Html.PartialAsync("_InventoryOptionFilter", new InventoryOptionFilterViewModel("thickness-filter-dialog", "Thickness", "FilterThicknesses", "ThicknessesIn", Model.FilterThicknesses, Model.ThicknessesIn.Select(x => x.ToString(System.Globalization.CultureInfo.InvariantCulture)), Model.FilterOptions.ThicknessesIn.Select(x => new InventoryOptionFilterChoice(x.ToString(System.Globalization.CultureInfo.InvariantCulture), DisplayFormat.Thickness(x, null)))))
+    @await Html.PartialAsync("_InventoryOptionFilter", new InventoryOptionFilterViewModel("kind-filter-dialog", "Kind", "FilterItemKinds", "ItemKinds", Model.FilterItemKinds, Model.ItemKinds.Select(x => x.ToString()), Model.FilterOptions.ItemKinds.Select(x => new InventoryOptionFilterChoice(x.ToString(), x switch { InventoryItemKind.FullSheetBundle => "Full sheet / bundle", InventoryItemKind.FullSheet => "Single full sheet", _ => "Drop" }))))
+    @await Html.PartialAsync("_InventoryOptionFilter", new InventoryOptionFilterViewModel("location-filter-dialog", "Location", "FilterLocationCodes", "LocationCodes", Model.FilterLocationCodes, Model.LocationCodes, Model.FilterOptions.LocationCodes.Select(x => new InventoryOptionFilterChoice(x, x))))
+    <dialog id="size-filter-dialog" class="inventory-option-dialog" aria-labelledby="size-filter-dialog-title">
+        <div class="dialog-heading">
+            <div><p class="eyebrow">Inventory search</p><h2 id="size-filter-dialog-title">Minimum usable size</h2><p>Only show inventory at least this wide and long.</p></div>
+            <button class="dialog-close" type="button" data-close-filter aria-label="Close size filter">×</button>
         </div>
-        <div class="dialog-actions">
-            <button type="submit">Apply filters</button>
-            <a class="button button-secondary" asp-page="/Inventory/Search">Clear all</a>
-            <button type="button" class="button-secondary" onclick="document.getElementById('inventory-filter-dialog').close()">Cancel</button>
-        </div>
-    </form>
-</dialog>
+        <fieldset class="dimension-filter size-filter-fields">
+            <legend>Minimum usable size (in)</legend>
+            <label>Width <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
+            <span aria-hidden="true">×</span>
+            <label>Length <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
+        </fieldset>
+        <div class="dialog-actions"><button type="button" class="button button-primary" data-apply-filter>Done</button></div>
+    </dialog>
+</form>
 
 <p class="result-count">@Model.Results.Count matching item@(Model.Results.Count == 1 ? "" : "s")</p>
 @if (Model.Results.Count == 0)
@@ -119,23 +96,20 @@ else
             <td>@r.MaterialDescription</td>
             <td>@DisplayFormat.Thickness(r.ThicknessIn, r.GaugeLabel)</td>
             <td>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</td>
-            <td>@if (r.UsableWidthIn is not null)
+            <td>
+                @if (r.UsableWidthIn is not null)
                 {
                     <span class="usable-size"><span class="usable-size-dim">@DisplayFormat.Quantity(r.UsableWidthIn.Value)</span><span class="usable-size-x">x</span><span class="usable-size-dim">@DisplayFormat.Quantity(r.UsableLengthIn!.Value)</span></span>
                 }
                 else
                 {
-                    @:-
-                }</td>
+                    <span>-</span>
+                }
+            </td>
             <td>@r.LocationCode</td>
             <td>@DisplayFormat.LocalDateTime(r.LastObservedAtUtc) by @r.LastObservedByDisplayName @(r.IsStale ? "(STALE)" : "")</td>
             <td><span class="inventory-status inventory-status-@r.Status.ToString().ToLowerInvariant() @(r.IsStale ? "inventory-status-stale" : "")">@r.Status@(r.IsStale ? " — review before use" : "")</span></td>
-            <td>
-            @if (Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined)
-            {
-                <a asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Hold for work</a>
-            }
-            </td>
+            <td>@if (Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined) { <a asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Hold for work</a> }</td>
         </tr>
     }
     </tbody>
@@ -146,36 +120,42 @@ else
 {
     var canReserve = Model.CanReserve && r.AvailableQuantity > 0 && !r.IsStale && r.Status != InventoryItemStatus.Quarantined;
     <article class="inventory-card">
-        <div class="inventory-card-header">
-            <a class="inventory-card-item" asp-page="Details" asp-route-id="@r.InventoryItemId">@r.PublicItemCode</a>
-            <span class="inventory-status inventory-status-@r.Status.ToString().ToLowerInvariant() @(r.IsStale ? "inventory-status-stale" : "")">@r.Status@(r.IsStale ? " — review" : "")</span>
-        </div>
+        <div class="inventory-card-header"><a class="inventory-card-item" asp-page="Details" asp-route-id="@r.InventoryItemId">@r.PublicItemCode</a><span class="inventory-status inventory-status-@r.Status.ToString().ToLowerInvariant() @(r.IsStale ? "inventory-status-stale" : "")">@r.Status@(r.IsStale ? " — review" : "")</span></div>
         <dl class="inventory-card-body">
-            <dt>Material</dt><dd>@r.MaterialDescription</dd>
-            <dt>Thickness</dt><dd>@DisplayFormat.Thickness(r.ThicknessIn, r.GaugeLabel)</dd>
-            <dt>Available</dt><dd>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</dd>
-            <dt>Usable size</dt>
-            <dd>
-                @if (r.UsableWidthIn is not null)
-                {
-                    <span>@DisplayFormat.Quantity(r.UsableWidthIn.Value) × @DisplayFormat.Quantity(r.UsableLengthIn!.Value)</span>
-                }
-                else
-                {
-                    <span>-</span>
-                }
-            </dd>
-            <dt>Location</dt><dd>@r.LocationCode</dd>
-            <dt>Last observed</dt><dd>@DisplayFormat.LocalDateTime(r.LastObservedAtUtc) by @r.LastObservedByDisplayName</dd>
+            <dt>Material</dt><dd>@r.MaterialDescription</dd><dt>Thickness</dt><dd>@DisplayFormat.Thickness(r.ThicknessIn, r.GaugeLabel)</dd><dt>Available</dt><dd>@DisplayFormat.Quantity(r.AvailableQuantity) of @DisplayFormat.Quantity(r.QuantityOnHand)</dd>
+            <dt>Usable size</dt><dd>@if (r.UsableWidthIn is not null) { <span>@DisplayFormat.Quantity(r.UsableWidthIn.Value) × @DisplayFormat.Quantity(r.UsableLengthIn!.Value)</span> } else { <span>-</span> }</dd>
+            <dt>Location</dt><dd>@r.LocationCode</dd><dt>Last observed</dt><dd>@DisplayFormat.LocalDateTime(r.LastObservedAtUtc) by @r.LastObservedByDisplayName</dd>
         </dl>
-        <div class="inventory-card-actions">
-            <a class="button button-secondary" asp-page="Details" asp-route-id="@r.InventoryItemId">View item</a>
-            @if (canReserve)
-            {
-                <a class="button button-primary" asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Hold for work</a>
-            }
-        </div>
+        <div class="inventory-card-actions"><a class="button button-secondary" asp-page="Details" asp-route-id="@r.InventoryItemId">View item</a>@if (canReserve) { <a class="button button-primary" asp-page="/Reservations/Create" asp-route-inventoryItemId="@r.InventoryItemId">Hold for work</a> }</div>
     </article>
 }
 </div>
 }
+
+<script>
+(() => {
+  document.querySelectorAll('[data-filter-dialog]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.filterDialog).showModal()));
+  document.querySelectorAll('.inventory-option-dialog').forEach(dialog => {
+    const checkboxes = [...dialog.querySelectorAll('input[type="checkbox"]')];
+    const active = dialog.querySelector('input[type="hidden"]');
+    const count = dialog.querySelector('[data-selection-count]');
+    const update = () => {
+      if (!active || !count) return;
+      const selected = checkboxes.filter(x => x.checked).length;
+      active.value = selected ? 'true' : 'false';
+      count.textContent = `${selected} selected`;
+    };
+    dialog.querySelector('[data-select-all]')?.addEventListener('click', () => { checkboxes.forEach(x => x.checked = true); update(); });
+    dialog.querySelector('[data-deselect-all]')?.addEventListener('click', () => { checkboxes.forEach(x => x.checked = false); update(); });
+    checkboxes.forEach(x => x.addEventListener('change', update));
+    dialog.querySelector('[data-close-filter]').addEventListener('click', () => dialog.close());
+    dialog.querySelector('[data-apply-filter]').addEventListener('click', () => {
+      update();
+      dialog.close();
+      document.getElementById('inventory-search-form').requestSubmit();
+    });
+    update();
+  });
+  document.querySelectorAll('[data-submit-on-change]').forEach(input => input.addEventListener('change', () => document.getElementById('inventory-search-form').requestSubmit()));
+})();
+</script>

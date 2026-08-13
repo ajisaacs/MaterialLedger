@@ -1,168 +1,43 @@
-.inventory-search-bar {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  margin: 1.1rem 0;
-  padding: 1rem 1.1rem;
-}
-.inventory-filter-heading {
-  align-items: center;
-  display: flex;
-  gap: 1rem;
-  justify-content: space-between;
-}
-.inventory-filter-heading .eyebrow {
-  margin-bottom: 0.15rem;
-}
-.inventory-filter-heading h2 {
-  font-size: 1rem;
-  margin: 0;
-}
-.inventory-filter-heading button {
-  margin: 0;
-  white-space: nowrap;
-}
-.active-filter-list {
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.4rem;
-  margin: 0.8rem 0 0;
-  padding-left: 1.2rem;
-}
-.active-filter-list li {
-  padding-left: 0.05rem;
-}
-.active-filter-list strong {
-  color: var(--ink);
-}
-.clear-filters {
-  display: inline-block;
-  font-size: 0.84rem;
-  font-weight: 800;
-  margin-top: 0.85rem;
-}
-.inventory-filter-dialog {
-  border: 1px solid var(--line);
-  color: var(--ink);
-  max-height: calc(100vh - 2rem);
-  max-width: min(760px, calc(100vw - 2rem));
-  padding: 1.4rem;
-  width: 100%;
-}
-.inventory-filter-dialog::backdrop {
-  background: rgb(18 36 43 / 65%);
-}
-.inventory-filter-form {
-  max-width: none !important;
-}
-.inventory-filter-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem 1rem;
-  margin-top: 1rem;
-}
-.inventory-filter-fields > label {
-  margin: 0;
-  min-width: 9.5rem;
-}
-.inventory-filter-fields input,
-.inventory-filter-fields select {
-  width: 100%;
-}
-.dimension-filter {
-  align-items: end;
-  border: 0;
-  display: flex;
-  gap: 0.45rem;
-  margin: 0;
-  padding: 0;
-}
-.dimension-filter legend {
-  color: var(--ink);
-  font-size: 0.82rem;
-  font-weight: 750;
-  margin-bottom: 0.35rem;
-  padding: 0;
-}
-.dimension-filter label {
-  min-width: 6.8rem;
-}
-.dimension-filter span {
-  padding: 0.55rem 0;
-}
-.available-toggle {
-  align-items: center !important;
-  flex-direction: row !important;
-  gap: 0.5rem !important;
-  min-height: 2.55rem;
-  min-width: auto !important;
-  white-space: nowrap;
-}
-.available-toggle input {
-  width: auto !important;
-}
-.result-count {
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 700;
-  margin: 1.2rem 0 0.2rem;
-}
-.workflow-status {
-  border: 1px solid currentColor;
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  padding: 0.22rem 0.42rem;
-}
-.workflow-status.pending,
-.workflow-status.unknown {
-  background: #eef2f3;
-  color: #42535b;
-}
-.workflow-status.ready,
-.workflow-status.complete {
-  background: #e6f4ea;
-  color: var(--green);
-}
-.workflow-status.action-needed {
-  background: #fff4e5;
-  color: var(--amber);
-}
-.workflow-status.attention {
-  background: #fdecea;
-  color: var(--red);
-}
-.inventory-status {
-  border-left: 4px solid #667980;
-  display: block;
-  padding: 0.42rem 0.55rem;
-}
-.inventory-status-available {
-  background: #e6f4ea;
-  border-left-color: var(--green);
-}
-.inventory-status-reserved,
-.inventory-status-awaitingcloseout {
-  background: #fff4e5;
-  border-left-color: var(--amber);
-}
-.inventory-status-quarantined,
-.inventory-status-scrapped,
-.inventory-status-stale {
-  background: #fdecea;
-  border-left-color: var(--red);
-}
-.inventory-status-depleted {
-  background: #eef2f3;
-  border-left-color: #667980;
-}
-.inventory-status a {
-  color: inherit;
-}
-.exception-explanation {
-  color: var(--muted);
-  display: block;
-  font-size: 0.8rem;
-  margin-top: 0.3rem;
-}
+.inventory-search-bar { align-items: center; background: transparent; border: 0; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.6rem 0 1rem; padding: 0 0 0.6rem; }
+.inventory-filter-toolbar { align-items: center; display: flex; gap: 0.55rem; }
+.inventory-filter-label { color: var(--muted); font-size: 0.76rem; font-weight: 800; text-transform: uppercase; }
+.clear-filters { font-size: 0.78rem; font-weight: 800; white-space: nowrap; }
+.inventory-filter-columns { display: flex; flex: 1 1 40rem; flex-wrap: wrap; gap: 0.4rem; }
+.inventory-filter-column { align-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--ink); cursor: pointer; display: flex; font: inherit; gap: 0.4rem; min-height: 2.3rem; padding: 0.3rem 0.55rem; text-align: left; }
+.inventory-filter-column:hover, .inventory-filter-column:focus-visible { border-color: var(--green); outline: 2px solid var(--green); outline-offset: 1px; }
+.inventory-filter-column.is-filtered { background: #e6f4ea; border-color: var(--green); }
+.inventory-filter-column span { color: var(--muted); font-size: 0.75rem; font-weight: 800; }
+.inventory-filter-column strong { font-size: 0.78rem; max-width: 5.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dimension-filter { align-items: end; border: 0; display: flex; gap: 0.35rem; margin: 0; padding: 0; }
+.size-filter-fields { display: flex; margin-top: 1rem; }
+.size-filter-fields > span { align-self: stretch; display: grid; place-items: center; padding: 0; width: 1rem; }
+.dimension-filter legend { color: var(--ink); font-size: 0.76rem; font-weight: 750; margin-bottom: 0.2rem; padding: 0; }
+.dimension-filter label { min-width: 5.8rem; }
+.dimension-filter span { padding: 0.55rem 0; }
+.available-toggle { align-items: center !important; flex-direction: row !important; font-size: 0.82rem; gap: 0.4rem !important; margin: 0; min-height: 2.2rem; white-space: nowrap; }
+.available-toggle input { width: auto !important; }
+.inventory-search-actions { align-items: center; display: flex; gap: 0.55rem; margin-left: auto; order: 2; }
+.inventory-search-actions button { margin: 0; min-height: 2.3rem; padding: 0.3rem 0.65rem; }
+.filter-summary { color: var(--muted); font-size: 0.76rem; font-weight: 700; white-space: nowrap; }
+.inventory-option-dialog { border: 1px solid var(--line); color: var(--ink); max-height: calc(100vh - 2rem); max-width: min(560px, calc(100vw - 2rem)); padding: 1.4rem; width: 100%; }
+.inventory-option-dialog::backdrop { background: rgb(18 36 43 / 65%); }
+.inventory-option-toolbar { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 0.75rem; justify-content: space-between; margin-top: 1rem; padding-bottom: 0.75rem; }
+.inventory-option-toolbar > div { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.inventory-option-toolbar button { margin: 0; }
+.inventory-option-list { display: grid; gap: 0.4rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 1rem 0; max-height: min(48vh, 28rem); overflow-y: auto; }
+.inventory-option-list label { align-items: center; background: var(--canvas); border: 1px solid var(--line); display: flex; gap: 0.55rem; margin: 0; min-height: 2.65rem; padding: 0.5rem 0.65rem; }
+.inventory-option-list label:has(input:checked) { background: #e6f4ea; border-color: var(--green); }
+.inventory-option-list input { flex: 0 0 auto; width: auto; }
+.result-count { color: var(--muted); font-size: 0.84rem; font-weight: 700; margin: 1.2rem 0 0.2rem; }
+.workflow-status { border: 1px solid currentColor; display: inline-block; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em; padding: 0.22rem 0.42rem; }
+.workflow-status.pending, .workflow-status.unknown { background: #eef2f3; color: #42535b; }
+.workflow-status.ready, .workflow-status.complete { background: #e6f4ea; color: var(--green); }
+.workflow-status.action-needed { background: #fff4e5; color: var(--amber); }
+.workflow-status.attention { background: #fdecea; color: var(--red); }
+.inventory-status { border-left: 4px solid #667980; display: block; padding: 0.42rem 0.55rem; }
+.inventory-status-available { background: #e6f4ea; border-left-color: var(--green); }
+.inventory-status-reserved, .inventory-status-awaitingcloseout { background: #fff4e5; border-left-color: var(--amber); }
+.inventory-status-quarantined, .inventory-status-scrapped, .inventory-status-stale { background: #fdecea; border-left-color: var(--red); }
+.inventory-status-depleted { background: #eef2f3; border-left-color: #667980; }
+.inventory-status a { color: inherit; }
+.exception-explanation { color: var(--muted); display: block; font-size: 0.8rem; margin-top: 0.3rem; }

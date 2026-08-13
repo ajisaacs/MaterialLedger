@@ -5,18 +5,30 @@ namespace MaterialLedger.Tests;
 public class InventorySearchPresentationTests
 {
     [Fact]
-    public void SearchPage_ShowsAppliedFiltersAndMovesTheFullFormIntoAModal()
+    public void SearchPage_UsesSelectableColumnsAndOptionModals()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../"));
         var markup = File.ReadAllText(Path.Combine(repositoryRoot, "MaterialLedger.Web", "Pages", "Inventory", "Search.cshtml"));
+        var partial = File.ReadAllText(Path.Combine(repositoryRoot, "MaterialLedger.Web", "Pages", "Inventory", "_InventoryOptionFilter.cshtml"));
+        var css = File.ReadAllText(Path.Combine(repositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "inventory.css"));
 
-        Assert.Contains("class=\"active-filter-list\"", markup);
-        Assert.Contains("<strong>Availability:</strong>", markup);
-        Assert.Contains("id=\"inventory-filter-dialog\"", markup);
-        Assert.Contains("class=\"inventory-filter-dialog\"", markup);
-        Assert.Contains("Filter material", markup);
-        Assert.Contains("Apply filters", markup);
-        Assert.Contains("Clear all filters", markup);
-        Assert.DoesNotContain("advanced-filters", markup);
+        Assert.Contains("class=\"inventory-filter-columns\"", markup);
+        Assert.Contains("class=\"inventory-filter-toolbar\"", markup);
+        Assert.Contains("Filter:", markup);
+        Assert.Contains("data-filter-dialog=\"thickness-filter-dialog\"", markup);
+        Assert.Contains("data-filter-dialog=\"size-filter-dialog\"", markup);
+        Assert.Contains("id=\"size-filter-dialog\"", markup);
+        Assert.Contains("size-filter-fields", markup);
+        Assert.Contains("place-items: center", css);
+        Assert.DoesNotContain("Apply filters", markup);
+        Assert.Contains("Select all", partial);
+        Assert.Contains("Deselect all", partial);
+        Assert.Contains("data-selection-count", partial);
+        Assert.Contains("data-apply-filter", partial);
+        Assert.Contains("requestSubmit()", markup);
+        Assert.Contains("name=\"@Model.ValueFieldName\"", partial);
+        Assert.Contains("inventory-option-dialog", css);
+        Assert.Contains("inventory-filter-column", css);
+        Assert.DoesNotContain("inventory-filter-dialog", markup);
     }
 }
