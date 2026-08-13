@@ -84,6 +84,14 @@ public sealed class PepNestPresentationTests
         Assert.Contains("Continue inventory search", page);
         Assert.Contains("FoundSheetLocationId", page);
         Assert.Contains("ShowFoundSheetDialog", page);
+        Assert.Contains("Program material holds", page);
+        Assert.Contains("ProgramReservations", page);
+        Assert.Contains("asp-page=\"/Reservations/Details\"", page);
+        Assert.Contains("PepNestYear == year", model);
+        Assert.Contains("PepNestName == nestName", model);
+        Assert.Contains("Material holds are already placed for this program", page);
+        Assert.Contains("asp-page=\"/PepNests/Details\"", File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Reservations", "Details.cshtml")));
+        Assert.Contains("PepNestYear is not null && !string.IsNullOrWhiteSpace(Model.Reservation.PepNestName)", File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "Reservations", "Details.cshtml")));
         Assert.True(page.IndexOf("pep-nest-mapping-summary", StringComparison.Ordinal) < page.IndexOf("pep-nest-requirements-card", StringComparison.Ordinal));
     }
 

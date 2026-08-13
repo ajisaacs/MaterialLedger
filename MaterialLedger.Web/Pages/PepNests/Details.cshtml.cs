@@ -39,6 +39,7 @@ public class DetailsModel(
     public IReadOnlyList<InventoryItemSummary> AvailableItems { get; private set; } = [];
     public IReadOnlyList<ProgramSheetRequirement> ProgramSheetRequirements { get; private set; } = [];
     public IReadOnlyList<ProgramSheetShortfall> ProgramSheetShortfalls { get; private set; } = [];
+    public IReadOnlyList<MaterialReservation> ProgramReservations { get; private set; } = [];
     public IReadOnlyList<InventoryLocation> MaterialLocations { get; private set; } = [];
     public bool ShowFoundSheetDialog { get; private set; }
     public string? Error { get; private set; }
@@ -157,6 +158,17 @@ public class DetailsModel(
             .GroupBy(plate => new { plate.Size!.Width, plate.Size.Length })
             .Select(group => new ProgramSheetRequirement(group.Key.Width, group.Key.Length, group.Sum(plate => plate.Qty)))
             .OrderBy(requirement => requirement.WidthIn).ThenBy(requirement => requirement.LengthIn).ToList();
+
+        ProgramReservations = await db.MaterialReservations
+            .Include(reservation => reservation.InventoryItem)!.ThenInclude(item => item!.InventoryLocation)
+            .Where(reservation => reservation.PepNestYear == year
+                && reservation.PepNestName == nestName
+                && (reservation.Status == ReservationStatus.Proposed
+                    || reservation.Status == ReservationStatus.Approved
+                    || reservation.Status == ReservationStatus.AwaitingCloseout))
+            .OrderByDescending(reservation => reservation.CreatedAtUtc)
+            .ThenByDescending(reservation => reservation.MaterialReservationId)
+            .ToListAsync();
 
         MaterialSpecs = await db.MaterialSpecs.Where(x => x.IsActive).OrderBy(x => x.DisplayName).ToListAsync();
         MaterialLocations = await ActiveMaterialSlotQuery.Create(db).ToListAsync();

@@ -70,6 +70,7 @@
 .pep-nest-panel,
 .pep-nest-material-card,
 .pep-nest-requirements-card,
+.pep-nest-reservations-card,
 .pep-nest-stock-panel {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -226,6 +227,38 @@
 }
 .pep-nest-requirements-action .button {
   width: 100%;
+}
+.pep-nest-reservations-intro {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 0.85rem 1.1rem 0;
+}
+.pep-nest-reservations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.65rem 1.1rem 0.85rem;
+}
+.pep-nest-reservations-list li + li {
+  border-top: 1px solid var(--line);
+}
+.pep-nest-reservations-list a {
+  align-items: baseline;
+  color: inherit;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.7rem 0;
+  text-decoration: none;
+}
+.pep-nest-reservations-list a:hover strong {
+  color: var(--blue-dark);
+  text-decoration: underline;
+}
+.pep-nest-reservations-list span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
 }
 .pep-nest-stock-actions {
   background: #f5f8f8;

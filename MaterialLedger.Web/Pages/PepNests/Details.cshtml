@@ -128,7 +128,25 @@ else
                         </div>
                     }
                 </section>
-            </aside>
+                @if (Model.ProgramReservations.Count > 0)
+                {
+                    <section class="pep-nest-reservations-card" aria-label="Program material holds">
+                        <div class="pep-nest-card-heading"><div><p class="eyebrow">Material Ledger</p><h2>Program material holds</h2></div><p>@Model.ProgramReservations.Count active</p></div>
+                        <p class="pep-nest-reservations-intro">Material holds are already placed for this program.</p>
+                        <ul class="pep-nest-reservations-list">
+                        @foreach (var reservation in Model.ProgramReservations)
+                        {
+                            <li>
+                                <a asp-page="/Reservations/Details" asp-route-id="@reservation.MaterialReservationId">
+                                    <strong>@reservation.InventoryItem?.PublicItemCode</strong>
+                                    <span>@reservation.Status · @reservation.InventoryItem?.InventoryLocation?.LocationCode</span>
+                                </a>
+                            </li>
+                        }
+                        </ul>
+                    </section>
+                }
+                </aside>
         </div>
 
         @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))

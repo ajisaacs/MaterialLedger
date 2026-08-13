@@ -83,7 +83,17 @@
         <dt>ShopOps job ID</dt><dd>@(Model.Reservation.ShopOpsJobId ?? "Not recorded")</dd>
         <dt>Drawing ID</dt><dd>@(Model.Reservation.DrawingId ?? "Not recorded")</dd>
         <dt>Drawing revision</dt><dd>@(Model.Reservation.DrawingRevision ?? "Not recorded")</dd>
-        <dt>PEP nest</dt><dd>@Model.Reservation.PepNestYear @Model.Reservation.PepNestName</dd>
+        <dt>PEP nest</dt>
+        <dd>
+            @if (Model.Reservation.PepNestYear is not null && !string.IsNullOrWhiteSpace(Model.Reservation.PepNestName))
+            {
+                <a asp-page="/PepNests/Details" asp-route-year="@Model.Reservation.PepNestYear" asp-route-nestName="@Model.Reservation.PepNestName">@Model.Reservation.PepNestYear @Model.Reservation.PepNestName</a>
+            }
+            else
+            {
+                @:Not recorded
+            }
+        </dd>
         <dt>Program record ID</dt><dd>@(Model.Reservation.LaserProgramRecordId ?? "Not recorded")</dd>
         <dt>Created</dt><dd>@Model.Reservation.CreatedAtUtc.ToString("u") by @Model.Reservation.CreatedByUser?.DisplayName</dd>
         <dt>Approved</dt><dd>@(Model.Reservation.ApprovedAtUtc is not null ? $"{Model.Reservation.ApprovedAtUtc:u} by {Model.Reservation.ApprovedByUser?.DisplayName}" : "Not approved")</dd>
