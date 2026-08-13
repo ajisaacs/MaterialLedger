@@ -43,7 +43,7 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
         InventoryLocationType.Quarantine, InventoryLocationType.Scrap
     ];
 
-    public async Task<ReceiveMaterialResult> ReceiveMaterialAsync(Guid correlationId, ReceiveMaterialRequest request, int receivedBy)
+    public async Task<IdempotentResult<ReceiveMaterialResult>> ReceiveMaterialAsync(Guid correlationId, ReceiveMaterialRequest request, int receivedBy)
     {
         Validate(request);
 
@@ -56,7 +56,7 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
         {
             var replay = JsonSerializer.Deserialize<ReceiveMaterialResult>(outcome.ResultSummary!)!;
             await transaction.CommitAsync();
-            return replay;
+            return new IdempotentResult<ReceiveMaterialResult>(replay, WasReplayed: true);
         }
 
         var location = await db.InventoryLocations.FindAsync(request.InventoryLocationId)
@@ -161,7 +161,7 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
 
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
-        return result;
+        return new IdempotentResult<ReceiveMaterialResult>(result, WasReplayed: false);
     }
 
     private static void Validate(ReceiveMaterialRequest request)

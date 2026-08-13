@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using MaterialLedger.Data;
+using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.Reservations;
 using MaterialLedger.Web.Pages.Reservations;
@@ -132,7 +133,7 @@ public sealed class ReservationDetailsContextPresentationTests
         public int ApproveCalls { get; private set; }
         public int ReleaseCalls { get; private set; }
 
-        public Task<ReservationResult> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy) => throw new NotImplementedException();
+        public Task<IdempotentResult<ReservationResult>> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy) => throw new NotImplementedException();
         public Task<ReservationResult> ApproveReservationAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int approvedBy)
         {
             ApproveCalls++;

@@ -69,7 +69,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
 
         var result = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
 
-        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == result.MaterialReservationId);
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == result.Result.MaterialReservationId);
         Assert.Equal(ReservationStatus.Proposed, reservation.Status);
         Assert.Equal(1, reservation.ReservedQuantity);
         var txns = await db.MaterialTransactions.Where(x => x.MaterialReservationId == reservation.MaterialReservationId).ToListAsync();
@@ -102,7 +102,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
 
         var reservation = await db.MaterialReservations
             .Include(x => x.ExpectedRemnants)
-            .SingleAsync(x => x.MaterialReservationId == result.MaterialReservationId);
+            .SingleAsync(x => x.MaterialReservationId == result.Result.MaterialReservationId);
         Assert.Collection(reservation.ExpectedRemnants.OrderBy(x => x.Sequence),
             remainder => { Assert.Equal(1, remainder.Sequence); Assert.Equal(10m, remainder.WidthIn); Assert.Equal(15m, remainder.LengthIn); },
             remainder => { Assert.Equal(2, remainder.Sequence); Assert.Equal(8m, remainder.WidthIn); Assert.Equal(20m, remainder.LengthIn); });
@@ -152,9 +152,28 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var first = await service.CreateReservationAsync(correlationId, RequestFor(item.InventoryItemId), userId);
         var second = await service.CreateReservationAsync(correlationId, RequestFor(item.InventoryItemId), userId);
 
-        Assert.Equal(first.MaterialReservationId, second.MaterialReservationId);
+        Assert.False(first.WasReplayed);
+        Assert.True(second.WasReplayed);
+        Assert.Equal(first.Result.MaterialReservationId, second.Result.MaterialReservationId);
         var count = await db.MaterialReservations.CountAsync(x => x.InventoryItemId == item.InventoryItemId);
         Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task CreateReservationAsync_RetryWithSameCorrelationId_DifferentRequest_ThrowsConflict()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var item = NewDrop(slotId, specId, userId);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var correlationId = Guid.NewGuid();
+
+        await service.CreateReservationAsync(correlationId, RequestFor(item.InventoryItemId), userId);
+
+        await Assert.ThrowsAsync<OperationConflictException>(() => service.CreateReservationAsync(
+            correlationId, RequestFor(item.InventoryItemId) with { ShopOpsJobId = "JOB-2" }, userId));
     }
 
     [Fact]
@@ -185,7 +204,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         await db.SaveChangesAsync();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var created = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
 
         var result = await service.ApproveReservationAsync(Guid.NewGuid(), reservation.MaterialReservationId, reservation.RowVersion, userId);
 
@@ -205,8 +224,8 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var first = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
         var second = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var firstReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.MaterialReservationId);
-        var secondReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.MaterialReservationId);
+        var firstReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.Result.MaterialReservationId);
+        var secondReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.Result.MaterialReservationId);
 
         await service.ApproveReservationAsync(Guid.NewGuid(), firstReservation.MaterialReservationId, firstReservation.RowVersion, userId);
 
@@ -228,8 +247,8 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var first = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
         var second = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var firstReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.MaterialReservationId);
-        var secondReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.MaterialReservationId);
+        var firstReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.Result.MaterialReservationId);
+        var secondReservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.Result.MaterialReservationId);
         await service.ApproveReservationAsync(Guid.NewGuid(), firstReservation.MaterialReservationId, firstReservation.RowVersion, userId);
 
         await Assert.ThrowsAsync<ReservationBalanceException>(() =>
@@ -246,7 +265,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         await db.SaveChangesAsync();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var created = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
 
         // Simulate a quarantine event happening after the reservation was proposed but before approval.
         var itemToQuarantine = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == item.InventoryItemId);
@@ -272,8 +291,8 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var seedService = new ReservationService(seedDb, new OperationLogGuard(seedDb), freshnessThresholdDays: 90);
         var first = await seedService.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
         var second = await seedService.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var firstReservation = await seedDb.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.MaterialReservationId);
-        var secondReservation = await seedDb.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.MaterialReservationId);
+        var firstReservation = await seedDb.MaterialReservations.SingleAsync(x => x.MaterialReservationId == first.Result.MaterialReservationId);
+        var secondReservation = await seedDb.MaterialReservations.SingleAsync(x => x.MaterialReservationId == second.Result.MaterialReservationId);
 
         await using var db1 = _fixture.CreateContext();
         await using var db2 = _fixture.CreateContext();
@@ -328,7 +347,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var staleRowVersion = new byte[8];
 
         await Assert.ThrowsAsync<ReservationConcurrencyException>(() =>
-            service.ApproveReservationAsync(Guid.NewGuid(), created.MaterialReservationId, staleRowVersion, userId));
+            service.ApproveReservationAsync(Guid.NewGuid(), created.Result.MaterialReservationId, staleRowVersion, userId));
     }
 
     [Fact]
@@ -341,7 +360,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         await db.SaveChangesAsync();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var created = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
         await service.ApproveReservationAsync(Guid.NewGuid(), reservation.MaterialReservationId, reservation.RowVersion, userId);
         var approved = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == reservation.MaterialReservationId);
 
@@ -359,9 +378,9 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         await db.SaveChangesAsync();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var created = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var proposed = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var proposed = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
         await service.ApproveReservationAsync(Guid.NewGuid(), proposed.MaterialReservationId, proposed.RowVersion, userId);
-        var approved = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var approved = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
 
         var result = await service.ReleaseReservationAsync(Guid.NewGuid(), approved.MaterialReservationId, approved.RowVersion, userId, "no longer needed");
 
@@ -383,9 +402,9 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         await db.SaveChangesAsync();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
         var created = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-        var proposed = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var proposed = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
         await service.ApproveReservationAsync(Guid.NewGuid(), proposed.MaterialReservationId, proposed.RowVersion, userId);
-        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.MaterialReservationId);
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == created.Result.MaterialReservationId);
         reservation.Status = ReservationStatus.AwaitingCloseout;
         await db.SaveChangesAsync();
 
@@ -406,6 +425,6 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var staleRowVersion = new byte[8];
 
         await Assert.ThrowsAsync<ReservationConcurrencyException>(() =>
-            service.ReleaseReservationAsync(Guid.NewGuid(), created.MaterialReservationId, staleRowVersion, userId, null));
+            service.ReleaseReservationAsync(Guid.NewGuid(), created.Result.MaterialReservationId, staleRowVersion, userId, null));
     }
 }

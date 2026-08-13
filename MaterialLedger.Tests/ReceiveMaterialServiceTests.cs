@@ -45,13 +45,13 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
 
         var result = await service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId);
 
-        var item = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == result.InventoryItemId);
+        var item = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == result.Result.InventoryItemId);
         Assert.Equal(6m, item.QuantityOnHand);
         Assert.Equal(InventoryItemStatus.Available, item.Status);
         Assert.StartsWith("SHEET-", item.PublicItemCode);
-        Assert.Equal(result.SheetLotId, item.SheetLotId);
+        Assert.Equal(result.Result.SheetLotId, item.SheetLotId);
 
-        var lot = await db.SheetLots.SingleAsync(x => x.SheetLotId == result.SheetLotId);
+        var lot = await db.SheetLots.SingleAsync(x => x.SheetLotId == result.Result.SheetLotId);
         Assert.Equal(SheetLotSourceType.Receipt, lot.SourceType);
         Assert.Equal("PO-1001", lot.PurchaseOrderNumber);
         Assert.Equal("Acme Steel", lot.VendorName);
@@ -60,7 +60,7 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
         var transactions = await db.MaterialTransactions.Where(x => x.InventoryItemId == item.InventoryItemId).ToListAsync();
         Assert.Single(transactions);
         Assert.Equal(MaterialTransactionType.Receipt, transactions[0].TransactionType);
-        Assert.Equal(result.SheetLotId, transactions[0].SheetLotId);
+        Assert.Equal(result.Result.SheetLotId, transactions[0].SheetLotId);
         Assert.Equal(6m, transactions[0].QuantityDelta);
     }
 
@@ -136,7 +136,7 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
 
         var result = await service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId);
 
-        var item = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == result.InventoryItemId);
+        var item = await db.InventoryItems.SingleAsync(x => x.InventoryItemId == result.Result.InventoryItemId);
         Assert.Equal(InventoryItemStatus.Quarantined, item.Status);
     }
 
@@ -152,11 +152,27 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
         var first = await service.ReceiveMaterialAsync(correlationId, request, userId);
         var second = await service.ReceiveMaterialAsync(correlationId, request, userId);
 
-        Assert.Equal(first.PublicItemCode, second.PublicItemCode);
+        Assert.False(first.WasReplayed);
+        Assert.True(second.WasReplayed);
+        Assert.Equal(first.Result.PublicItemCode, second.Result.PublicItemCode);
         var itemCount = await db.InventoryItems.CountAsync(x => x.InventoryLocationId == locationId);
         Assert.Equal(1, itemCount);
         var lotCount = await db.SheetLots.CountAsync(x => x.MaterialSpecId == specId);
         Assert.Equal(1, lotCount);
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_RetryWithSameCorrelationId_DifferentRequest_ThrowsConflict()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var correlationId = Guid.NewGuid();
+
+        await service.ReceiveMaterialAsync(correlationId, MakeRequest(locationId, specId), userId);
+
+        await Assert.ThrowsAsync<OperationConflictException>(() => service.ReceiveMaterialAsync(
+            correlationId, MakeRequest(locationId, specId, quantity: 7m), userId));
     }
 
     private async Task<long> SeedPurchaseOrderLineAsync(MaterialLedgerDbContext db, long specId, decimal quantityOrdered, int userId)
@@ -194,7 +210,7 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
         Assert.Equal(4m, line.QuantityReceived);
         Assert.Equal(PurchaseOrderLineStatus.PartiallyReceived, line.Status);
 
-        var lot = await db.SheetLots.SingleAsync(x => x.SheetLotId == result.SheetLotId);
+        var lot = await db.SheetLots.SingleAsync(x => x.SheetLotId == result.Result.SheetLotId);
         Assert.Equal(lineId, lot.PurchaseOrderLineId);
     }
 

@@ -37,7 +37,7 @@ public class ReservationConcurrencyException(string message) : Exception(message
 
 public interface IReservationService
 {
-    Task<ReservationResult> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy);
+    Task<IdempotentResult<ReservationResult>> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy);
     Task<ReservationResult> ApproveReservationAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int approvedBy);
     Task<ReservationResult> ReleaseReservationAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int releasedBy, string? notes);
 }
@@ -49,7 +49,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
         ReservationStatus.Approved, ReservationStatus.AwaitingCloseout
     ];
 
-    public async Task<ReservationResult> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy)
+    public async Task<IdempotentResult<ReservationResult>> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy)
     {
         ValidateExpectedRemnants(request);
         var payloadHash = HashPayload(request);
@@ -61,7 +61,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
         {
             var replay = JsonSerializer.Deserialize<ReservationResult>(outcome.ResultSummary!)!;
             await transaction.CommitAsync();
-            return replay;
+            return new IdempotentResult<ReservationResult>(replay, WasReplayed: true);
         }
 
         var item = await db.InventoryItems.FirstOrDefaultAsync(x => x.InventoryItemId == request.InventoryItemId)
@@ -121,7 +121,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
-        return result;
+        return new IdempotentResult<ReservationResult>(result, WasReplayed: false);
     }
 
     /// <summary>

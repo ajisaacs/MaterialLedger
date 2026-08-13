@@ -66,4 +66,18 @@ public class OperationLogGuardTests : IClassFixture<SqlServerTestDatabaseFixture
         await Assert.ThrowsAsync<OperationConflictException>(
             () => guard.CheckAsync(correlationId, "TestProcedure", "hash-b"));
     }
+
+    [Fact]
+    public async Task CheckAsync_SeenCorrelationIdMatchingHashDifferentProcedure_ThrowsConflict()
+    {
+        await using var db = _fixture.CreateContext();
+        var userId = await SeedUserAsync(db);
+        var guard = new OperationLogGuard(db);
+        var correlationId = Guid.NewGuid();
+
+        await guard.RecordAsync(correlationId, "FirstProcedure", "hash-a", "original-result", userId);
+
+        await Assert.ThrowsAsync<OperationConflictException>(
+            () => guard.CheckAsync(correlationId, "SecondProcedure", "hash-a"));
+    }
 }

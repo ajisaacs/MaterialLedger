@@ -71,7 +71,7 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
                 expectedRemnants.Count > 0 ? expectedRemnants : null);
 
             var result = await reservations.CreateReservationAsync(CorrelationId, request, userId);
-            return RedirectToPage("Details", new { id = result.MaterialReservationId });
+            return RedirectToPage("Details", new { id = result.Result.MaterialReservationId });
         }
         catch (Exception ex) when (ex is InvalidOperationException or OperationConflictException)
         {

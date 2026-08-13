@@ -106,7 +106,7 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                     PurchaseOrderLineId: line.PurchaseOrderLineId);
 
                 var result = await receiveMaterial.ReceiveMaterialAsync(row.CorrelationId, request, userId);
-                row.SucceededItemCode = result.PublicItemCode;
+                row.SucceededItemCode = result.Result.PublicItemCode;
                 row.LocationDisplay = LeafLocations.FirstOrDefault(x => x.InventoryLocationId == row.LocationId)?.LocationCode;
 
                 if (row.AllocationId is not null)

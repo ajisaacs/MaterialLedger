@@ -110,7 +110,7 @@ public class NewReceiptModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                 PurchaseOrderLineId: PoLineId);
 
             var result = await receiveMaterial.ReceiveMaterialAsync(CorrelationId, request, userId);
-            return RedirectToPage("Success", new { code = result.PublicItemCode });
+            return RedirectToPage("Success", new { code = result.Result.PublicItemCode });
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException
             or MaterialLedger.Data.Idempotency.OperationConflictException)
