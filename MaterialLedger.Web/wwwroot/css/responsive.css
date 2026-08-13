@@ -253,6 +253,43 @@
     display: block;
   }
 
+  .pep-nest-parts-cards {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .pep-nest-part-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .pep-nest-part-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.7rem;
+    overflow-wrap: anywhere;
+  }
+
+  .pep-nest-part-card dl {
+    display: grid;
+    gap: 0.25rem 1rem;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+  }
+
+  .pep-nest-part-card dt {
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .pep-nest-part-card dd {
+    color: var(--muted);
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
   .mobile-card-grid {
     display: grid;
     grid-template-columns: 1fr;

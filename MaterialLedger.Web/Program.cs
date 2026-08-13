@@ -39,7 +39,7 @@ builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.InventoryQuer
 builder.Services.AddScoped<WorkQueueQueryService>();
 builder.Services.AddHttpClient<PepNestQueryService>(client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["PepApi:BaseUrl"] ?? "http://10.10.100.134:8085/");
+    client.BaseAddress = new Uri(builder.Configuration["PepApi:BaseUrl"] ?? "http://hermes.lan:8085/");
     client.Timeout = TimeSpan.FromSeconds(15);
 });
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Reservations.ReservationService(

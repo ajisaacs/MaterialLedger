@@ -4,106 +4,288 @@
 @using MaterialLedger.Web.Shared
 @{ Layout = "Shared/_Layout"; ViewData["Title"] = "PEP nest"; }
 
-<p><a asp-page="Index" asp-route-year="@RouteData.Values["year"]">← Back to PEP nests</a></p>
 @if (Model.Nest is null)
 {
     <p class="form-error" role="alert">@Model.Error</p>
 }
 else
 {
-    <header class="page-heading">
-        <p class="eyebrow">PEP nest</p>
-        <div class="page-heading-title">
-            <h1>@Model.Nest.Name</h1>
-            <span class="filter-chip">@Model.Nest.Status</span>
+    <main class="pep-nest-workspace">
+        <a class="pep-nest-backlink" asp-page="Index" asp-route-year="@RouteData.Values["year"]">← All PEP nests</a>
+
+        <header class="pep-nest-hero">
+            <div>
+                <p class="eyebrow">PEP cutting program</p>
+                <h1>@Model.Nest.Name</h1>
+                <span class="pep-nest-status">@Model.Nest.Status</span>
+            </div>
+            <dl class="pep-nest-hero-meta">
+                <div><dt>Customer</dt><dd>@Model.Nest.Customer</dd></div>
+                <div><dt>Created</dt><dd>@Model.Nest.DateCreated.ToString("MMM d, yyyy")</dd></div>
+            </dl>
+        </header>
+
+        @if (Model.Nest.Status?.Contains("has been cut", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            <p class="warning-banner" role="alert">⚠ This program has already been cut.</p>
+        }
+        @if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
+
+        <div class="pep-nest-overview">
+            <section class="pep-nest-panel pep-nest-parts-panel" aria-label="Nested parts">
+                <div class="pep-nest-panel-heading">
+                    <div><p class="eyebrow">Program output</p><h2>Parts</h2></div>
+                    <p>@Model.Nest.Parts.Count part@(Model.Nest.Parts.Count == 1 ? "" : "s")</p>
+                </div>
+                @if (Model.Nest.Parts.Count == 0)
+                {
+                    <p class="empty-state pep-nest-empty">No parts recorded for this nest.</p>
+                }
+                else
+                {
+                    <table class="desktop-table pep-nest-parts-table">
+                        <thead><tr><th>Part</th><th>Part size</th><th>Nested</th><th>Required</th></tr></thead>
+                        <tbody>
+                        @foreach (var part in Model.Nest.Parts)
+                        {
+                            <tr><td>@part.Name</td><td>@(part.PartSize ?? part.Size ?? "—")</td><td>@part.QtyNested</td><td>@part.QtyRequired</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                    <div class="mobile-card pep-nest-parts-cards">
+                        @foreach (var part in Model.Nest.Parts)
+                        {
+                            <article class="pep-nest-part-card">
+                                <h3>@part.Name</h3>
+                                <dl>
+                                    <dt>Part size</dt><dd>@(part.PartSize ?? part.Size ?? "—")</dd>
+                                    <dt>Nested</dt><dd>@part.QtyNested</dd>
+                                    <dt>Required</dt><dd>@part.QtyRequired</dd>
+                                </dl>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <aside class="pep-nest-sidebar" aria-label="Program material">
+                <section class="pep-nest-material-card">
+                    <div class="pep-nest-card-heading"><div><p class="eyebrow">PEP material</p><h2>Program stock</h2></div></div>
+                    <dl class="detail-grid">
+                        <dt>Material no.</dt><dd>#@Model.Nest.Material?.Number</dd>
+                        <dt>Grade</dt><dd>@Model.Nest.Material?.Grade</dd>
+                        <dt>Thickness</dt><dd>@Model.Nest.Material?.Thickness.ToString("0.####") in</dd>
+                        <dt>Description</dt><dd>@Model.Nest.Material?.Description</dd>
+                    </dl>
+                    @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+                    {
+                        <div class="pep-nest-mapping-summary">
+                            <span>Catalog material</span>
+                            @if (Model.Mapping?.MaterialSpec is not null)
+                            {
+                                <strong>@Model.Mapping.MaterialSpec.DisplayName</strong>
+                            }
+                            else
+                            {
+                                <strong class="pep-nest-mapping-unset">Not mapped</strong>
+                            }
+                            <button type="button" class="button button-secondary" onclick="document.getElementById('pep-material-mapping-dialog').showModal()">
+                                @(Model.Mapping?.MaterialSpec is null ? "Map catalog material" : "Change mapping")
+                            </button>
+                        </div>
+                    }
+                </section>
+
+                <section class="pep-nest-requirements-card">
+                    <div class="pep-nest-card-heading"><div><p class="eyebrow">Sheet requirements</p><h2>Program sheets</h2></div></div>
+                    @if (Model.ProgramSheetRequirements.Count == 0)
+                    {
+                        <p class="empty-state pep-nest-empty">PEP did not provide usable sheet or plate sizes.</p>
+                    }
+                    else
+                    {
+                        <table class="pep-nest-requirements-table">
+                            <thead><tr><th>Program sheet size</th><th>Qty</th></tr></thead>
+                            <tbody>
+                            @foreach (var requirement in Model.ProgramSheetRequirements)
+                            {
+                                <tr><td>@requirement.WidthIn.ToString("0.###") × @requirement.LengthIn.ToString("0.###") in</td><td>@requirement.Quantity</td></tr>
+                            }
+                            </tbody>
+                        </table>
+                    }
+                    @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+                    {
+                        <div class="pep-nest-requirements-action">
+                            @if (Model.Mapping?.MaterialSpec is null)
+                            {
+                                <p>Map the PEP material before reserving the program sheets.</p>
+                            }
+                            <form method="post" asp-page-handler="ReserveProgramSheets">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="button button-primary" @(Model.Mapping?.MaterialSpec is null || Model.ProgramSheetRequirements.Count == 0 ? "disabled" : null)>Reserve all program sheets</button>
+                            </form>
+                        </div>
+                    }
+                </section>
+            </aside>
         </div>
-        <p>Customer @Model.Nest.Customer · Created @Model.Nest.DateCreated.ToString("yyyy-MM-dd")</p>
-    </header>
 
-    @if (Model.Nest.Status?.Contains("has been cut", StringComparison.OrdinalIgnoreCase) == true)
-    {
-        <p class="warning-banner" role="alert">⚠ This program has already been cut.</p>
-    }
+        @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+        {
+            <dialog id="pep-found-sheet-dialog" class="sheet-entry-dialog pep-found-sheet-dialog" aria-labelledby="pep-found-sheet-title">
+                <div class="dialog-heading">
+                    <div>
+                        <p class="eyebrow">Program sheet shortfall</p>
+                        <h2 id="pep-found-sheet-title">Record found sheet</h2>
+                        <p>This records the physical stock first. The program is rechecked before any holds are created.</p>
+                    </div>
+                    <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close found-sheet entry">×</button></form>
+                </div>
+                @if (Model.ProgramSheetShortfalls.Count > 0)
+                {
+                    <div class="pep-found-sheet-shortfalls" role="status">
+                        <strong>Still needed</strong>
+                        <ul>
+                        @foreach (var shortfall in Model.ProgramSheetShortfalls)
+                        {
+                            <li>@shortfall.Quantity sheet@(shortfall.Quantity == 1 ? "" : "s") of @shortfall.WidthIn.ToString("0.###") × @shortfall.LengthIn.ToString("0.###") in</li>
+                        }
+                        </ul>
+                    </div>
+                }
+                <form method="post" asp-page-handler="RecordFoundSheet">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="FoundSheetWidthIn" id="pep-found-sheet-width" />
+                    <input type="hidden" asp-for="FoundSheetLengthIn" id="pep-found-sheet-length" />
+                    <label for="pep-found-sheet-shortfall">Program sheet size
+                        <select id="pep-found-sheet-shortfall">
+                            @foreach (var shortfall in Model.ProgramSheetShortfalls)
+                            {
+                                <option value="@shortfall.WidthIn|@shortfall.LengthIn|@shortfall.Quantity" selected="@(shortfall.WidthIn == Model.FoundSheetWidthIn && shortfall.LengthIn == Model.FoundSheetLengthIn)">@shortfall.WidthIn.ToString("0.###") × @shortfall.LengthIn.ToString("0.###") in — @shortfall.Quantity needed</option>
+                            }
+                        </select>
+                    </label>
+                    <label>Quantity found
+                        <input asp-for="FoundSheetQuantity" id="pep-found-sheet-quantity" type="number" min="1" step="1" inputmode="numeric" required />
+                    </label>
+                    <label>Location
+                        <select asp-for="FoundSheetLocationId" required>
+                            <option value="">-- choose storage location --</option>
+                            @foreach (var location in Model.MaterialLocations) { <option value="@location.InventoryLocationId">@location.LocationCode — @location.DisplayName</option> }
+                        </select>
+                    </label>
+                    <label class="pep-found-sheet-notes">Notes
+                        <textarea asp-for="FoundSheetNotes" maxlength="1000" placeholder="Optional condition or identification notes"></textarea>
+                    </label>
+                    <button type="submit" class="button button-primary">Record found sheet and retry reservation</button>
+                    <a class="button button-secondary" asp-page="/Inventory/Search" asp-route-MaterialFamily="@Model.Mapping?.MaterialSpec?.MaterialFamily" asp-route-Grade="@Model.Mapping?.MaterialSpec?.Grade" asp-route-Finish="@Model.Mapping?.MaterialSpec?.Finish" asp-route-ThicknessIn="@Model.Mapping?.MaterialSpec?.ThicknessIn" asp-route-AvailableOnly="true">Continue inventory search</a>
+                    <button type="button" class="button button-secondary" onclick="document.getElementById('pep-found-sheet-dialog').close()">Cancel</button>
+                </form>
+            </dialog>
+            <dialog id="pep-material-mapping-dialog" class="sheet-entry-dialog pep-material-mapping-dialog" aria-labelledby="pep-material-mapping-title">
+                <div class="dialog-heading">
+                    <div>
+                        <p class="eyebrow">PEP material #@Model.Nest.Material?.Number</p>
+                        <h2 id="pep-material-mapping-title">Map catalog material</h2>
+                        <p>Choose the Material Ledger catalog material equivalent used for this PEP program.</p>
+                    </div>
+                    <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close material mapping">×</button></form>
+                </div>
+                <form method="post" action="?handler=Map">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="CorrelationId" value="@Guid.NewGuid()" />
+                    <label for="pep-material-group">Catalog material
+                        <select asp-for="MaterialGroupKey" id="pep-material-group">
+                            <option value="">-- select material --</option>
+                            @foreach (var group in Model.MaterialGroups) { <option value="@group.Key">@group.DisplayName</option> }
+                        </select>
+                    </label>
+                    <label for="pep-material-thickness">Thickness
+                        <select asp-for="MaterialSpecId" id="pep-material-thickness" disabled>
+                            <option value="">-- select thickness --</option>
+                            @foreach (var group in Model.MaterialGroups)
+                            {
+                                foreach (var thickness in group.Thicknesses)
+                                {
+                                    <option value="@thickness.MaterialSpecId" data-material-group="@group.Key">@(thickness.GaugeLabel ?? thickness.ThicknessIn.ToString("0.####") + " in") — @thickness.ThicknessIn.ToString("0.####") in</option>
+                                }
+                            }
+                        </select>
+                    </label>
+                    <button type="submit" class="button button-primary">Save mapping</button>
+                    <button type="button" class="button button-secondary" onclick="document.getElementById('pep-material-mapping-dialog').close()">Cancel</button>
+                </form>
+            </dialog>
+            <script>
+                (() => {
+                    const group = document.getElementById('pep-material-group');
+                    const thickness = document.getElementById('pep-material-thickness');
+                    const updateThicknesses = () => {
+                        const selectedGroup = group.value;
+                        let retainedSelection = false;
+                        for (const option of thickness.options) {
+                            if (!option.dataset.materialGroup) continue;
+                            const visible = option.dataset.materialGroup === selectedGroup;
+                            option.hidden = !visible;
+                            option.disabled = !visible;
+                            retainedSelection ||= visible && option.selected;
+                        }
+                        if (!retainedSelection) thickness.value = '';
+                        thickness.disabled = !selectedGroup;
+                    };
+                    group.addEventListener('change', updateThicknesses);
+                    updateThicknesses();
+                })();
 
-    @if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
+                (() => {
+                    const dialog = document.getElementById('pep-found-sheet-dialog');
+                    const shortfall = document.getElementById('pep-found-sheet-shortfall');
+                    if (!dialog || !shortfall) return;
+                    const width = document.getElementById('pep-found-sheet-width');
+                    const length = document.getElementById('pep-found-sheet-length');
+                    const quantity = document.getElementById('pep-found-sheet-quantity');
+                    const syncShortfall = () => {
+                        const [selectedWidth, selectedLength, maximum] = shortfall.value.split('|');
+                        width.value = selectedWidth;
+                        length.value = selectedLength;
+                        quantity.max = maximum;
+                        if (!quantity.value || Number(quantity.value) > Number(maximum)) quantity.value = maximum;
+                    };
+                    shortfall.addEventListener('change', syncShortfall);
+                    syncShortfall();
+                    @if (Model.ShowFoundSheetDialog) { <text>dialog.showModal();</text> }
+                })();
+            </script>
+        }
 
-    <section aria-label="PEP material">
-        <h2>PEP material</h2>
-        <dl class="detail-grid">
-            <dt>Material number</dt><dd>#@Model.Nest.Material?.Number</dd>
-            <dt>Grade</dt><dd>@Model.Nest.Material?.Grade</dd>
-            <dt>Thickness</dt><dd>@Model.Nest.Material?.Thickness.ToString("0.####") in</dd>
-            <dt>Description</dt><dd>@Model.Nest.Material?.Description</dd>
-        </dl>
-    </section>
-
-    @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
-    {
-        <section aria-label="Material mapping">
-            <h2>Map to Material Ledger catalog</h2>
-            <p>The selected catalog material is the approved Material Ledger equivalent for PEP material #@Model.Nest.Material?.Number.</p>
-            <form method="post" action="?handler=Map">
-                @Html.AntiForgeryToken()
-                <input type="hidden" asp-for="CorrelationId" value="@Guid.NewGuid()" />
-                <label>Material Ledger catalog material
-                    <select asp-for="MaterialSpecId">
-                        <option value="">-- select material --</option>
-                        @foreach (var material in Model.MaterialSpecs) { <option value="@material.MaterialSpecId">@material.DisplayName</option> }
-                    </select>
-                </label>
-                <button type="submit" class="button button-primary">Save PEP material map</button>
-            </form>
-            @if (Model.Mapping?.MaterialSpec is not null) { <p class="alert-success" role="status">Mapped to @Model.Mapping.MaterialSpec.DisplayName.</p> }
+        <section class="pep-nest-stock-panel" aria-label="Matching on-hand material">
+            <div class="pep-nest-panel-heading"><div><p class="eyebrow">Material Ledger inventory</p><h2>On-hand material</h2></div><p>@Model.AvailableItems.Count available item@(Model.AvailableItems.Count == 1 ? "" : "s")</p></div>
+            <p class="pep-nest-stock-intro">Only exact programmed sheet sizes can be reserved. This action creates all required holds together or creates none.</p>
+            @if (Model.Mapping?.MaterialSpec is null)
+            {
+                <p class="empty-state pep-nest-empty">Map this PEP material to the Material Ledger catalog before selecting on-hand material.</p>
+            }
+            else if (Model.AvailableItems.Count == 0)
+            {
+                <p class="empty-state pep-nest-empty">No current, available Material Ledger items match @Model.Mapping.MaterialSpec.DisplayName.</p>
+            }
+            else
+            {
+                <table class="pep-nest-stock-table">
+                    <thead><tr><th>Item</th><th>Available</th><th>Usable size</th><th>Location</th></tr></thead>
+                    <tbody>
+                    @foreach (var item in Model.AvailableItems)
+                    {
+                        <tr><td>@item.PublicItemCode</td><td>@DisplayFormat.Quantity(item.AvailableQuantity)</td><td>@item.UsableWidthIn?.ToString("0.###") × @item.UsableLengthIn?.ToString("0.###") in</td><td>@item.LocationCode</td></tr>
+                    }
+                    </tbody>
+                </table>
+                @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
+                {
+                    <div class="pep-nest-stock-actions"><span>Exact-match inventory for the required program sheets.</span></div>
+                }
+            }
         </section>
-    }
-
-    <section aria-label="On-hand material">
-        <h2>On-hand material for this nest</h2>
-        @if (Model.Mapping?.MaterialSpec is null)
-        {
-            <p class="empty-state">Map this PEP material to the Material Ledger catalog before selecting on-hand material.</p>
-        }
-        else if (Model.AvailableItems.Count == 0)
-        {
-            <p class="empty-state">No current, available Material Ledger items match @Model.Mapping.MaterialSpec.DisplayName.</p>
-        }
-        else
-        {
-            <table>
-                <thead><tr><th>Item</th><th>Available</th><th>Usable size</th><th>Location</th><th></th></tr></thead>
-                <tbody>
-                @foreach (var item in Model.AvailableItems)
-                {
-                    <tr>
-                        <td>@item.PublicItemCode</td>
-                        <td>@DisplayFormat.Quantity(item.AvailableQuantity)</td>
-                        <td>@item.UsableWidthIn × @item.UsableLengthIn in</td>
-                        <td>@item.LocationCode</td>
-                        <td class="queue-action"><a class="button button-primary" asp-page="/Reservations/Create" asp-route-inventoryItemId="@item.InventoryItemId" asp-route-pepNestYear="@RouteData.Values["year"]" asp-route-pepNestName="@Model.Nest.Name" asp-route-pepMaterialNumber="@Model.Nest.Material?.Number">Create material hold</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        }
-    </section>
-
-    <section aria-label="Parts">
-        <h2>Parts</h2>
-        @if (Model.Nest.Parts.Count == 0)
-        {
-            <p class="empty-state">No parts recorded for this nest.</p>
-        }
-        else
-        {
-            <table>
-                <thead><tr><th>Part</th><th>Nested</th><th>Required</th></tr></thead>
-                <tbody>
-                @foreach (var part in Model.Nest.Parts)
-                {
-                    <tr><td>@part.Name</td><td>@part.QtyNested</td><td>@part.QtyRequired</td></tr>
-                }
-                </tbody>
-            </table>
-        }
-    </section>
+    </main>
 }

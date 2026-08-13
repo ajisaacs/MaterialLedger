@@ -103,6 +103,14 @@ public sealed class PepMaterialData
     public decimal Thickness { get; init; }
 }
 
-public sealed class PepNestPart { public string? Name { get; init; } public int QtyNested { get; init; } public int QtyRequired { get; init; } }
+public sealed class PepNestPart
+{
+    public string? Name { get; init; }
+    // PEP currently omits size; accept either likely future wire name without a client change.
+    public string? PartSize { get; init; }
+    public string? Size { get; init; }
+    public int QtyNested { get; init; }
+    public int QtyRequired { get; init; }
+}
 public sealed class PepPlate { public string? Name { get; init; } public decimal Thickness { get; init; } public PepSize? Size { get; init; } public int Qty { get; init; } }
 public sealed class PepSize { public decimal Width { get; init; } public decimal Length { get; init; } }

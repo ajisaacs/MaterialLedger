@@ -49,17 +49,73 @@ public sealed class PepNestPresentationTests
     }
 
     [Fact]
-    public void PEP_nest_details_shows_material_mapping_and_hands_off_to_a_material_hold()
+    public void PEP_nest_details_shows_material_mapping_in_the_PEP_material_card_and_can_reserve_the_complete_program_sheet_set()
     {
         var page = ReadPage("PepNests", "Details.cshtml");
+        var model = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Pages", "PepNests", "Details.cshtml.cs"));
 
         Assert.Contains("PEP material", page);
-        Assert.Contains("Map to Material Ledger catalog", page);
-        Assert.Contains("asp-page=\"/Reservations/Create\"", page);
-        Assert.Contains("asp-route-pepNestYear", page);
-        Assert.Contains("asp-route-pepNestName", page);
-        Assert.Contains("asp-route-pepMaterialNumber", page);
-        Assert.Contains("Create material hold", page);
+        Assert.Contains("pep-nest-mapping-summary", page);
+        Assert.Contains("pep-material-mapping-dialog", page);
+        Assert.Contains("Map catalog material", page);
+        Assert.Contains("Change mapping", page);
+        Assert.Contains("showModal()", page);
+        Assert.Contains("Catalog material", page);
+        Assert.Contains("Thickness", page);
+        Assert.Contains("pep-material-group", page);
+        Assert.Contains("pep-material-thickness", page);
+        Assert.Contains("data-material-group", page);
+        Assert.Contains("updateThicknesses", page);
+        Assert.Contains("Program sheet size", page);
+        Assert.Contains("ProgramSheetRequirements", page);
+        Assert.Contains("asp-page-handler=\"ReserveProgramSheets\"", page);
+        Assert.Contains("Reserve all program sheets", page);
+        Assert.Contains("creates all required holds together or creates none", page);
+        Assert.Contains("pep-nest-requirements-action", page);
+        Assert.True(page.IndexOf("asp-page-handler=\"ReserveProgramSheets\"", StringComparison.Ordinal) < page.IndexOf("pep-nest-stock-panel", StringComparison.Ordinal));
+        Assert.Contains("CreateReservationBatchAsync", model);
+        Assert.Contains("No holds were created", model);
+        Assert.Contains("BuildReservationPlan", model);
+        Assert.Contains("OnPostRecordFoundSheetAsync", model);
+        Assert.Contains("RecordOpeningBalanceAsync", model);
+        Assert.Contains("ProgramSheetShortfall", model);
+        Assert.Contains("pep-found-sheet-dialog", page);
+        Assert.Contains("Record found sheet and retry reservation", page);
+        Assert.Contains("Continue inventory search", page);
+        Assert.Contains("FoundSheetLocationId", page);
+        Assert.Contains("ShowFoundSheetDialog", page);
+        Assert.True(page.IndexOf("pep-nest-mapping-summary", StringComparison.Ordinal) < page.IndexOf("pep-nest-requirements-card", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PEP_nest_details_uses_a_dedicated_nest_workspace_layout()
+    {
+        var page = ReadPage("PepNests", "Details.cshtml");
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "pep-nests.css"));
+        var appCss = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "app.css"));
+
+        Assert.Contains("pep-nest-workspace", page);
+        Assert.Contains("pep-nest-overview", page);
+        Assert.Contains("pep-nest-parts-panel", page);
+        Assert.Contains("pep-nest-material-card", page);
+        Assert.Contains(".pep-nest-mapping-summary", css);
+        Assert.Contains(".pep-material-mapping-dialog", css);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", css);
+        Assert.Contains(".pep-nest-workspace", css);
+        Assert.Contains(".pep-nest-overview", css);
+        Assert.Contains("@import url(\"pep-nests.css\");", appCss);
+    }
+
+    [Fact]
+    public void PEP_nest_details_includes_a_part_size_column_that_is_safe_when_PEP_omits_it()
+    {
+        var page = ReadPage("PepNests", "Details.cshtml");
+        var contract = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "Services", "PepNestQueryService.cs"));
+
+        Assert.Contains("<th>Part size</th>", page);
+        Assert.Contains("part.PartSize ?? part.Size ?? \"—\"", page);
+        Assert.Contains("public string? PartSize", contract);
+        Assert.Contains("public string? Size", contract);
     }
 
     [Fact]

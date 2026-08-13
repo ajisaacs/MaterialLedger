@@ -158,6 +158,24 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
     }
 
     [Fact]
+    public async Task CreateReservationBatchAsync_WhenOneItemCannotBeHeld_CreatesNoPartialHolds()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var available = NewDrop(slotId, specId, userId);
+        var unavailable = NewDrop(slotId, specId, userId, InventoryItemStatus.Quarantined);
+        db.InventoryItems.AddRange(available, unavailable);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateReservationBatchAsync(
+            Guid.NewGuid(), [RequestFor(available.InventoryItemId), RequestFor(unavailable.InventoryItemId)], userId));
+
+        Assert.Equal(0, await db.MaterialReservations.CountAsync());
+        Assert.Equal(0, await db.MaterialTransactions.CountAsync());
+    }
+
+    [Fact]
     public async Task ApproveReservationAsync_DropAvailable_SetsApprovedAndReservesItem()
     {
         await using var db = _fixture.CreateContext();

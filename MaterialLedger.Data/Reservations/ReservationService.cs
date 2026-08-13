@@ -124,6 +124,81 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
         return result;
     }
 
+    /// <summary>
+    /// Creates a set of proposed holds in one serializable transaction. PEP programs need their
+    /// exact sheet sizes, so the entire program is held or no hold is created.
+    /// </summary>
+    public async Task<IReadOnlyList<ReservationResult>> CreateReservationBatchAsync(
+        Guid correlationId, IReadOnlyList<CreateReservationRequest> requests, int createdBy)
+    {
+        if (requests.Count == 0)
+            throw new InvalidOperationException("At least one material hold is required.");
+        foreach (var request in requests) ValidateExpectedRemnants(request);
+
+        var payloadHash = HashPayload(requests);
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var outcome = await operationLog.CheckAsync(correlationId, "CreateReservationBatch", payloadHash);
+        if (outcome.Kind == OperationLogOutcomeKind.Replay)
+        {
+            var replay = JsonSerializer.Deserialize<List<ReservationResult>>(outcome.ResultSummary!)!;
+            await transaction.CommitAsync();
+            return replay;
+        }
+
+        var itemIds = requests.Select(x => x.InventoryItemId).Distinct().ToList();
+        var items = await db.InventoryItems.Where(x => itemIds.Contains(x.InventoryItemId))
+            .ToDictionaryAsync(x => x.InventoryItemId);
+        if (items.Count != itemIds.Count)
+            throw new InvalidOperationException("One or more selected inventory items no longer exist.");
+
+        foreach (var item in items.Values)
+        {
+            if (item.Status is InventoryItemStatus.Quarantined or InventoryItemStatus.Depleted or InventoryItemStatus.Scrapped or InventoryItemStatus.Reserved)
+                throw new InvalidOperationException($"Item '{item.PublicItemCode}' is {item.Status} and cannot be reserved.");
+            if (MaterialFreshness.IsStale(item.LastObservedAtUtc, freshnessThresholdDays))
+                throw new InvalidOperationException($"Item '{item.PublicItemCode}' is past the {freshnessThresholdDays}-day freshness threshold and cannot be reserved without a fresh observation.");
+        }
+
+        var now = DateTime.UtcNow;
+        var reservations = requests.Select(request =>
+        {
+            var remnants = GetExpectedRemnants(request);
+            return new MaterialReservation
+            {
+                InventoryItemId = request.InventoryItemId, ShopOpsJobId = request.ShopOpsJobId,
+                DrawingId = request.DrawingId, DrawingRevision = request.DrawingRevision,
+                Equipment = request.Equipment, PepNestYear = request.PepNestYear,
+                PepNestName = request.PepNestName, LaserProgramRecordId = request.LaserProgramRecordId,
+                ReservedQuantity = 1, Status = ReservationStatus.Proposed, CreatedAtUtc = now, CreatedBy = createdBy,
+                ExpectedRemainderWidthIn = remnants.FirstOrDefault()?.WidthIn,
+                ExpectedRemainderLengthIn = remnants.FirstOrDefault()?.LengthIn,
+                ExpectedRemainderSourceType = remnants.FirstOrDefault()?.SourceType,
+                ExpectedRemnants = remnants.Select((remainder, index) => new ExpectedRemnant
+                {
+                    Sequence = index + 1, WidthIn = remainder.WidthIn, LengthIn = remainder.LengthIn, SourceType = remainder.SourceType
+                }).ToList()
+            };
+        }).ToList();
+        db.MaterialReservations.AddRange(reservations);
+        await db.SaveChangesAsync();
+
+        db.MaterialTransactions.AddRange(reservations.Select(reservation => new MaterialTransaction
+        {
+            OccurredAtUtc = now, RecordedAtUtc = now, RecordedBy = createdBy,
+            TransactionType = MaterialTransactionType.Reservation, InventoryItemId = reservation.InventoryItemId,
+            MaterialReservationId = reservation.MaterialReservationId, QuantityDelta = 0,
+            SourceSystem = MaterialTransactionSourceSystem.OperatorUI
+        }));
+        var results = reservations.Select(reservation => new ReservationResult
+        {
+            MaterialReservationId = reservation.MaterialReservationId, Status = reservation.Status
+        }).ToList();
+        operationLog.Record(correlationId, "CreateReservationBatch", payloadHash, JsonSerializer.Serialize(results), createdBy);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return results;
+    }
+
     public async Task<ReservationResult> ApproveReservationAsync(Guid correlationId, long materialReservationId, byte[] expectedRowVersion, int approvedBy)
     {
         var payloadHash = HashPayload(new { materialReservationId, expectedRowVersion = Convert.ToHexString(expectedRowVersion) });
