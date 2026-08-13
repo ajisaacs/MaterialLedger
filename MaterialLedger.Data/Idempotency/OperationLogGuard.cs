@@ -18,6 +18,9 @@ public class OperationLogOutcome
 public class OperationConflictException(Guid correlationId) : Exception(
     $"CorrelationId '{correlationId}' was already used with a different request payload.");
 
+public class OperationOwnershipException(Guid correlationId) : Exception(
+    $"CorrelationId '{correlationId}' belongs to a different user.");
+
 /// <summary>
 /// Provides an idempotency check/record pair backed by <see cref="OperationLog"/>. This type does
 /// NOT provide atomicity on its own: <see cref="CheckAsync"/> reads with <c>AsNoTracking()</c> and
@@ -41,7 +44,7 @@ public class OperationLogGuard(MaterialLedgerDbContext db)
     /// using the same correlation id — callers are responsible for wrapping check, business work,
     /// and <see cref="Record"/> in a single properly-isolated transaction.
     /// </summary>
-    public async Task<OperationLogOutcome> CheckAsync(Guid correlationId, string procedureName, string requestPayloadHash)
+    public async Task<OperationLogOutcome> CheckAsync(Guid correlationId, string procedureName, string requestPayloadHash, int executedBy)
     {
         var existing = await db.OperationLogs.AsNoTracking()
             .FirstOrDefaultAsync(x => x.CorrelationId == correlationId);
@@ -51,6 +54,9 @@ public class OperationLogGuard(MaterialLedgerDbContext db)
 
         if (existing.ProcedureName != procedureName || existing.RequestPayloadHash != requestPayloadHash)
             throw new OperationConflictException(correlationId);
+
+        if (existing.ExecutedBy != executedBy)
+            throw new OperationOwnershipException(correlationId);
 
         return OperationLogOutcome.Replay(existing.ResultSummary);
     }

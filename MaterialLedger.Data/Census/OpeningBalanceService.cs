@@ -51,7 +51,7 @@ public class OpeningBalanceService(MaterialLedgerDbContext db, OperationLogGuard
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "RecordOpeningBalance", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "RecordOpeningBalance", payloadHash, observedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<OpeningBalanceResult>(outcome.ResultSummary!)!;

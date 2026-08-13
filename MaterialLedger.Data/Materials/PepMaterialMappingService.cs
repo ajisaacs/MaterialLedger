@@ -19,7 +19,7 @@ public sealed class PepMaterialMappingService(MaterialLedgerDbContext db, Operat
 
         var payloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var outcome = await operationLog.CheckAsync(correlationId, "MapPepMaterial", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "MapPepMaterial", payloadHash, approvedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             await transaction.CommitAsync();

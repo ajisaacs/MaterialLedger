@@ -177,6 +177,26 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
     }
 
     [Fact]
+    public async Task CreateReservationAsync_RetryWithSameCorrelationId_ByDifferentUser_ThrowsOwnershipExceptionWithoutReplaying()
+    {
+        await using var db = _fixture.CreateContext();
+        var (ownerId, slotId, specId) = await SeedAsync(db);
+        var otherUser = new AppUser { Username = $"t_{Guid.NewGuid():N}", DisplayName = "Other", Role = AppUserRole.Manager, IsActive = true, PasswordHash = "x" };
+        var item = NewDrop(slotId, specId, ownerId);
+        db.AddRange(otherUser, item);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var correlationId = Guid.NewGuid();
+        var request = RequestFor(item.InventoryItemId);
+
+        await service.CreateReservationAsync(correlationId, request, ownerId);
+
+        await Assert.ThrowsAsync<OperationOwnershipException>(() =>
+            service.CreateReservationAsync(correlationId, request, otherUser.AppUserId));
+        Assert.Equal(1, await db.MaterialReservations.CountAsync(x => x.InventoryItemId == item.InventoryItemId));
+    }
+
+    [Fact]
     public async Task CreateReservationBatchAsync_WhenOneItemCannotBeHeld_CreatesNoPartialHolds()
     {
         await using var db = _fixture.CreateContext();

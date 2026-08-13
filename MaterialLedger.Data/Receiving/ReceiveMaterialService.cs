@@ -35,7 +35,12 @@ public class ReceiveMaterialResult
     public required string PublicItemCode { get; init; }
 }
 
-public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuard operationLog)
+public interface IReceiveMaterialService
+{
+    Task<IdempotentResult<ReceiveMaterialResult>> ReceiveMaterialAsync(Guid correlationId, ReceiveMaterialRequest request, int receivedBy);
+}
+
+public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuard operationLog) : IReceiveMaterialService
 {
     private static readonly InventoryLocationType[] LeafLocationTypes =
     [
@@ -51,7 +56,7 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "ReceiveMaterial", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "ReceiveMaterial", payloadHash, receivedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<ReceiveMaterialResult>(outcome.ResultSummary!)!;

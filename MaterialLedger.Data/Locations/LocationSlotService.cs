@@ -30,7 +30,7 @@ public class LocationSlotService(MaterialLedgerDbContext db, OperationLogGuard o
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "ConfirmLocationSlots", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "ConfirmLocationSlots", payloadHash, executedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<LocationSlotResult>(outcome.ResultSummary!)!;

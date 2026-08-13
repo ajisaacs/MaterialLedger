@@ -37,7 +37,7 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "CreatePurchaseOrder", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "CreatePurchaseOrder", payloadHash, createdBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replayId = JsonSerializer.Deserialize<long>(outcome.ResultSummary!);
@@ -90,7 +90,7 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "CancelPurchaseOrderLine", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "CancelPurchaseOrderLine", payloadHash, cancelledBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replayCount = JsonSerializer.Deserialize<int>(outcome.ResultSummary!);
@@ -115,7 +115,7 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "ClosePurchaseOrderRemaining", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "ClosePurchaseOrderRemaining", payloadHash, closedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replayCount = JsonSerializer.Deserialize<int>(outcome.ResultSummary!);
@@ -151,7 +151,7 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "AddPurchaseOrderLineAllocation", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "AddPurchaseOrderLineAllocation", payloadHash, createdBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replayId = JsonSerializer.Deserialize<long>(outcome.ResultSummary!);
@@ -202,7 +202,7 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "RemovePurchaseOrderLineAllocation", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "RemovePurchaseOrderLineAllocation", payloadHash, removedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             await transaction.CommitAsync();

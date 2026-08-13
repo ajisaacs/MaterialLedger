@@ -56,7 +56,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "CreateReservation", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "CreateReservation", payloadHash, createdBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<ReservationResult>(outcome.ResultSummary!)!;
@@ -137,7 +137,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
         var payloadHash = HashPayload(requests);
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var outcome = await operationLog.CheckAsync(correlationId, "CreateReservationBatch", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "CreateReservationBatch", payloadHash, createdBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<List<ReservationResult>>(outcome.ResultSummary!)!;
@@ -205,7 +205,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "ApproveReservation", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "ApproveReservation", payloadHash, approvedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<ReservationResult>(outcome.ResultSummary!)!;
@@ -261,7 +261,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "ReleaseReservation", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "ReleaseReservation", payloadHash, releasedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<ReservationResult>(outcome.ResultSummary!)!;

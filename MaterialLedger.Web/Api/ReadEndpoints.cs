@@ -19,6 +19,8 @@ public static class ReadEndpoints
             .WithName("SearchInventory");
         api.MapGet("/inventory/{id:long}", GetInventoryItemAsync)
             .WithName("GetInventoryItem");
+        api.MapGet("/reservations/{id:long}", GetReservationAsync)
+            .WithName("GetReservation");
         api.MapGet("/locations", GetLocationsAsync)
             .WithName("GetLocations");
         return api;
@@ -93,6 +95,28 @@ public static class ReadEndpoints
             item.LastObservedByDisplayName,
             item.IsStale,
             sourceSheet));
+    }
+
+    private static async Task<IResult> GetReservationAsync(long id, MaterialLedgerDbContext db)
+    {
+        var reservation = await db.MaterialReservations
+            .AsNoTracking()
+            .Where(x => x.MaterialReservationId == id)
+            .Select(x => new ReservationContract(
+                x.MaterialReservationId,
+                x.InventoryItemId,
+                x.Status,
+                x.Equipment,
+                x.ShopOpsJobId,
+                x.DrawingId,
+                x.DrawingRevision,
+                x.PepNestYear,
+                x.PepNestName,
+                x.LaserProgramRecordId,
+                x.CreatedAtUtc))
+            .FirstOrDefaultAsync();
+
+        return reservation is null ? Results.NotFound() : Results.Ok(reservation);
     }
 
     private static async Task<IResult> GetLocationsAsync(MaterialLedgerDbContext db)

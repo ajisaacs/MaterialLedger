@@ -33,7 +33,7 @@ public class OperationLogGuardTests : IClassFixture<SqlServerTestDatabaseFixture
         await using var db = _fixture.CreateContext();
         var guard = new OperationLogGuard(db);
 
-        var outcome = await guard.CheckAsync(Guid.NewGuid(), "TestProcedure", "hash-a");
+        var outcome = await guard.CheckAsync(Guid.NewGuid(), "TestProcedure", "hash-a", executedBy: 1);
 
         Assert.Equal(OperationLogOutcomeKind.Unseen, outcome.Kind);
     }
@@ -47,7 +47,7 @@ public class OperationLogGuardTests : IClassFixture<SqlServerTestDatabaseFixture
         var correlationId = Guid.NewGuid();
 
         await guard.RecordAsync(correlationId, "TestProcedure", "hash-a", "original-result", userId);
-        var outcome = await guard.CheckAsync(correlationId, "TestProcedure", "hash-a");
+        var outcome = await guard.CheckAsync(correlationId, "TestProcedure", "hash-a", userId);
 
         Assert.Equal(OperationLogOutcomeKind.Replay, outcome.Kind);
         Assert.Equal("original-result", outcome.ResultSummary);
@@ -64,7 +64,7 @@ public class OperationLogGuardTests : IClassFixture<SqlServerTestDatabaseFixture
         await guard.RecordAsync(correlationId, "TestProcedure", "hash-a", "original-result", userId);
 
         await Assert.ThrowsAsync<OperationConflictException>(
-            () => guard.CheckAsync(correlationId, "TestProcedure", "hash-b"));
+            () => guard.CheckAsync(correlationId, "TestProcedure", "hash-b", userId));
     }
 
     [Fact]
@@ -78,6 +78,21 @@ public class OperationLogGuardTests : IClassFixture<SqlServerTestDatabaseFixture
         await guard.RecordAsync(correlationId, "FirstProcedure", "hash-a", "original-result", userId);
 
         await Assert.ThrowsAsync<OperationConflictException>(
-            () => guard.CheckAsync(correlationId, "SecondProcedure", "hash-a"));
+            () => guard.CheckAsync(correlationId, "SecondProcedure", "hash-a", userId));
+    }
+
+    [Fact]
+    public async Task CheckAsync_SeenCorrelationIdMatchingRequestOwnedByDifferentUser_ThrowsWithoutReturningResult()
+    {
+        await using var db = _fixture.CreateContext();
+        var ownerId = await SeedUserAsync(db);
+        var otherUserId = await SeedUserAsync(db);
+        var guard = new OperationLogGuard(db);
+        var correlationId = Guid.NewGuid();
+
+        await guard.RecordAsync(correlationId, "TestProcedure", "hash-a", "secret-result", ownerId);
+
+        await Assert.ThrowsAsync<OperationOwnershipException>(
+            () => guard.CheckAsync(correlationId, "TestProcedure", "hash-a", otherUserId));
     }
 }

@@ -28,6 +28,9 @@ public sealed class ApiExceptionHandler(RequestDelegate next, ILogger<ApiExcepti
                 OperationConflictException => ApiProblemDetails.Create(
                     context, "idempotency-conflict", StatusCodes.Status409Conflict,
                     "The idempotency key was already used with a different request."),
+                OperationOwnershipException => ApiProblemDetails.Create(
+                    context, "idempotency-key-ownership", StatusCodes.Status403Forbidden,
+                    "The idempotency key belongs to another user."),
                 ReservationConcurrencyException or DbUpdateConcurrencyException => ApiProblemDetails.Create(
                     context, "concurrency-conflict", StatusCodes.Status409Conflict,
                     "The resource was changed by another operation. Refresh and try again."),

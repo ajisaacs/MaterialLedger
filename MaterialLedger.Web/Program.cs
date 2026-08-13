@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MaterialLedger.Data;
 using MaterialLedger.Web.Api;
 using MaterialLedger.Web.Authorization;
@@ -24,6 +25,8 @@ builder.Services.AddScoped<MaterialLedger.Data.Materials.MaterialSpecService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.PepMaterialMappingService>();
 builder.Services.AddScoped<MaterialLedger.Data.Census.OpeningBalanceService>();
 builder.Services.AddScoped<MaterialLedger.Data.Receiving.ReceiveMaterialService>();
+builder.Services.AddScoped<MaterialLedger.Data.Receiving.IReceiveMaterialService>(sp =>
+    sp.GetRequiredService<MaterialLedger.Data.Receiving.ReceiveMaterialService>());
 builder.Services.AddScoped<MaterialLedger.Data.PurchaseOrders.PurchaseOrderService>();
 builder.Services.AddScoped(sp =>
 {
@@ -81,6 +84,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization(options => options.AddMaterialLedgerPolicies());
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddRazorPages();
 
 var app = builder.Build();

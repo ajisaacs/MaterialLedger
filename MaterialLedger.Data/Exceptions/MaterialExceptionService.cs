@@ -115,7 +115,7 @@ public class MaterialExceptionService(MaterialLedgerDbContext db, OperationLogGu
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "ResolveMaterialException", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "ResolveMaterialException", payloadHash, resolvedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replayId = JsonSerializer.Deserialize<long>(outcome.ResultSummary!);

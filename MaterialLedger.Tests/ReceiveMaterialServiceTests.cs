@@ -175,6 +175,25 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
             correlationId, MakeRequest(locationId, specId, quantity: 7m), userId));
     }
 
+    [Fact]
+    public async Task ReceiveMaterialAsync_RetryWithSameCorrelationId_ByDifferentUser_ThrowsOwnershipExceptionWithoutReplaying()
+    {
+        await using var db = _fixture.CreateContext();
+        var (ownerId, locationId, specId) = await SeedAsync(db);
+        var otherUser = new AppUser { Username = $"t_{Guid.NewGuid():N}", DisplayName = "Other", Role = AppUserRole.Manager, IsActive = true, PasswordHash = "x" };
+        db.AppUsers.Add(otherUser);
+        await db.SaveChangesAsync();
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+        var correlationId = Guid.NewGuid();
+        var request = MakeRequest(locationId, specId);
+
+        await service.ReceiveMaterialAsync(correlationId, request, ownerId);
+
+        await Assert.ThrowsAsync<OperationOwnershipException>(() =>
+            service.ReceiveMaterialAsync(correlationId, request, otherUser.AppUserId));
+        Assert.Equal(1, await db.InventoryItems.CountAsync(x => x.InventoryLocationId == locationId));
+    }
+
     private async Task<long> SeedPurchaseOrderLineAsync(MaterialLedgerDbContext db, long specId, decimal quantityOrdered, int userId)
     {
         var order = new PurchaseOrder

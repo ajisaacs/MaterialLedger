@@ -38,7 +38,7 @@ public class LocationService(MaterialLedgerDbContext db, OperationLogGuard opera
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "CreateLocation", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "CreateLocation", payloadHash, executedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replayId = JsonSerializer.Deserialize<long>(outcome.ResultSummary!);

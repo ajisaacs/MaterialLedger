@@ -42,6 +42,7 @@ public static class ApiRouteExtensions
         var api = endpoints.MapGroup("/api/v1").RequireAuthorization();
 
         api.MapReadEndpoints();
+        api.MapCommandEndpoints();
 
         if (environment.IsEnvironment("Testing"))
         {

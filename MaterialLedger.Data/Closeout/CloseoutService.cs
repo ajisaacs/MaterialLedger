@@ -61,7 +61,7 @@ public class CloseoutService(MaterialLedgerDbContext db, OperationLogGuard opera
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        var outcome = await operationLog.CheckAsync(correlationId, "CloseoutConsumption", payloadHash);
+        var outcome = await operationLog.CheckAsync(correlationId, "CloseoutConsumption", payloadHash, confirmedBy);
         if (outcome.Kind == OperationLogOutcomeKind.Replay)
         {
             var replay = JsonSerializer.Deserialize<CloseoutResult>(outcome.ResultSummary!)!;
