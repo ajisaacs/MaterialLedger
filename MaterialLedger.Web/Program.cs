@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using MaterialLedger.Data;
+using MaterialLedger.Web.Attachments;
 using MaterialLedger.Web.Api;
 using MaterialLedger.Web.Authorization;
 using MaterialLedger.Web.Services;
@@ -84,6 +85,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization(options => options.AddMaterialLedgerPolicies());
 builder.Services.AddProblemDetails();
+builder.Services.Configure<AttachmentUploadOptions>(builder.Configuration.GetSection("Storage"));
+builder.Services.AddSingleton<AttachmentUploadPolicy>();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    var maxAttachmentBytes = builder.Configuration.GetValue<long>("Storage:MaxAttachmentBytes", 10 * 1024 * 1024);
+    options.MultipartBodyLengthLimit = AttachmentUploadLimits.MultipartBodyLengthLimit(maxAttachmentBytes);
+});
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddRazorPages();
 

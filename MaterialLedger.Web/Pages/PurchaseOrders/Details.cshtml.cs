@@ -6,6 +6,7 @@ using MaterialLedger.Data.Idempotency;
 using MaterialLedger.Data.Models;
 using MaterialLedger.Data.PurchaseOrders;
 using MaterialLedger.Web.Authorization;
+using MaterialLedger.Web.Attachments;
 using MaterialLedger.Web.Pages.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -16,11 +17,10 @@ using Microsoft.EntityFrameworkCore;
 namespace MaterialLedger.Web.Pages.PurchaseOrders;
 
 [Authorize(Policy = MaterialLedgerPolicies.RequireProgrammerOrManager)]
-public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purchaseOrderService, AttachmentStorageService attachmentStorage) : PageModel
+public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purchaseOrderService, AttachmentStorageService attachmentStorage, AttachmentUploadPolicy uploadPolicy) : PageModel
 {
     [BindProperty(SupportsGet = true)] public long Id { get; set; }
     [BindProperty] public Guid CorrelationId { get; set; }
-    [BindProperty] public IFormFile? File { get; set; }
 
     public PurchaseOrder? Order { get; set; }
     public List<Attachment> Attachments { get; set; } = [];
@@ -38,15 +38,34 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
     {
         if (!await LoadAsync()) return NotFound();
 
-        if (File is null || File.Length == 0)
+        IFormFile? file;
+        try
+        {
+            file = (await Request.ReadFormAsync()).Files.GetFile("File");
+        }
+        catch (Exception ex) when (ex is InvalidDataException or BadHttpRequestException)
+        {
+            Error = "The uploaded file is too large.";
+            return Page();
+        }
+
+        if (file is null || file.Length == 0)
         {
             Error = "Choose a file to upload.";
             return Page();
         }
 
-        await using var stream = File.OpenReadStream();
+        Error = uploadPolicy.Validate(file) switch
+        {
+            AttachmentUploadValidationResult.TooLarge => "The uploaded file is too large.",
+            AttachmentUploadValidationResult.UnsupportedMediaType => "The uploaded file type is not allowed.",
+            _ => null
+        };
+        if (Error is not null) return Page();
+
+        await using var stream = file.OpenReadStream();
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        await attachmentStorage.SaveAsync(AttachmentEntityType.PurchaseOrder, Id, File.FileName, File.ContentType, stream, userId);
+        await attachmentStorage.SaveAsync(AttachmentEntityType.PurchaseOrder, Id, file.FileName, file.ContentType, stream, userId);
         return RedirectToPage(new { id = Id });
     }
 

@@ -246,7 +246,9 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.HasKey(x => x.AttachmentId);
             e.Property(x => x.EntityType).HasConversion<string>().HasMaxLength(30).IsRequired();
             e.Property(x => x.StoragePath).HasMaxLength(400).IsRequired();
+            e.Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
             e.Property(x => x.ContentType).HasMaxLength(100);
+            e.Property(x => x.ByteLength).IsRequired();
             e.Property(x => x.Checksum).HasMaxLength(100);
             e.HasIndex(x => new { x.EntityType, x.EntityId });
             e.HasOne(x => x.UploadedByUser).WithMany().HasForeignKey(x => x.UploadedBy).OnDelete(DeleteBehavior.Restrict);

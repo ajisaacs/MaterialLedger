@@ -43,6 +43,7 @@ public static class ApiRouteExtensions
 
         api.MapReadEndpoints();
         api.MapCommandEndpoints();
+        api.MapAttachmentEndpoints();
 
         if (environment.IsEnvironment("Testing"))
         {

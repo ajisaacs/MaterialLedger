@@ -8,7 +8,9 @@ public class Attachment
     public AttachmentEntityType EntityType { get; set; }
     public long EntityId { get; set; }
     public string StoragePath { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
     public string? ContentType { get; set; }
+    public long ByteLength { get; set; }
     public string? Checksum { get; set; }
     public DateTime UploadedAtUtc { get; set; }
     public int UploadedBy { get; set; }

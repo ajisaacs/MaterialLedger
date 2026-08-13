@@ -72,6 +72,9 @@ namespace MaterialLedger.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AttachmentId"));
 
+                    b.Property<long>("ByteLength")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Checksum")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -87,6 +90,11 @@ namespace MaterialLedger.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("StoragePath")
                         .IsRequired()
