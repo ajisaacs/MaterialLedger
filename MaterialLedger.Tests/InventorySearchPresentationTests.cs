@@ -19,7 +19,10 @@ public class InventorySearchPresentationTests
         Assert.Contains("data-filter-dialog=\"size-filter-dialog\"", markup);
         Assert.Contains("id=\"size-filter-dialog\"", markup);
         Assert.Contains("size-filter-fields", markup);
-        Assert.Contains("place-items: center", css);
+        Assert.Contains("size-filter-grid", markup);
+        Assert.Contains("size-filter-separator", markup);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr) 1.5rem minmax(0, 1fr)", css);
+        Assert.Contains("height: 2.75rem", css);
         Assert.DoesNotContain("Apply filters", markup);
         Assert.Contains("Select all", partial);
         Assert.Contains("Deselect all", partial);

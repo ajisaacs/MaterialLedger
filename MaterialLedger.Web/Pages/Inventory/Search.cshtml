@@ -69,9 +69,11 @@
         </div>
         <fieldset class="dimension-filter size-filter-fields">
             <legend>Minimum usable size (in)</legend>
-            <label>Width <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
-            <span aria-hidden="true">×</span>
-            <label>Length <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
+            <div class="size-filter-grid">
+                <label class="size-filter-side">Width <input asp-for="MinUsableWidthIn" type="number" step="0.001" /></label>
+                <div class="size-filter-separator" aria-hidden="true">×</div>
+                <label class="size-filter-side">Length <input asp-for="MinUsableLengthIn" type="number" step="0.001" /></label>
+            </div>
         </fieldset>
         <div class="dialog-actions"><button type="button" class="button button-primary" data-apply-filter>Done</button></div>
     </dialog>
