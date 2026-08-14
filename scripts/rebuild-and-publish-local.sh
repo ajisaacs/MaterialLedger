@@ -6,6 +6,7 @@ repo=/home/aj/src/MaterialLedger
 runtime="$repo/.run"
 port=59406
 url="http://127.0.0.1:${port}/"
+lan_url="http://hermes.lan:${port}/"
 log_dir="$runtime/logs"
 pid_file="$runtime/materialledger.pid"
 lock_file="$runtime/rebuild-and-publish.lock"
@@ -19,6 +20,41 @@ flock -n 9 || { echo "A rebuild/publish is already running." >&2; exit 1; }
   echo "Missing local runtime environment file(s) under $runtime." >&2
   exit 1
 }
+
+# Docker does not automatically restart this ad-hoc local SQL Server after a
+# host/Docker restart. Ensure the database backing the local app is available
+# before performing an expensive build and launching the web process.
+db_container=materialledger-temp-sql
+db_port=14339
+if ! docker container inspect "$db_container" >/dev/null 2>&1; then
+  echo "Missing local SQL Server container: $db_container" >&2
+  exit 1
+fi
+
+db_status="$(docker container inspect --format '{{.State.Status}}' "$db_container")"
+case "$db_status" in
+  running) ;;
+  created|exited)
+    echo "Starting local SQL Server container ($db_container)..."
+    docker start "$db_container" >/dev/null
+    ;;
+  *)
+    echo "Local SQL Server container $db_container is in unexpected state: $db_status" >&2
+    exit 1
+    ;;
+esac
+
+for _ in {1..60}; do
+  if sudo lsof -nP -t -iTCP:"$db_port" -sTCP:LISTEN >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+if ! sudo lsof -nP -t -iTCP:"$db_port" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Local SQL Server did not listen on port $db_port within 60 seconds." >&2
+  echo "Check with: docker logs $db_container" >&2
+  exit 1
+fi
 
 cd "$repo"
 echo "Building MaterialLedger (Debug)..."
@@ -61,8 +97,12 @@ echo "$new_pid" >"$pid_file"
 
 for _ in {1..30}; do
   if curl --silent --show-error --fail --max-time 2 -o /dev/null "$url"; then
-    echo "Published successfully: $url (launcher PID $new_pid)"
-    exit 0
+    if curl --silent --show-error --fail --max-time 2 -o /dev/null "$lan_url"; then
+      echo "Published successfully: $lan_url (launcher PID $new_pid)"
+      exit 0
+    fi
+    echo "MaterialLedger is listening locally but is not reachable at $lan_url" >&2
+    exit 1
   fi
   if ! kill -0 "$new_pid" 2>/dev/null; then
     echo "MaterialLedger exited during startup. See $log_file" >&2

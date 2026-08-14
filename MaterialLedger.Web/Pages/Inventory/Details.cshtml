@@ -3,6 +3,7 @@
 @model MaterialLedger.Web.Pages.Inventory.DetailsModel
 @using MaterialLedger.Data.Models
 @using MaterialLedger.Web.Shared
+@using MaterialLedger.Data.Inventory
 @{ Layout = "Shared/_Layout"; }
 
 <header class="page-heading">
@@ -36,5 +37,100 @@
         }
     </dl>
 </section>
+
+@if (Model.Reservations.Count > 0 || Model.Exceptions.Count > 0)
+{
+    <section aria-label="Current holds">
+        <h2>Current holds</h2>
+        <div class="holds-grid">
+            @if (Model.Reservations.Count > 0)
+            {
+                <div class="hold-card">
+                    <h3>Reservations <span class="badge">@Model.Reservations.Count</span></h3>
+                    <table class="compact-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Status</th>
+                                <th>Reference</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.Reservations)
+                            {
+                                <tr>
+                                    <td><a asp-page="/Reservations/Details" asp-route-id="@r.ReservationId">@r.ReservationId</a></td>
+                                    <td><span class="workflow-status @(r.IsActive ? "ready" : "pending")">@r.Status</span></td>
+                                    <td>@(r.WorkReference ?? "-")</td>
+                                    <td>@r.CreatedAt.ToString("MMM d, HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (Model.Exceptions.Count > 0)
+            {
+                <div class="hold-card">
+                    <h3>Exceptions <span class="badge">@Model.Exceptions.Count</span></h3>
+                    <table class="compact-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Opened</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in Model.Exceptions)
+                            {
+                                <tr>
+                                    <td><a asp-page="/Exceptions/Details" asp-route-id="@e.ExceptionId">@e.ExceptionId</a></td>
+                                    <td>@e.ExceptionType</td>
+                                    <td><span class="exception-badge @(e.Status == "Open" ? "exception-open" : "exception-fixed")">@e.Status</span></td>
+                                    <td>@e.OpenedAt.ToString("MMM d, HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@if (Model.Transactions.Count > 0)
+{
+    <section aria-label="Recent activity">
+        <h2>Recent activity <span class="activity-count">Last @Model.Transactions.Count entries</span></h2>
+        <table class="compact-table activity-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Type</th>
+                    <th>When</th>
+                    <th>By</th>
+                    <th>Geometry</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model.Transactions)
+                {
+                    <tr>
+                        <td>@t.TransactionId</td>
+                        <td><span class="tx-type">@t.Type</span></td>
+                        <td>@t.OccurredAt.ToString("MMM d, HH:mm")</td>
+                        <td>@t.RecordedBy</td>
+                        <td>@(t.Geometry ?? "-")</td>
+                        <td class="notes-cell">@(t.Notes ?? (t.ReasonCode != null ? t.ReasonCode : "-"))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
 
 <p><a asp-page="/Inventory/Search">Back to search</a></p>

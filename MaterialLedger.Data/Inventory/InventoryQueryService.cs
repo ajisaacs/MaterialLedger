@@ -63,6 +63,44 @@ public class LocationSummary
     public required int ExceptionItemCount { get; init; }
 }
 
+// View-models for the Inventory Details page activity/holds sections.
+public sealed class ReservationSummary
+{
+    public required long ReservationId { get; init; }
+    public required string Status { get; init; }
+    public string? WorkReference { get; init; }
+    public string? Equipment { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTime? ApprovedAt { get; init; }
+    public string? ApprovedBy { get; init; }
+    public bool IsActive => Status is "Proposed" or "Approved" or "AwaitingCloseout";
+}
+
+public sealed class TransactionSummary
+{
+    public required long TransactionId { get; init; }
+    public required string Type { get; init; }
+    public DateTime OccurredAt { get; init; }
+    public string? RecordedBy { get; init; }
+    public string? Notes { get; init; }
+    public string? ReasonCode { get; init; }
+    public string? Geometry { get; init; }
+    public long? ReservationId { get; init; }
+}
+
+public sealed class ExceptionSummary
+{
+    public required long ExceptionId { get; init; }
+    public required string ExceptionType { get; init; }
+    public required string Status { get; init; }
+    public DateTime OpenedAt { get; init; }
+    public string? Notes { get; init; }
+    public string? OpenedBy { get; init; }
+    public DateTime? ResolvedAt { get; init; }
+    public string? ResolutionNotes { get; init; }
+}
+
 public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThresholdDays)
 {
     private static readonly ReservationStatus[] ActiveReservationStatuses =
@@ -252,6 +290,117 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
     }
 
     public Task<int> CountAsync(InventoryFilter filter) => BuildQuery(filter: filter).CountAsync();
+
+    // -- Detail-page queries --
+
+    public async Task<IReadOnlyList<ReservationSummary>> GetItemReservationsAsync(long inventoryItemId)
+    {
+        var reservations = await (from r in db.MaterialReservations
+                                  where r.InventoryItemId == inventoryItemId
+                                  orderby r.CreatedAtUtc descending
+                                  select new
+                                  {
+                                      r.MaterialReservationId,
+                                      r.Status,
+                                      r.Equipment,
+                                      r.CreatedAtUtc,
+                                      CreatedBy = r.CreatedByUser.DisplayName,
+                                      ApprovedAt = r.ApprovedAtUtc,
+                                      ApprovedBy = r.ApprovedByUser.DisplayName,
+                                      r.ShopOpsJobId,
+                                      r.DrawingId,
+                                      r.DrawingRevision,
+                                      r.PepNestYear,
+                                      r.PepNestName
+                                  }).Take(20).ToListAsync();
+
+        return reservations.Select(r => new ReservationSummary
+        {
+            ReservationId = r.MaterialReservationId,
+            Status = r.Status.ToString(),
+            WorkReference = string.IsNullOrWhiteSpace(r.ShopOpsJobId) && string.IsNullOrWhiteSpace(r.DrawingId) && string.IsNullOrWhiteSpace(r.PepNestName)
+                ? null
+                : (string.IsNullOrWhiteSpace(r.ShopOpsJobId)
+                    ? (string.IsNullOrWhiteSpace(r.DrawingRevision)
+                        ? $"Drawing {r.DrawingId}"
+                        : $"Drawing {r.DrawingId} rev {r.DrawingRevision}")
+                    : $"Job {r.ShopOpsJobId}")
+                        ?? (r.PepNestYear is null
+                            ? $"Nest {r.PepNestName}"
+                            : $"Nest {r.PepNestYear}: {r.PepNestName}"),
+            Equipment = r.Equipment?.ToString(),
+            CreatedAt = r.CreatedAtUtc,
+            CreatedBy = r.CreatedBy,
+            ApprovedAt = r.ApprovedAt,
+            ApprovedBy = r.ApprovedBy
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<TransactionSummary>> GetItemTransactionsAsync(long inventoryItemId)
+    {
+        var transactions = await (from t in db.MaterialTransactions
+                                  where t.InventoryItemId == inventoryItemId
+                                  orderby t.OccurredAtUtc descending
+                                  select new
+                                  {
+                                      t.MaterialTransactionId,
+                                      t.TransactionType,
+                                      t.OccurredAtUtc,
+                                      t.RecordedByUser.DisplayName,
+                                      t.Notes,
+                                      t.ReasonCode,
+                                      t.SourceSystem,
+                                      Width = t.GeometryWidthInSnapshot,
+                                      Length = t.GeometryLengthInSnapshot,
+                                      ReservationId = t.MaterialReservationId,
+                                      t.ExternalReference
+                                  }).Take(30).ToListAsync();
+
+        return transactions.Select(t => new TransactionSummary
+        {
+            TransactionId = t.MaterialTransactionId,
+            Type = t.TransactionType.ToString(),
+            OccurredAt = t.OccurredAtUtc,
+            RecordedBy = t.DisplayName,
+            Notes = t.Notes,
+            ReasonCode = t.ReasonCode,
+            Geometry = t.Width is not null && t.Length is not null
+                ? $"{t.Width.Value:F1} x {t.Length.Value:F1} in"
+                : null,
+            ReservationId = t.ReservationId
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<ExceptionSummary>> GetItemExceptionsAsync(long inventoryItemId)
+    {
+        var exceptions = await (from e in db.MaterialExceptions
+                                where e.InventoryItemId == inventoryItemId
+                                orderby e.OpenedAtUtc descending
+                                select new
+                                {
+                                    e.MaterialExceptionId,
+                                    e.ExceptionType,
+                                    e.Status,
+                                    e.OpenedAtUtc,
+                                    e.Notes,
+                                    OpenedBy = e.OpenedByUser.DisplayName,
+                                    e.ResolvedAtUtc,
+                                    e.ResolvedByUser.DisplayName,
+                                    e.ResolutionNotes
+                                }).ToListAsync();
+
+        return exceptions.Select(e => new ExceptionSummary
+        {
+            ExceptionId = e.MaterialExceptionId,
+            ExceptionType = e.ExceptionType.ToString(),
+            Status = e.Status.ToString(),
+            OpenedAt = e.OpenedAtUtc,
+            Notes = e.Notes,
+            OpenedBy = e.OpenedBy,
+            ResolvedAt = e.ResolvedAtUtc,
+            ResolutionNotes = e.ResolutionNotes
+        }).ToList();
+    }
 
     public async Task<IReadOnlyList<InventoryItemSummary>> GetItemsAtLocationsAsync(IReadOnlyList<long> locationIds)
     {

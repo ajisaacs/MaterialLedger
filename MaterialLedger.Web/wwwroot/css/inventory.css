@@ -44,3 +44,19 @@
 .inventory-status-depleted { background: #eef2f3; border-left-color: #667980; }
 .inventory-status a { color: inherit; }
 .exception-explanation { color: var(--muted); display: block; font-size: 0.8rem; margin-top: 0.3rem; }
+.holds-grid { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 0.5rem; }
+.hold-card { border: 1px solid var(--line); border-radius: var(--radius, 6px); padding: 0.75rem 1rem; background: var(--surface); }
+.hold-card h3 { font-size: 0.82rem; font-weight: 700; margin: 0 0 0.6rem; display: flex; align-items: center; gap: 0.4rem; }
+.hold-card .badge { background: var(--muted); color: var(--canvas); font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 0.1rem 0.45rem; }
+.activity-count { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.compact-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.compact-table thead th { color: var(--muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.25rem 0.5rem; text-align: left; border-bottom: 1px solid var(--line); }
+.compact-table tbody td { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.compact-table tbody tr:last-child td { border-bottom: none; }
+.compact-table tbody tr:hover { background: var(--canvas); }
+.exception-badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.12rem 0.35rem; border-radius: 3px; }
+.exception-open { background: #fdecea; color: var(--red); }
+.exception-fixed { background: #e6f4ea; color: var(--green); }
+.tx-type { display: inline-block; font-family: monospace; font-size: 0.74rem; background: var(--canvas); padding: 0.1rem 0.3rem; border-radius: 3px; }
+.notes-cell { max-width: 20rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.76rem; }
+.activity-table .notes-cell { max-width: 25rem; }

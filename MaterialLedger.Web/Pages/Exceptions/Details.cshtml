@@ -1,0 +1,52 @@
+@* MaterialLedger.Web/Pages/Exceptions/Details.cshtml *@
+@page "{id:long}"
+@model MaterialLedger.Web.Pages.Exceptions.DetailsModel
+@using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
+@using MaterialLedger.Data.Inventory
+@{ Layout = "Shared/_Layout"; }
+
+<header class="page-heading">
+    <p class="eyebrow">Exception</p>
+    <h1>@Model.Exception!.ExceptionType</h1>
+    <p>Exception @Model.Exception.MaterialExceptionId</p>
+</header>
+
+@if (Model.Error is not null)
+{
+    <p class="alert-error" role="alert">@Model.Error</p>
+}
+
+<section aria-label="Exception details">
+    <dl class="detail-grid">
+        <dt>Type</dt><dd>@Model.Exception.ExceptionType</dd>
+        <dt>Status</dt><dd><span class="exception-badge @(Model.Exception.Status == MaterialExceptionStatus.Open ? "exception-open" : "exception-fixed")">@Model.Exception.Status</span></dd>
+        <dt>Opened</dt><dd>@Model.Exception.OpenedAtUtc.ToString("u") by @Model.Exception.OpenedByUser?.DisplayName</dd>
+        <dt>Notes</dt><dd>@(Model.Exception.Notes ?? "-")</dd>
+        @if (Model.Exception.InventoryItem is not null)
+        {
+            <dt>Item</dt><dd><a asp-page="/Inventory/Details" asp-route-id="@Model.Exception.InventoryItem.InventoryItemId">@Model.Exception.InventoryItem.PublicItemCode — @Model.Exception.InventoryItem.MaterialSpec?.DisplayName</a></dd>
+        }
+        @if (Model.Exception.MaterialReservation is not null)
+        {
+            <dt>Reservation</dt><dd><a asp-page="/Reservations/Details" asp-route-id="@Model.Exception.MaterialReservation.MaterialReservationId">@Model.Exception.MaterialReservationId</a></dd>
+        }
+        @if (Model.Exception.Status == MaterialExceptionStatus.Fixed)
+        {
+            <dt>Resolved</dt><dd>@Model.Exception.ResolvedAtUtc?.ToString("u") by @Model.Exception.ResolvedByUser?.DisplayName</dd>
+            <dt>Resolution notes</dt><dd>@(Model.Exception.ResolutionNotes ?? "-")</dd>
+        }
+    </dl>
+</section>
+
+@if (Model.Exception.Status == MaterialExceptionStatus.Open && Model.CanResolve)
+{
+    <form method="post" action="?handler=Resolve">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="CorrelationId" value="@Model.CorrelationId" />
+        <label>Resolution notes <input asp-for="ResolutionNotes" /></label>
+        <button type="submit">Resolve exception</button>
+    </form>
+}
+
+<p><a asp-page="/Exceptions/Index">Back to attention needed</a></p>
