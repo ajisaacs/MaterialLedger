@@ -36,9 +36,27 @@ else
     @foreach (var e in Model.OpenExceptions)
     {
         <tr>
-            <td><strong>@e.ExceptionType</strong><span class="exception-explanation">@Explain(e.ExceptionType)</span></td>
-            <td>@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</td>
-            <td>@(e.MaterialReservationId is not null ? $"#{e.MaterialReservationId}" : "-")</td>
+            <td><a asp-page="/Exceptions/Details" asp-route-id="@e.MaterialExceptionId"><strong>@e.ExceptionType</strong></a><span class="exception-explanation">@Explain(e.ExceptionType)</span></td>
+            <td>
+            @if (e.InventoryItemId is not null)
+            {
+                <a asp-page="/Inventory/Details" asp-route-id="@e.InventoryItemId">@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</a>
+            }
+            else
+            {
+                @e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName
+            }
+            </td>
+            <td>
+            @if (e.MaterialReservationId is not null)
+            {
+                <a asp-page="/Reservations/Details" asp-route-id="@e.MaterialReservationId">#@e.MaterialReservationId</a>
+            }
+            else
+            {
+                <span>-</span>
+            }
+            </td>
             <td>@e.OpenedAtUtc.ToString("u") by @e.OpenedByUser?.DisplayName</td>
             <td>@e.Notes</td>
             <td>
@@ -72,10 +90,28 @@ else
     @foreach (var e in Model.ResolvedExceptions)
     {
         <tr>
-            <td>@e.ExceptionType</td>
-            <td>@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</td>
+            <td><a asp-page="/Exceptions/Details" asp-route-id="@e.MaterialExceptionId">@e.ExceptionType</a></td>
+            <td>
+            @if (e.InventoryItemId is not null)
+            {
+                <a asp-page="/Inventory/Details" asp-route-id="@e.InventoryItemId">@e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName</a>
+            }
+            else
+            {
+                @e.InventoryItem?.PublicItemCode @e.InventoryItem?.MaterialSpec?.DisplayName
+            }
+            </td>
             <td><strong>FIXED</strong></td>
-            <td>@e.ResolvedAtUtc?.ToString("u") by @e.ResolvedByUser?.DisplayName</td>
+            <td>
+            @if (e.MaterialReservationId is not null)
+            {
+                <span>@e.ResolvedAtUtc?.ToString("u") by @e.ResolvedByUser?.DisplayName (#<a asp-page="/Reservations/Details" asp-route-id="@e.MaterialReservationId">@e.MaterialReservationId</a>)</span>
+            }
+            else
+            {
+                <span>@e.ResolvedAtUtc?.ToString("u") by @e.ResolvedByUser?.DisplayName</span>
+            }
+            </td>
         </tr>
     }
     </tbody>
