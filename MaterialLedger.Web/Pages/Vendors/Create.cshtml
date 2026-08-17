@@ -1,0 +1,5 @@
+@page
+@model MaterialLedger.Web.Pages.Vendors.CreateModel
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Add vendor"; }
+<h1>Add vendor</h1>@if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
+<form method="post"><label>Name <input asp-for="Input.Name" maxlength="200" required /></label><label>Contact name <input asp-for="Input.ContactName" maxlength="200" /></label><label>Email <input asp-for="Input.ContactEmail" maxlength="320" /></label><label>Phone <input asp-for="Input.ContactPhone" maxlength="50" /></label><label>Notes <textarea asp-for="Input.Notes" maxlength="1000"></textarea></label><button type="submit">Create vendor</button></form><p><a asp-page="Index">Back to vendors</a></p>

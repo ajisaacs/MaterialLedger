@@ -147,10 +147,11 @@ public sealed class PurchaseOrderAttachmentPresentationTests : IDisposable
 
     private static async Task AddPurchaseOrderAsync(MaterialLedgerDbContext db)
     {
+        db.Vendors.Add(new Vendor { VendorId = 1, Name = "Vendor", IsActive = true, CreatedAtUtc = DateTime.UtcNow });
         db.PurchaseOrders.Add(new PurchaseOrder
         {
             PurchaseOrderId = 41,
-            VendorName = "Vendor",
+            VendorId = 1,
             PurchaseOrderNumber = "PO-41",
             CreatedBy = 7,
             CreatedAtUtc = DateTime.UtcNow

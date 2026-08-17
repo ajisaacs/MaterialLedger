@@ -128,7 +128,9 @@ public class DetailsModel(MaterialLedgerDbContext db, PurchaseOrderService purch
     private async Task<bool> LoadAsync()
     {
         Order = await db.PurchaseOrders
+            .Include(x => x.Vendor)
             .Include(x => x.Lines).ThenInclude(x => x.MaterialSpec)
+            .Include(x => x.Lines).ThenInclude(x => x.VendorPart)
             .Include(x => x.Lines).ThenInclude(x => x.LocationAllocations).ThenInclude(x => x.InventoryLocation)
             .FirstOrDefaultAsync(x => x.PurchaseOrderId == Id);
         if (Order is null) return false;

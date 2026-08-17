@@ -16,8 +16,10 @@ USE MaterialLedger;
 GO
 
 -- SheetLots: ReceiveMaterialAsync inserts exactly one row per receipt, capturing vendor/PO/receipt/
--- vendor-part/heat-lot/cost provenance. No UPDATE/DELETE -- a SheetLot, once recorded, is never
--- edited or removed, matching every other provenance table in this schema.
+-- vendor-part/heat-lot/cost provenance. The application login has no UPDATE/DELETE grant -- a
+-- SheetLot, once recorded, is never edited or removed. The only historical exception is the
+-- administrator-run, transaction/audit-guarded FK enrichment documented in
+-- material-data-vendors-backfill-v1.sql; it does not grant the application elevated permissions.
 GRANT SELECT, INSERT ON material.SheetLots TO materialledger_app;
 GO
 

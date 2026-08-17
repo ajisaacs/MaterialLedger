@@ -128,6 +128,7 @@ public sealed class NavigationPresentationTests
     public void Queue_pages_render_mobile_card_equivalents_without_changing_desktop_tables()
     {
         var search = ReadPage("Inventory", "Search.cshtml");
+        var pepNests = ReadPage("PepNests", "Index.cshtml");
         var reservations = ReadPage("Reservations", "Index.cshtml");
         var closeout = ReadPage("Closeout", "Index.cshtml");
         var css = CssTestHelper.ReadEffectiveAppCss();
@@ -135,6 +136,9 @@ public sealed class NavigationPresentationTests
         Assert.Contains("class=\"desktop-table\"", search);
         Assert.Contains("mobile-card-grid mobile-card", search);
         Assert.Contains("class=\"inventory-card\"", search);
+        Assert.Contains("class=\"desktop-table\"", pepNests);
+        Assert.Contains("mobile-card-grid mobile-card", pepNests);
+        Assert.Contains("class=\"pep-nest-card\"", pepNests);
         Assert.Contains("class=\"desktop-table\"", reservations);
         Assert.Contains("mobile-card-grid mobile-card", reservations);
         Assert.Contains("class=\"workflow-queue-card\"", reservations);

@@ -19,6 +19,7 @@ public class IndexModel(MaterialLedgerDbContext db) : PageModel
     public async Task OnGetAsync()
     {
         var orders = await db.PurchaseOrders
+            .Include(x => x.Vendor)
             .Include(x => x.Lines)
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync();

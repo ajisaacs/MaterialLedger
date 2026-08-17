@@ -1,0 +1,5 @@
+@page
+@model MaterialLedger.Web.Pages.Vendors.IndexModel
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Vendors"; }
+<header class="page-heading"><p class="eyebrow">Inventory setup</p><h1>Vendors</h1>@if (User.IsInRole("Programmer") || User.IsInRole("Manager")) { <p><a asp-page="Create">Add vendor →</a></p> }</header>
+<table><thead><tr><th>Vendor</th><th>Contact</th><th>Status</th></tr></thead><tbody>@foreach (var vendor in Model.Vendors) { <tr><td><a asp-page="Details" asp-route-id="@vendor.VendorId">@vendor.Name</a></td><td>@(vendor.ContactName ?? vendor.ContactEmail ?? vendor.ContactPhone ?? "—")</td><td>@(vendor.IsActive ? "Active" : "Inactive")</td></tr> }</tbody></table>

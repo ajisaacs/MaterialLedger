@@ -24,6 +24,8 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<MaterialException> MaterialExceptions => Set<MaterialException>();
+    public DbSet<Vendor> Vendors => Set<Vendor>();
+    public DbSet<VendorPart> VendorParts => Set<VendorPart>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +57,36 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
                     "LOWER(ISNULL([Finish], '')) + '|' + CONVERT(nvarchar(30), [ThicknessIn])",
                     stored: true);
             e.HasIndex(x => x.NormalizedKey).IsUnique();
+        });
+
+        modelBuilder.Entity<Vendor>(e =>
+        {
+            e.HasKey(x => x.VendorId);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.NormalizedName)
+                .HasMaxLength(200)
+                .HasComputedColumnSql("UPPER(RTRIM(LTRIM([Name])))", stored: true);
+            e.Property(x => x.ContactName).HasMaxLength(200);
+            e.Property(x => x.ContactEmail).HasMaxLength(320);
+            e.Property(x => x.ContactPhone).HasMaxLength(50);
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasIndex(x => x.NormalizedName).IsUnique();
+            e.ToTable(t => t.HasCheckConstraint("CK_Vendor_Name_NotBlank", "LEN(LTRIM(RTRIM([Name]))) > 0"));
+        });
+
+        modelBuilder.Entity<VendorPart>(e =>
+        {
+            e.HasKey(x => x.VendorPartId);
+            e.Property(x => x.PartNumber).HasMaxLength(100).IsRequired();
+            e.Property(x => x.NormalizedPartNumber)
+                .HasMaxLength(100)
+                .HasComputedColumnSql("UPPER(RTRIM(LTRIM([PartNumber])))", stored: true);
+            e.Property(x => x.Description).HasMaxLength(1000);
+            e.Property(x => x.MinimumOrderQty).HasColumnType("decimal(12,3)");
+            e.Property(x => x.Unit).HasMaxLength(50);
+            e.HasIndex(x => new { x.VendorId, x.NormalizedPartNumber }).IsUnique();
+            e.ToTable(t => t.HasCheckConstraint("CK_VendorPart_PartNumber_NotBlank", "LEN(LTRIM(RTRIM([PartNumber]))) > 0"));
+            e.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<MaterialSpecExternalMapping>(e =>
@@ -94,22 +126,23 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.SourceType).HasConversion<string>().HasMaxLength(20).IsRequired();
             e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.PurchaseOrderLine).WithMany().HasForeignKey(x => x.PurchaseOrderLineId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.VendorPart).WithMany().HasForeignKey(x => x.VendorPartId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PurchaseOrder>(e =>
         {
             e.HasKey(x => x.PurchaseOrderId);
-            e.Property(x => x.VendorName).HasMaxLength(200).IsRequired();
             e.Property(x => x.PurchaseOrderNumber).HasMaxLength(100).IsRequired();
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PurchaseOrderLine>(e =>
         {
             e.HasKey(x => x.PurchaseOrderLineId);
             e.Property(x => x.VendorDescription).HasMaxLength(200);
-            e.Property(x => x.VendorPartNumber).HasMaxLength(100);
             e.Property(x => x.QuantityOrdered).HasColumnType("decimal(12,3)").IsRequired();
             e.Property(x => x.QuantityReceived).HasColumnType("decimal(12,3)").IsRequired();
             e.Property(x => x.UsableWidthIn).HasColumnType("decimal(10,3)");
@@ -126,6 +159,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             });
             e.HasOne(x => x.PurchaseOrder).WithMany(x => x.Lines).HasForeignKey(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.MaterialSpec).WithMany().HasForeignKey(x => x.MaterialSpecId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.VendorPart).WithMany().HasForeignKey(x => x.VendorPartId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PurchaseOrderLineAllocation>(e =>

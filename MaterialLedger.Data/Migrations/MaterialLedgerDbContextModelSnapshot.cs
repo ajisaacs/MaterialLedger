@@ -733,14 +733,14 @@ namespace MaterialLedger.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("VendorName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<long>("VendorId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("PurchaseOrderId");
 
                     b.HasIndex("CreatedBy");
+
+                    b.HasIndex("VendorId");
 
                     b.ToTable("PurchaseOrders", "material");
                 });
@@ -789,13 +789,14 @@ namespace MaterialLedger.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("VendorPartNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<long?>("VendorPartId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("PurchaseOrderLineId");
 
                     b.HasIndex("MaterialSpecId");
+
+                    b.HasIndex("VendorPartId");
 
                     b.HasIndex("PurchaseOrderId", "LineNumber")
                         .IsUnique();
@@ -882,9 +883,15 @@ namespace MaterialLedger.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<long?>("VendorId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("VendorName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<long?>("VendorPartId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("VendorPartNumber")
                         .HasMaxLength(100)
@@ -896,7 +903,115 @@ namespace MaterialLedger.Data.Migrations
 
                     b.HasIndex("PurchaseOrderLineId");
 
+                    b.HasIndex("VendorId");
+
+                    b.HasIndex("VendorPartId");
+
                     b.ToTable("SheetLots", "material");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.Vendor", b =>
+                {
+                    b.Property<long>("VendorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("VendorId"));
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasComputedColumnSql("UPPER(RTRIM(LTRIM([Name])))", true);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("VendorId");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("Vendors", "material", t =>
+                        {
+                            t.HasCheckConstraint("CK_Vendor_Name_NotBlank", "LEN(LTRIM(RTRIM([Name]))) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.VendorPart", b =>
+                {
+                    b.Property<long>("VendorPartId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("VendorPartId"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("MinimumOrderQty")
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<string>("NormalizedPartNumber")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasComputedColumnSql("UPPER(RTRIM(LTRIM([PartNumber])))", true);
+
+                    b.Property<string>("PartNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<long>("VendorId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("VendorPartId");
+
+                    b.HasIndex("VendorId", "NormalizedPartNumber")
+                        .IsUnique();
+
+                    b.ToTable("VendorParts", "material", t =>
+                        {
+                            t.HasCheckConstraint("CK_VendorPart_PartNumber_NotBlank", "LEN(LTRIM(RTRIM([PartNumber]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("MaterialLedger.Data.Models.Attachment", b =>
@@ -1133,7 +1248,15 @@ namespace MaterialLedger.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MaterialLedger.Data.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLine", b =>
@@ -1150,9 +1273,16 @@ namespace MaterialLedger.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MaterialLedger.Data.Models.VendorPart", "VendorPart")
+                        .WithMany()
+                        .HasForeignKey("VendorPartId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("MaterialSpec");
 
                     b.Navigation("PurchaseOrder");
+
+                    b.Navigation("VendorPart");
                 });
 
             modelBuilder.Entity("MaterialLedger.Data.Models.PurchaseOrderLineAllocation", b =>
@@ -1195,9 +1325,34 @@ namespace MaterialLedger.Data.Migrations
                         .HasForeignKey("PurchaseOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("MaterialLedger.Data.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MaterialLedger.Data.Models.VendorPart", "VendorPart")
+                        .WithMany()
+                        .HasForeignKey("VendorPartId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("MaterialSpec");
 
                     b.Navigation("PurchaseOrderLine");
+
+                    b.Navigation("Vendor");
+
+                    b.Navigation("VendorPart");
+                });
+
+            modelBuilder.Entity("MaterialLedger.Data.Models.VendorPart", b =>
+                {
+                    b.HasOne("MaterialLedger.Data.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("MaterialLedger.Data.Models.MaterialReservation", b =>

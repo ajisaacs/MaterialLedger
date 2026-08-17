@@ -1,175 +1,47 @@
-@* MaterialLedger.Web/Pages/PurchaseOrders/Create.cshtml *@
 @page
 @model MaterialLedger.Web.Pages.PurchaseOrders.CreateModel
 @{ Layout = "Shared/_Layout"; ViewData["Title"] = "Order material"; }
-
-<header class="page-heading po-create-heading">
-    <p class="eyebrow">Inventory setup</p>
-    <h1>Order material</h1>
-    <p>Start with the purchase order, then add each material as a separate line.</p>
-</header>
-
-@if (Model.Error is not null)
-{
-    <p class="form-error" role="alert">@Model.Error</p>
-}
-
+<header class="page-heading"><p class="eyebrow">Inventory setup</p><h1>Order material</h1><p>Select a vendor reference, then add each material as a line.</p></header>
+@if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
 <form method="post" id="purchase-order-form" class="purchase-order-form">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="CorrelationId" />
-
-    <section class="po-order-details" aria-labelledby="order-details-title">
-        <div class="po-section-heading"><div><p class="eyebrow">Step 1</p><h2 id="order-details-title">Order details</h2></div><span>Required before saving</span></div>
-        <div class="po-order-grid">
-            <label>Vendor <input asp-for="VendorName" maxlength="200" autocomplete="organization" required /></label>
-            <label>PO number <input asp-for="PurchaseOrderNumber" maxlength="100" autocomplete="off" required /></label>
-            <label>Order date <input asp-for="OrderDate" type="date" /></label>
-            <label class="po-notes">Notes <textarea asp-for="Notes" maxlength="1000" placeholder="Optional delivery or order notes"></textarea></label>
-        </div>
-    </section>
-
-    <section class="po-lines-section" aria-labelledby="order-lines-title">
-        <div class="po-section-heading">
-            <div><p class="eyebrow">Step 2</p><h2 id="order-lines-title">Material lines</h2></div>
-            <span id="line-count" aria-live="polite">No lines added</span>
-        </div>
-        <p class="form-hint">Add one material, thickness, and quantity at a time. You can review or edit a line before creating the order.</p>
-        <div id="po-line-list" class="po-line-list" aria-live="polite"></div>
-        <p id="po-lines-empty" class="po-lines-empty">No material lines yet.</p>
-        <button type="button" id="add-line" class="button button-primary">Add material line</button>
-        <p class="po-catalog-link">Need a material that is not listed? <a asp-page="/Materials/Index">Add it to the material catalog</a>.</p>
-    </section>
-
-    <div class="po-submit-bar"><button type="submit">Create purchase order</button></div>
-
-    <div id="po-line-store" hidden>
+    @Html.AntiForgeryToken()<input type="hidden" asp-for="CorrelationId" />
+    <fieldset><legend>Order details</legend>
+        <label>Vendor
+            <select asp-for="VendorId" id="vendor-id"><option value="">Choose active vendor</option>@foreach (var vendor in Model.AvailableVendors) { <option value="@vendor.VendorId">@vendor.Name</option> }</select>
+        </label>
+        <p class="form-hint">Or create an active reference for this order:</p>
+        <label>New vendor name <input asp-for="NewVendorName" maxlength="200" autocomplete="organization" /></label>
+        <label>PO number <input asp-for="PurchaseOrderNumber" maxlength="100" required /></label>
+        <label>Order date <input asp-for="OrderDate" type="date" /></label>
+        <label>Notes <textarea asp-for="Notes" maxlength="1000"></textarea></label>
+    </fieldset>
+    <fieldset><legend>Material lines</legend><p class="form-hint">Material and quantity are required for each filled-in line. Select an active vendor part or enter a new one to create it under the selected vendor.</p>
     @for (var i = 0; i < Model.Lines.Count; i++)
     {
-        <fieldset class="po-line" data-line-index="@i">
-            <legend>Line @(i + 1)</legend>
-            <label>Material family / grade / finish
-                <select class="po-line-material">
-                    <option value="">Choose material</option>
-                    @foreach (var material in Model.AvailableSpecs.GroupBy(spec => $"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}"))
-                    {
-                        var spec = material.First();
-                        <option value="@material.Key">@spec.MaterialFamily@(spec.Grade is null ? "" : $" {spec.Grade}")@(spec.Finish is null ? "" : $" {spec.Finish}")</option>
-                    }
-                </select>
+        <fieldset class="po-line"><legend>Line @(i + 1)</legend>
+            <label>Material
+                <select asp-for="Lines[i].ExistingMaterialSpecId"><option value="">Choose material / thickness</option>@foreach (var spec in Model.AvailableSpecs) { <option value="@spec.MaterialSpecId">@spec.DisplayName</option> }</select>
             </label>
-            <label>Thickness
-                <select asp-for="Lines[i].ExistingMaterialSpecId" class="po-line-thickness" disabled>
-                    <option value="">Choose thickness</option>
-                    @foreach (var spec in Model.AvailableSpecs)
-                    {
-                        <option value="@spec.MaterialSpecId" data-material-key="@($"{spec.MaterialFamily}|{spec.Grade}|{spec.Finish}")">@spec.DisplayName</option>
-                    }
-                </select>
+            <label>Vendor part
+                <select asp-for="Lines[i].VendorPartId" class="vendor-part"><option value="">No vendor part</option>@foreach (var part in Model.AvailableVendorParts) { <option value="@part.VendorPartId" data-vendor-id="@part.VendorId">@part.PartNumber</option> }</select>
             </label>
-            <label>Vendor description <input asp-for="Lines[i].VendorDescription" maxlength="200" autocomplete="off" /></label>
-            <label>Vendor part number <input asp-for="Lines[i].VendorPartNumber" maxlength="100" autocomplete="off" /></label>
-            <label>Quantity ordered <input asp-for="Lines[i].QuantityOrdered" type="number" step="1" min="0" inputmode="numeric" /></label>
-            <label>Unit price <input asp-for="Lines[i].UnitPrice" type="number" step="0.01" min="0" inputmode="decimal" /></label>
-            <label>Usable width (in) <input asp-for="Lines[i].UsableWidthIn" type="number" step="0.001" inputmode="decimal" /></label>
-            <label>Usable length (in) <input asp-for="Lines[i].UsableLengthIn" type="number" step="0.001" inputmode="decimal" /></label>
+            <label>New vendor part number <input asp-for="Lines[i].NewVendorPartNumber" maxlength="100" /></label>
+            <label>Vendor description <input asp-for="Lines[i].VendorDescription" maxlength="200" /></label>
+            <label>Quantity ordered <input asp-for="Lines[i].QuantityOrdered" type="number" step="1" min="0" /></label>
+            <label>Unit price <input asp-for="Lines[i].UnitPrice" type="number" step="0.01" min="0" /></label>
+            <label>Usable width (in) <input asp-for="Lines[i].UsableWidthIn" type="number" step="0.001" /></label>
+            <label>Usable length (in) <input asp-for="Lines[i].UsableLengthIn" type="number" step="0.001" /></label>
             <label>Quoted delivery date <input asp-for="Lines[i].QuotedDeliveryDate" type="date" /></label>
         </fieldset>
     }
-    </div>
-
-    <dialog id="po-line-dialog" class="po-line-dialog" aria-labelledby="po-line-dialog-title">
-        <div class="dialog-heading">
-            <div><p class="eyebrow">Material line</p><h2 id="po-line-dialog-title">Add material line</h2><p>Only material, thickness, and quantity are required.</p></div>
-            <button class="dialog-close" type="button" aria-label="Close material line">×</button>
-        </div>
-        <div id="po-line-editor"></div>
-        <div class="dialog-actions"><button type="button" id="save-line">Add line</button><button type="button" id="cancel-line" class="button-secondary">Cancel</button></div>
-    </dialog>
+    </fieldset>
+    <button type="submit">Create purchase order</button>
 </form>
-
-<script src="~/js/dependent-select.js" asp-append-version="true"></script>
 <script>
-    const lineStore = document.getElementById('po-line-store');
-    const lineEditor = document.getElementById('po-line-editor');
-    const lineList = document.getElementById('po-line-list');
-    const lineDialog = document.getElementById('po-line-dialog');
-    const lineCount = document.getElementById('line-count');
-    const emptyLines = document.getElementById('po-lines-empty');
-    const addLineButton = document.getElementById('add-line');
-    const saveLineButton = document.getElementById('save-line');
-    const dialogTitle = document.getElementById('po-line-dialog-title');
-    const lines = Array.from(document.querySelectorAll('.po-line'));
-    let editingLine = null;
-
-    document.querySelectorAll('.po-line').forEach(row => {
-        initDependentSelect(row.querySelector('.po-line-material'), row.querySelector('.po-line-thickness'), 'materialKey');
-        if (row.querySelector('.po-line-thickness').value && Number(row.querySelector('[name$=".QuantityOrdered"]').value) > 0) {
-            row.dataset.saved = 'true';
-        }
-    });
-
-    const isSaved = row => row.dataset.saved === 'true';
-    const materialName = row => row.querySelector('.po-line-thickness option:checked')?.textContent || 'Material not selected';
-    const quantity = row => row.querySelector('[name$=".QuantityOrdered"]').value || '0';
-
-    function renderLines() {
-        const savedLines = lines.filter(isSaved);
-        lineList.replaceChildren(...savedLines.map(row => {
-            const index = Number(row.dataset.lineIndex) + 1;
-            const card = document.createElement('article');
-            card.className = 'po-line-card';
-            card.innerHTML = `<div><span>Line ${index}</span><strong></strong><small></small></div><button type="button" class="button-secondary">Edit</button>`;
-            card.querySelector('strong').textContent = materialName(row);
-            card.querySelector('small').textContent = `${quantity(row)} sheet${quantity(row) === '1' ? '' : 's'} ordered`;
-            card.querySelector('button').addEventListener('click', () => openLine(row));
-            return card;
-        }));
-        emptyLines.hidden = savedLines.length > 0;
-        lineCount.textContent = savedLines.length === 0 ? 'No lines added' : `${savedLines.length} line${savedLines.length === 1 ? '' : 's'} added`;
-        addLineButton.disabled = !lines.some(row => !isSaved(row));
-    }
-
-    function openLine(row) {
-        editingLine = row;
-        lineEditor.append(row);
-        dialogTitle.textContent = isSaved(row) ? `Edit line ${Number(row.dataset.lineIndex) + 1}` : 'Add material line';
-        saveLineButton.textContent = isSaved(row) ? 'Save changes' : 'Add line';
-        lineDialog.showModal();
-        row.querySelector('.po-line-material').focus();
-    }
-
-    function closeLine() {
-        if (editingLine) lineStore.append(editingLine);
-        editingLine = null;
-        lineDialog.close();
-    }
-
-    document.getElementById('add-line').addEventListener('click', () => openLine(lines.find(row => !isSaved(row))));
-    saveLineButton.addEventListener('click', () => {
-        const material = editingLine.querySelector('.po-line-thickness');
-        const materialFamily = editingLine.querySelector('.po-line-material');
-        const quantityInput = editingLine.querySelector('[name$=".QuantityOrdered"]');
-        if (!material.value || !quantityInput.value || Number(quantityInput.value) <= 0) {
-            materialFamily.setCustomValidity(!material.value ? 'Choose a material and thickness.' : '');
-            quantityInput.setCustomValidity(!quantityInput.value || Number(quantityInput.value) <= 0 ? 'Enter a quantity greater than zero.' : '');
-            (material.value ? quantityInput : materialFamily).reportValidity();
-            return;
-        }
-        materialFamily.setCustomValidity('');
-        quantityInput.setCustomValidity('');
-        editingLine.dataset.saved = 'true';
-        closeLine();
-        renderLines();
-    });
-    document.getElementById('cancel-line').addEventListener('click', closeLine);
-    document.querySelector('.dialog-close').addEventListener('click', closeLine);
-    lineDialog.addEventListener('cancel', event => { event.preventDefault(); closeLine(); });
-    document.getElementById('purchase-order-form').addEventListener('submit', event => {
-        if (!lines.some(isSaved)) {
-            event.preventDefault();
-            addLineButton.focus();
-            alert('Add at least one material line before creating the purchase order.');
-        }
-    });
-    renderLines();
+const vendor = document.getElementById('vendor-id');
+function filterParts() { document.querySelectorAll('.vendor-part').forEach(select => {
+  [...select.options].forEach(option => { if (!option.dataset.vendorId) return; option.hidden = option.dataset.vendorId !== vendor.value; });
+  if (select.selectedOptions[0]?.hidden) select.value = '';
+}); }
+vendor.addEventListener('change', filterParts); filterParts();
 </script>

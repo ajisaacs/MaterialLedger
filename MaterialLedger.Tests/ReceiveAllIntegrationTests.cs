@@ -39,9 +39,12 @@ public class ReceiveAllIntegrationTests : IClassFixture<SqlServerTestDatabaseFix
 
     private async Task<long> SeedOrderAsync(MaterialLedgerDbContext db, int userId)
     {
+        var vendor = new Vendor { Name = $"Acme-{Guid.NewGuid():N}", IsActive = true, CreatedAtUtc = DateTime.UtcNow };
+        db.Vendors.Add(vendor);
+        await db.SaveChangesAsync();
         var order = new PurchaseOrder
         {
-            VendorName = "Acme Steel",
+            VendorId = vendor.VendorId,
             PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
             CreatedAtUtc = DateTime.UtcNow,
             CreatedBy = userId

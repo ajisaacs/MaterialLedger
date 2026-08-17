@@ -19,7 +19,7 @@
     {
         <tr>
             <td><a asp-page="Details" asp-route-id="@row.Order.PurchaseOrderId">@row.Order.PurchaseOrderNumber</a></td>
-            <td>@row.Order.VendorName</td>
+            <td>@row.Order.Vendor?.Name</td>
             <td>@(row.Order.OrderDate?.ToString("d") ?? "—")</td>
             <td>@row.Order.Lines.Count</td>
             <td>@PurchaseOrderStatusDisplay.Label(row.Status)</td>

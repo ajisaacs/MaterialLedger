@@ -104,7 +104,7 @@ public class CommandEndpointTests : IClassFixture<CommandEndpointTests.ApiFactor
         var service = new StubReceiveMaterialService();
         using var client = CreateClient("Programmer", services => services.Replace(ServiceDescriptor.Scoped<IReceiveMaterialService>(_ => service)));
         client.DefaultRequestHeaders.Add("Idempotency-Key", key.ToString());
-        var body = new { kind = "receive-material", receiveMaterial = new { inventoryLocationId = 4L, materialSpecId = 5L, itemKind = "FullSheetBundle", quantity = 2, shapeClassification = "Rectangular", isQuarantined = false, purchaseOrderNumber = "PO-1" } };
+        var body = new { kind = "receive-material", receiveMaterial = new { inventoryLocationId = 4L, materialSpecId = 5L, itemKind = "FullSheetBundle", quantity = 2, shapeClassification = "Rectangular", isQuarantined = false, vendorId = 12L, vendorPartId = 34L, purchaseOrderNumber = "PO-1" } };
 
         var first = await client.PostAsJsonAsync("/api/v1/commands", body);
         var firstJson = await first.Content.ReadFromJsonAsync<JsonElement>();
@@ -119,6 +119,9 @@ public class CommandEndpointTests : IClassFixture<CommandEndpointTests.ApiFactor
         Assert.Equal("true", replay.Headers.GetValues("Idempotent-Replay").Single());
         Assert.Equal(firstJson.GetRawText(), replayJson.GetRawText());
         Assert.Equal(2, service.Calls);
+        Assert.NotNull(service.LastRequest);
+        Assert.Equal(12L, service.LastRequest!.VendorId);
+        Assert.Equal(34L, service.LastRequest.VendorPartId);
     }
 
     [Fact]
@@ -215,9 +218,11 @@ public class CommandEndpointTests : IClassFixture<CommandEndpointTests.ApiFactor
     private sealed class StubReceiveMaterialService : IReceiveMaterialService
     {
         public int Calls { get; private set; }
+        public ReceiveMaterialRequest? LastRequest { get; private set; }
         public Task<IdempotentResult<ReceiveMaterialResult>> ReceiveMaterialAsync(Guid correlationId, ReceiveMaterialRequest request, int receivedBy)
         {
             Calls++;
+            LastRequest = request;
             return Task.FromResult(new IdempotentResult<ReceiveMaterialResult>(
                 new ReceiveMaterialResult { InventoryItemId = 42, SheetLotId = 24, PublicItemCode = "SHEET-42" }, Calls > 1));
         }

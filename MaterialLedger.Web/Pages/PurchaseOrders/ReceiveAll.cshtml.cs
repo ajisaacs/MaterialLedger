@@ -96,10 +96,10 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
                     UsableLengthIn: line.UsableLengthIn,
                     ShapeClassification: ShapeClassification.Rectangular,
                     IsQuarantined: row.IsQuarantined,
-                    VendorName: Order.VendorName,
+                    VendorId: Order.VendorId,
                     PurchaseOrderNumber: Order.PurchaseOrderNumber,
                     ReceiptNumber: null,
-                    VendorPartNumber: line.VendorPartNumber,
+                    VendorPartId: line.VendorPartId,
                     HeatLotNumber: row.HeatLotNumber,
                     CostPerUnit: row.CostPerUnit,
                     Notes: row.Notes,
@@ -142,7 +142,9 @@ public class ReceiveAllModel(MaterialLedgerDbContext db, ReceiveMaterialService 
     }
 
     private Task<PurchaseOrder?> LoadOrderAsync() => db.PurchaseOrders
+        .Include(x => x.Vendor)
         .Include(x => x.Lines).ThenInclude(x => x.MaterialSpec)
+        .Include(x => x.Lines).ThenInclude(x => x.VendorPart)
         .Include(x => x.Lines).ThenInclude(x => x.LocationAllocations).ThenInclude(x => x.InventoryLocation)
         .FirstOrDefaultAsync(x => x.PurchaseOrderId == Id);
 

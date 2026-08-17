@@ -5,7 +5,7 @@
 @{ Layout = "Shared/_Layout"; }
 <header class="page-heading">
     <p class="eyebrow">Purchase orders</p>
-    <h1>Receive all — @Model.Order!.PurchaseOrderNumber — @Model.Order.VendorName</h1>
+    <h1>Receive all — @Model.Order!.PurchaseOrderNumber — @Model.Order.Vendor?.Name</h1>
 </header>
 
 @if (Model.Rows.Count == 0)

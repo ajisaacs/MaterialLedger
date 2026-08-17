@@ -251,7 +251,7 @@ public class AttachmentEndpointTests
         });
         }
 
-        public async Task SeedPurchaseOrderAsync() { using var scope = Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<MaterialLedgerDbContext>(); db.PurchaseOrders.Add(new PurchaseOrder { PurchaseOrderId = 41, VendorName = "Vendor", PurchaseOrderNumber = "PO-41", CreatedBy = 1, CreatedAtUtc = DateTime.UtcNow }); await db.SaveChangesAsync(); }
+        public async Task SeedPurchaseOrderAsync() { using var scope = Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<MaterialLedgerDbContext>(); db.PurchaseOrders.Add(new PurchaseOrder { PurchaseOrderId = 41, VendorId = 1, PurchaseOrderNumber = "PO-41", CreatedBy = 1, CreatedAtUtc = DateTime.UtcNow }); await db.SaveChangesAsync(); }
         public async Task<int> AttachmentCountAsync() { using var scope = Services.CreateScope(); return await scope.ServiceProvider.GetRequiredService<MaterialLedgerDbContext>().Attachments.CountAsync(); }
         public async Task DeleteStoredFileAsync(long attachmentId) { using var scope = Services.CreateScope(); var attachment = await scope.ServiceProvider.GetRequiredService<MaterialLedgerDbContext>().Attachments.SingleAsync(x => x.AttachmentId == attachmentId); File.Delete(Path.Combine(_root, attachment.StoragePath)); }
         protected override void Dispose(bool disposing) { base.Dispose(disposing); if (Directory.Exists(_root)) Directory.Delete(_root, true); }

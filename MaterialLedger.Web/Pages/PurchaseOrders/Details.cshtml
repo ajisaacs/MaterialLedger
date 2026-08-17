@@ -9,7 +9,7 @@
 }
 <header class="page-heading">
     <p class="eyebrow">Purchase orders</p>
-    <h1>@Model.Order.PurchaseOrderNumber — @Model.Order.VendorName</h1>
+    <h1>@Model.Order.PurchaseOrderNumber — @Model.Order.Vendor?.Name</h1>
     <p>Status: @PurchaseOrderStatusDisplay.Label(status) — Ordered @(Model.Order.OrderDate?.ToString("d") ?? "date not recorded")</p>
 </header>
 
@@ -19,13 +19,14 @@
 }
 
 <table>
-    <thead><tr><th>Line</th><th>Material</th><th>Vendor description</th><th>Ordered</th><th>Received</th><th>Remaining</th><th>Unit price</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Line</th><th>Material</th><th>Vendor part</th><th>Vendor description</th><th>Ordered</th><th>Received</th><th>Remaining</th><th>Unit price</th><th>Status</th><th></th></tr></thead>
     <tbody>
     @foreach (var line in Model.Order.Lines.OrderBy(x => x.LineNumber))
     {
         <tr>
             <td>@line.LineNumber</td>
             <td>@line.MaterialSpec?.DisplayName</td>
+            <td>@(line.VendorPart?.PartNumber ?? "—")</td>
             <td>@line.VendorDescription</td>
             <td>@DisplayFormat.Quantity(line.QuantityOrdered)</td>
             <td>@DisplayFormat.Quantity(line.QuantityReceived)</td>
@@ -50,7 +51,7 @@
             var lineAllocated = line.LocationAllocations.Sum(x => x.QuantityPlanned);
             var lineUnallocated = lineRemaining - lineAllocated;
             <tr>
-                <td colspan="9">
+                <td colspan="10">
                     <strong>Planned delivery locations</strong>
                     @if (line.LocationAllocations.Count == 0)
                     {

@@ -8,6 +8,7 @@ namespace MaterialLedger.Web.Services;
 
 public sealed record WorkQueueItem(
     long MaterialReservationId,
+    long InventoryItemId,
     string PublicItemCode,
     string MaterialDisplayName,
     string LocationCode,
@@ -68,6 +69,7 @@ public sealed class WorkQueueQueryService(MaterialLedgerDbContext db, InventoryQ
             from location in locations.DefaultIfEmpty()
             select new ReservationProjection(
                 row.Reservation.MaterialReservationId,
+                row.Item.InventoryItemId,
                 row.Item.PublicItemCode,
                 spec == null ? null : spec.DisplayName,
                 location == null ? null : location.LocationCode,
@@ -102,6 +104,7 @@ public sealed class WorkQueueQueryService(MaterialLedgerDbContext db, InventoryQ
         var workflow = ReservationWorkflowDisplay.For(reservation.Status);
         return new WorkQueueItem(
             reservation.MaterialReservationId,
+            reservation.InventoryItemId,
             reservation.PublicItemCode,
             reservation.MaterialDisplayName ?? "Material specification unavailable",
             reservation.LocationCode ?? "Location unavailable",
@@ -119,7 +122,7 @@ public sealed class WorkQueueQueryService(MaterialLedgerDbContext db, InventoryQ
         return "Unassigned material hold";
     }
 
-    private sealed record ReservationProjection(long MaterialReservationId, string PublicItemCode, string? MaterialDisplayName,
+    private sealed record ReservationProjection(long MaterialReservationId, long InventoryItemId, string PublicItemCode, string? MaterialDisplayName,
         string? LocationCode, string? ShopOpsJobId, string? DrawingId, string? DrawingRevision, int? PepNestYear,
         string? PepNestName, ReservationEquipment? Equipment, ReservationStatus Status, DateTime CreatedAtUtc, DateTime TimestampUtc);
 

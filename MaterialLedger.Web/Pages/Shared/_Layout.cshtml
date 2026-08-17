@@ -24,6 +24,7 @@
                 @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
                 {
                     <a asp-page="/PurchaseOrders/Index">Order material</a>
+                    <a asp-page="/Vendors/Index">Vendors</a>
                     <a asp-page="/Receiving/SelectLocation">Receive delivery</a>
                     <a asp-page="/Census/SelectSlot">Count existing material</a>
                     <a asp-page="/Materials/Index">Material catalog</a>
@@ -45,6 +46,7 @@
                     @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
                     {
                         <a asp-page="/PurchaseOrders/Index">Order material</a>
+                    <a asp-page="/Vendors/Index">Vendors</a>
                         <a asp-page="/Receiving/SelectLocation">Receive delivery</a>
                         <a asp-page="/Census/SelectSlot">Count existing material</a>
                         <a asp-page="/Materials/Index">Material catalog</a>

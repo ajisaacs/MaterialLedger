@@ -84,8 +84,8 @@ public static class CommandEndpoints
         var result = await service.ReceiveMaterialAsync(correlationId, new ReceiveMaterialRequest(
             payload.InventoryLocationId!.Value, payload.MaterialSpecId!.Value, payload.ItemKind!.Value,
             payload.Quantity!.Value, payload.UsableWidthIn, payload.UsableLengthIn, payload.ShapeClassification!.Value,
-            payload.IsQuarantined!.Value, payload.VendorName, payload.PurchaseOrderNumber!, payload.ReceiptNumber,
-            payload.VendorPartNumber, payload.HeatLotNumber, payload.CostPerUnit, payload.Notes, payload.PurchaseOrderLineId), userId);
+            payload.IsQuarantined!.Value, payload.VendorId, payload.PurchaseOrderNumber!, payload.ReceiptNumber,
+            payload.VendorPartId, payload.HeatLotNumber, payload.CostPerUnit, payload.Notes, payload.PurchaseOrderLineId), userId);
         var response = new CommandEnvelope<ReceiveMaterialResultContract>("receive-material", new(
             result.Result.InventoryItemId, result.Result.SheetLotId, result.Result.PublicItemCode));
         if (result.WasReplayed)

@@ -5,7 +5,8 @@ public enum PurchaseOrderLineStatus { Open, PartiallyReceived, Received, Cancell
 public class PurchaseOrder
 {
     public long PurchaseOrderId { get; set; }
-    public string VendorName { get; set; } = string.Empty;
+    public long VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
     public string PurchaseOrderNumber { get; set; } = string.Empty;
     public DateOnly? OrderDate { get; set; }
     public string? Notes { get; set; }
@@ -18,13 +19,15 @@ public class PurchaseOrder
 public class PurchaseOrderLine
 {
     public long PurchaseOrderLineId { get; set; }
+    public long? VendorPartId { get; set; }
+    public VendorPart? VendorPart { get; set; }
     public long PurchaseOrderId { get; set; }
     public PurchaseOrder? PurchaseOrder { get; set; }
     public int LineNumber { get; set; }
     public long MaterialSpecId { get; set; }
     public MaterialSpec? MaterialSpec { get; set; }
     public string? VendorDescription { get; set; }
-    public string? VendorPartNumber { get; set; }
+
     public decimal QuantityOrdered { get; set; }
     public decimal QuantityReceived { get; set; }
     public decimal? UsableWidthIn { get; set; }

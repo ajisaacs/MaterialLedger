@@ -23,7 +23,7 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
     public SchemaShapeTests(SqlServerTestDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task AllSixteenMaterialTables_Exist()
+    public async Task AllEighteenMaterialTables_Exist()
     {
         await using var db = _fixture.CreateContext();
         await using var connection = (SqlConnection)db.Database.GetDbConnection();
@@ -31,7 +31,143 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = 'material'";
         var count = (int)(await command.ExecuteScalarAsync())!;
-        Assert.Equal(16, count);
+        Assert.Equal(18, count);
+    }
+
+    [Fact]
+    public async Task VendorsAndVendorParts_HavePersistedComputedKeysAndUniqueIndexes()
+    {
+        await using var db = _fixture.CreateContext();
+        await using var connection = (SqlConnection)db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM sys.computed_columns c
+            JOIN sys.tables t ON t.object_id = c.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material'
+              AND ((t.name = 'Vendors' AND c.name = 'NormalizedName' AND c.is_computed = 1 AND c.is_persisted = 1)
+                OR (t.name = 'VendorParts' AND c.name = 'NormalizedPartNumber' AND c.is_computed = 1 AND c.is_persisted = 1));
+
+            SELECT COUNT(*)
+            FROM sys.indexes i
+            JOIN sys.tables t ON t.object_id = i.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND i.is_unique = 1
+              AND ((t.name = 'Vendors' AND i.name = 'IX_Vendors_NormalizedName')
+                OR (t.name = 'VendorParts' AND i.name = 'IX_VendorParts_VendorId_NormalizedPartNumber'));
+            """;
+
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(2, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(2, reader.GetInt32(0));
+    }
+
+    [Fact]
+    public async Task VendorParts_RejectWhitespaceAndCaseEquivalentPartNumbers()
+    {
+        await using var db = _fixture.CreateContext();
+        await using var connection = (SqlConnection)db.Database.GetDbConnection();
+        await connection.OpenAsync();
+
+        await using var insertVendor = connection.CreateCommand();
+        insertVendor.CommandText = "INSERT INTO material.Vendors (Name, IsActive, CreatedAtUtc) OUTPUT INSERTED.VendorId VALUES (N'Test Vendor', 1, SYSUTCDATETIME());";
+        var vendorId = (long)(await insertVendor.ExecuteScalarAsync())!;
+
+        await using var insertPart = connection.CreateCommand();
+        insertPart.CommandText = "INSERT INTO material.VendorParts (VendorId, PartNumber, IsActive, CreatedAtUtc) VALUES (@vendorId, N'Part-100', 1, SYSUTCDATETIME());";
+        insertPart.Parameters.AddWithValue("@vendorId", vendorId);
+        await insertPart.ExecuteNonQueryAsync();
+
+        await using var duplicatePart = connection.CreateCommand();
+        duplicatePart.CommandText = "INSERT INTO material.VendorParts (VendorId, PartNumber, IsActive, CreatedAtUtc) VALUES (@vendorId, N'  part-100  ', 1, SYSUTCDATETIME());";
+        duplicatePart.Parameters.AddWithValue("@vendorId", vendorId);
+        await Assert.ThrowsAsync<SqlException>(() => duplicatePart.ExecuteNonQueryAsync());
+
+        await using var blankPart = connection.CreateCommand();
+        blankPart.CommandText = "INSERT INTO material.VendorParts (VendorId, PartNumber, IsActive, CreatedAtUtc) VALUES (@vendorId, N'   ', 1, SYSUTCDATETIME());";
+        blankPart.Parameters.AddWithValue("@vendorId", vendorId);
+        await Assert.ThrowsAsync<SqlException>(() => blankPart.ExecuteNonQueryAsync());
+    }
+
+    [Fact]
+    public async Task Vendors_RejectWhitespaceOnlyNames()
+    {
+        await using var db = _fixture.CreateContext();
+        await using var connection = (SqlConnection)db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO material.Vendors (Name, IsActive, CreatedAtUtc) VALUES (N'   ', 1, SYSUTCDATETIME());";
+
+        await Assert.ThrowsAsync<SqlException>(() => command.ExecuteNonQueryAsync());
+    }
+
+    [Fact]
+    public async Task VendorReferences_AreFinalizedAndSheetLotSnapshotsRemain()
+    {
+        await using var db = _fixture.CreateContext();
+        await using var connection = (SqlConnection)db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM sys.columns c
+            JOIN sys.tables t ON t.object_id = c.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND
+                ((t.name = 'PurchaseOrders' AND c.name = 'VendorId' AND c.is_nullable = 0) OR
+                 (t.name = 'PurchaseOrderLines' AND c.name = 'VendorPartId' AND c.is_nullable = 1) OR
+                 (t.name = 'SheetLots' AND c.name = 'VendorId' AND c.is_nullable = 1) OR
+                 (t.name = 'SheetLots' AND c.name = 'VendorPartId' AND c.is_nullable = 1) OR
+                 (t.name = 'SheetLots' AND c.name = 'VendorName') OR
+                 (t.name = 'SheetLots' AND c.name = 'VendorPartNumber'));
+
+            SELECT COUNT(*)
+            FROM sys.columns c
+            JOIN sys.tables t ON t.object_id = c.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND
+                ((t.name = 'PurchaseOrders' AND c.name = 'VendorName') OR
+                 (t.name = 'PurchaseOrderLines' AND c.name = 'VendorPartNumber'));
+
+            SELECT COUNT(*)
+            FROM sys.foreign_keys fk
+            JOIN sys.tables parent ON parent.object_id = fk.parent_object_id
+            JOIN sys.schemas s ON s.schema_id = parent.schema_id
+            WHERE s.name = 'material' AND fk.name IN
+                ('FK_PurchaseOrders_Vendors_VendorId',
+                 'FK_PurchaseOrderLines_VendorParts_VendorPartId',
+                 'FK_SheetLots_Vendors_VendorId',
+                 'FK_SheetLots_VendorParts_VendorPartId')
+              AND fk.delete_referential_action = 0;
+
+            SELECT COUNT(*)
+            FROM sys.indexes i
+            JOIN sys.tables t ON t.object_id = i.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND i.name IN
+                ('IX_PurchaseOrders_VendorId',
+                 'IX_PurchaseOrderLines_VendorPartId',
+                 'IX_SheetLots_VendorId',
+                 'IX_SheetLots_VendorPartId');
+            """;
+
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(6, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(0, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(4, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(4, reader.GetInt32(0));
     }
 
     [Fact]
@@ -78,12 +214,13 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
         await using var db = _fixture.CreateContext();
         var user = new AppUser { Username = $"t_{Guid.NewGuid():N}", DisplayName = "T", Role = AppUserRole.Manager, IsActive = true, PasswordHash = "x" };
         var spec = new MaterialSpec { MaterialFamily = "Carbon Steel", Grade = $"A36-{Guid.NewGuid():N}", ThicknessIn = 0.25m, DisplayName = "A36 1/4in", IsActive = true };
-        db.AddRange(user, spec);
+        var vendor = new Vendor { Name = $"Test Vendor {Guid.NewGuid():N}", IsActive = true, CreatedAtUtc = DateTime.UtcNow };
+        db.AddRange(user, spec, vendor);
         await db.SaveChangesAsync();
 
         var po = new PurchaseOrder
         {
-            VendorName = "Test Vendor",
+            VendorId = vendor.VendorId,
             PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}",
             CreatedAtUtc = DateTime.UtcNow,
             CreatedBy = user.AppUserId

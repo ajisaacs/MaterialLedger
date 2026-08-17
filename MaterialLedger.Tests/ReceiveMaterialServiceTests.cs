@@ -31,17 +31,30 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
     }
 
     private static ReceiveMaterialRequest MakeRequest(long locationId, long specId, decimal quantity = 6m,
-        string purchaseOrderNumber = "PO-1001", InventoryItemKind itemKind = InventoryItemKind.FullSheetBundle, bool isQuarantined = false) =>
+        string purchaseOrderNumber = "PO-1001", InventoryItemKind itemKind = InventoryItemKind.FullSheetBundle, bool isQuarantined = false,
+        long? vendorId = null, long? vendorPartId = null) =>
         new(locationId, specId, itemKind, quantity, null, null, ShapeClassification.Rectangular, isQuarantined,
-            "Acme Steel", purchaseOrderNumber, "RCPT-1", "VP-1", "HEAT-1", 42.50m, "Received via dock door 2");
+            vendorId, purchaseOrderNumber, "RCPT-1", vendorPartId, "HEAT-1", 42.50m, "Received via dock door 2");
+
+    private static async Task<(Vendor vendor, VendorPart part)> SeedVendorAsync(MaterialLedgerDbContext db, bool vendorActive = true, bool partActive = true)
+    {
+        var vendor = new Vendor { Name = $"Acme-{Guid.NewGuid():N}", IsActive = vendorActive, CreatedAtUtc = DateTime.UtcNow };
+        db.Vendors.Add(vendor);
+        await db.SaveChangesAsync();
+        var part = new VendorPart { VendorId = vendor.VendorId, PartNumber = $"VP-{Guid.NewGuid():N}", IsActive = partActive, CreatedAtUtc = DateTime.UtcNow };
+        db.VendorParts.Add(part);
+        await db.SaveChangesAsync();
+        return (vendor, part);
+    }
 
     [Fact]
     public async Task ReceiveMaterialAsync_FullSheetBundle_CreatesLotItemAndTransaction()
     {
         await using var db = _fixture.CreateContext();
         var (userId, locationId, specId) = await SeedAsync(db);
+        var (vendor, part) = await SeedVendorAsync(db);
         var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
-        var request = MakeRequest(locationId, specId);
+        var request = MakeRequest(locationId, specId, vendorId: vendor.VendorId, vendorPartId: part.VendorPartId);
 
         var result = await service.ReceiveMaterialAsync(Guid.NewGuid(), request, userId);
 
@@ -54,7 +67,10 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
         var lot = await db.SheetLots.SingleAsync(x => x.SheetLotId == result.Result.SheetLotId);
         Assert.Equal(SheetLotSourceType.Receipt, lot.SourceType);
         Assert.Equal("PO-1001", lot.PurchaseOrderNumber);
-        Assert.Equal("Acme Steel", lot.VendorName);
+        Assert.Equal(vendor.VendorId, lot.VendorId);
+        Assert.Equal(vendor.Name, lot.VendorName);
+        Assert.Equal(part.VendorPartId, lot.VendorPartId);
+        Assert.Equal(part.PartNumber, lot.VendorPartNumber);
         Assert.Equal(42.50m, lot.CostPerUnit);
 
         var transactions = await db.MaterialTransactions.Where(x => x.InventoryItemId == item.InventoryItemId).ToListAsync();
@@ -62,6 +78,45 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
         Assert.Equal(MaterialTransactionType.Receipt, transactions[0].TransactionType);
         Assert.Equal(result.Result.SheetLotId, transactions[0].SheetLotId);
         Assert.Equal(6m, transactions[0].QuantityDelta);
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_RejectsVendorPartOwnedByAnotherVendor()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var (vendor, _) = await SeedVendorAsync(db);
+        var (_, otherPart) = await SeedVendorAsync(db);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(
+            Guid.NewGuid(), MakeRequest(locationId, specId, vendorId: vendor.VendorId, vendorPartId: otherPart.VendorPartId), userId));
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_RejectsInactiveDirectReceiptSelection()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var (vendor, part) = await SeedVendorAsync(db, vendorActive: false);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(
+            Guid.NewGuid(), MakeRequest(locationId, specId, vendorId: vendor.VendorId, vendorPartId: part.VendorPartId), userId));
+    }
+
+    [Fact]
+    public async Task ReceiveMaterialAsync_RejectsTamperedPurchaseOrderVendorOrPart()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, locationId, specId) = await SeedAsync(db);
+        var lineId = await SeedPurchaseOrderLineAsync(db, specId, 4m, userId);
+        var (otherVendor, otherPart) = await SeedVendorAsync(db);
+        var service = new ReceiveMaterialService(db, new OperationLogGuard(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReceiveMaterialAsync(
+            Guid.NewGuid(), MakeRequest(locationId, specId, quantity: 1m, vendorId: otherVendor.VendorId,
+                vendorPartId: otherPart.VendorPartId) with { PurchaseOrderLineId = lineId }, userId));
     }
 
     [Fact]
@@ -196,9 +251,10 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
 
     private async Task<long> SeedPurchaseOrderLineAsync(MaterialLedgerDbContext db, long specId, decimal quantityOrdered, int userId)
     {
+        var (vendor, part) = await SeedVendorAsync(db);
         var order = new PurchaseOrder
         {
-            VendorName = "Acme Steel", PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
+            VendorId = vendor.VendorId, PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
             CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId
         };
         db.PurchaseOrders.Add(order);
@@ -206,7 +262,7 @@ public class ReceiveMaterialServiceTests : IClassFixture<SqlServerTestDatabaseFi
 
         var line = new PurchaseOrderLine
         {
-            PurchaseOrderId = order.PurchaseOrderId, LineNumber = 1, MaterialSpecId = specId,
+            PurchaseOrderId = order.PurchaseOrderId, VendorPartId = part.VendorPartId, LineNumber = 1, MaterialSpecId = specId,
             QuantityOrdered = quantityOrdered, QuantityReceived = 0, Status = PurchaseOrderLineStatus.Open
         };
         db.PurchaseOrderLines.Add(line);

@@ -10,8 +10,8 @@ namespace MaterialLedger.Data.PurchaseOrders;
 
 public record PurchaseOrderLineRequest(
     long MaterialSpecId,
+    long? VendorPartId,
     string? VendorDescription,
-    string? VendorPartNumber,
     decimal QuantityOrdered,
     decimal? UsableWidthIn,
     decimal? UsableLengthIn,
@@ -19,7 +19,7 @@ public record PurchaseOrderLineRequest(
     DateOnly? QuotedDeliveryDate);
 
 public record CreatePurchaseOrderRequest(
-    string VendorName,
+    long VendorId,
     string PurchaseOrderNumber,
     DateOnly? OrderDate,
     string? Notes,
@@ -45,9 +45,26 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
             return replayId;
         }
 
+        var vendor = await db.Vendors.FindAsync(request.VendorId)
+            ?? throw new InvalidOperationException($"Vendor {request.VendorId} does not exist.");
+        if (!vendor.IsActive)
+            throw new InvalidOperationException($"Vendor {vendor.VendorId} is inactive and cannot be selected for a new purchase order.");
+
+        var vendorParts = new Dictionary<long, VendorPart>();
+        foreach (var vendorPartId in request.Lines.Where(x => x.VendorPartId is not null).Select(x => x.VendorPartId!.Value).Distinct())
+        {
+            var vendorPart = await db.VendorParts.FindAsync(vendorPartId)
+                ?? throw new InvalidOperationException($"Vendor part {vendorPartId} does not exist.");
+            if (vendorPart.VendorId != vendor.VendorId)
+                throw new InvalidOperationException($"Vendor part {vendorPart.VendorPartId} does not belong to vendor {vendor.VendorId}.");
+            if (!vendorPart.IsActive)
+                throw new InvalidOperationException($"Vendor part {vendorPart.VendorPartId} is inactive and cannot be selected for a new purchase order.");
+            vendorParts.Add(vendorPartId, vendorPart);
+        }
+
         var order = new PurchaseOrder
         {
-            VendorName = request.VendorName.Trim(),
+            VendorId = vendor.VendorId,
             PurchaseOrderNumber = request.PurchaseOrderNumber.Trim(),
             OrderDate = request.OrderDate,
             Notes = request.Notes,
@@ -63,10 +80,10 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
             db.PurchaseOrderLines.Add(new PurchaseOrderLine
             {
                 PurchaseOrderId = order.PurchaseOrderId,
+                VendorPartId = line.VendorPartId,
                 LineNumber = lineNumber++,
                 MaterialSpecId = line.MaterialSpecId,
                 VendorDescription = line.VendorDescription,
-                VendorPartNumber = line.VendorPartNumber,
                 QuantityOrdered = line.QuantityOrdered,
                 QuantityReceived = 0,
                 UsableWidthIn = line.UsableWidthIn,
@@ -234,10 +251,8 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
 
     private static void Validate(CreatePurchaseOrderRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.VendorName))
-            throw new ArgumentException("Vendor name is required.", nameof(request));
-        if (request.VendorName.Trim().Length > 200)
-            throw new ArgumentException("Vendor name cannot exceed 200 characters.", nameof(request));
+        if (request.VendorId <= 0)
+            throw new ArgumentException("Vendor is required.", nameof(request));
         if (string.IsNullOrWhiteSpace(request.PurchaseOrderNumber))
             throw new ArgumentException("Purchase order number is required.", nameof(request));
         if (request.PurchaseOrderNumber.Trim().Length > 100)
@@ -252,8 +267,6 @@ public class PurchaseOrderService(MaterialLedgerDbContext db, OperationLogGuard 
                 throw new ArgumentException("Each line's ordered quantity must be a whole number of at least 1.", nameof(request));
             if (line.VendorDescription?.Length > 200)
                 throw new ArgumentException("Vendor description cannot exceed 200 characters.", nameof(request));
-            if (line.VendorPartNumber?.Length > 100)
-                throw new ArgumentException("Vendor part number cannot exceed 100 characters.", nameof(request));
         }
     }
 

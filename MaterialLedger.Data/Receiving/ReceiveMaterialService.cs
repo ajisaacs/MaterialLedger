@@ -19,10 +19,10 @@ public record ReceiveMaterialRequest(
     decimal? UsableLengthIn,
     ShapeClassification ShapeClassification,
     bool IsQuarantined,
-    string? VendorName,
+    long? VendorId,
     string PurchaseOrderNumber,
     string? ReceiptNumber,
-    string? VendorPartNumber,
+    long? VendorPartId,
     string? HeatLotNumber,
     decimal? CostPerUnit,
     string? Notes,
@@ -71,9 +71,14 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
                 $"Location '{location.LocationCode}' is a {location.LocationType} — inventory can only be recorded at a leaf location.");
 
         PurchaseOrderLine? purchaseOrderLine = null;
+        Vendor? vendor = null;
+        VendorPart? vendorPart = null;
         if (request.PurchaseOrderLineId is not null)
         {
-            purchaseOrderLine = await db.PurchaseOrderLines.FindAsync(request.PurchaseOrderLineId.Value)
+            purchaseOrderLine = await db.PurchaseOrderLines
+                .Include(x => x.PurchaseOrder)
+                .Include(x => x.VendorPart)
+                .FirstOrDefaultAsync(x => x.PurchaseOrderLineId == request.PurchaseOrderLineId.Value)
                 ?? throw new InvalidOperationException($"Purchase order line {request.PurchaseOrderLineId} does not exist.");
             if (purchaseOrderLine.MaterialSpecId != request.MaterialSpecId)
                 throw new InvalidOperationException(
@@ -85,16 +90,48 @@ public class ReceiveMaterialService(MaterialLedgerDbContext db, OperationLogGuar
             if (request.Quantity > remaining)
                 throw new InvalidOperationException(
                     $"Cannot receive {request.Quantity} — only {remaining} remains outstanding on purchase order line {purchaseOrderLine.PurchaseOrderLineId}.");
+
+            var order = purchaseOrderLine.PurchaseOrder!;
+            if (request.VendorId is not null && request.VendorId != order.VendorId)
+                throw new InvalidOperationException("The supplied vendor does not match the purchase order.");
+            if (request.VendorPartId is not null && request.VendorPartId != purchaseOrderLine.VendorPartId)
+                throw new InvalidOperationException("The supplied vendor part does not match the purchase order line.");
+
+            vendor = await db.Vendors.FindAsync(order.VendorId)
+                ?? throw new InvalidOperationException($"Purchase order vendor {order.VendorId} does not exist.");
+            vendorPart = purchaseOrderLine.VendorPart;
+        }
+        else if (request.VendorId is not null)
+        {
+            vendor = await db.Vendors.FindAsync(request.VendorId.Value)
+                ?? throw new InvalidOperationException($"Vendor {request.VendorId} does not exist.");
+            if (!vendor.IsActive)
+                throw new InvalidOperationException($"Vendor {vendor.VendorId} is inactive and cannot be selected for a new receipt.");
+            if (request.VendorPartId is not null)
+            {
+                vendorPart = await db.VendorParts.FindAsync(request.VendorPartId.Value)
+                    ?? throw new InvalidOperationException($"Vendor part {request.VendorPartId} does not exist.");
+                if (vendorPart.VendorId != vendor.VendorId)
+                    throw new InvalidOperationException($"Vendor part {vendorPart.VendorPartId} does not belong to vendor {vendor.VendorId}.");
+                if (!vendorPart.IsActive)
+                    throw new InvalidOperationException($"Vendor part {vendorPart.VendorPartId} is inactive and cannot be selected for a new receipt.");
+            }
+        }
+        else if (request.VendorPartId is not null)
+        {
+            throw new InvalidOperationException("A vendor part requires a vendor.");
         }
 
         var receivedAt = DateTime.UtcNow;
         var sheetLot = new SheetLot
         {
             MaterialSpecId = request.MaterialSpecId,
-            VendorName = request.VendorName,
-            PurchaseOrderNumber = request.PurchaseOrderNumber,
+            VendorId = vendor?.VendorId,
+            VendorName = vendor?.Name,
+            PurchaseOrderNumber = purchaseOrderLine?.PurchaseOrder?.PurchaseOrderNumber ?? request.PurchaseOrderNumber,
             ReceiptNumber = request.ReceiptNumber,
-            VendorPartNumber = request.VendorPartNumber,
+            VendorPartId = vendorPart?.VendorPartId,
+            VendorPartNumber = vendorPart?.PartNumber,
             HeatLotNumber = request.HeatLotNumber,
             CostPerUnit = request.CostPerUnit,
             ReceivedAtUtc = receivedAt,

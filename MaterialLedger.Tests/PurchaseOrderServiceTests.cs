@@ -23,37 +23,52 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
         return (user.AppUserId, spec.MaterialSpecId);
     }
 
-    private static CreatePurchaseOrderRequest MakeRequest(long specId, decimal quantity = 2m, string poNumber = "46318") =>
-        new("O'Neal Steel", poNumber, new DateOnly(2026, 8, 6), "All HR sheets on pallet",
-            [new PurchaseOrderLineRequest(specId, "3/16 X48 X8", "796598", quantity, 48m, 96m, 213.36m, new DateOnly(2026, 8, 7))]);
+    private static CreatePurchaseOrderRequest MakeRequest(long specId, long vendorId = 0, long? vendorPartId = null,
+        decimal quantity = 2m, string poNumber = "46318") =>
+        new(vendorId, poNumber, new DateOnly(2026, 8, 6), "All HR sheets on pallet",
+            [new PurchaseOrderLineRequest(specId, vendorPartId, "3/16 X48 X8", quantity, 48m, 96m, 213.36m, new DateOnly(2026, 8, 7))]);
+
+    private static async Task<(long vendorId, long vendorPartId)> SeedVendorAsync(MaterialLedgerDbContext db, bool vendorActive = true, bool partActive = true)
+    {
+        var vendor = new Vendor { Name = $"Vendor-{Guid.NewGuid():N}", IsActive = vendorActive, CreatedAtUtc = DateTime.UtcNow };
+        db.Vendors.Add(vendor);
+        await db.SaveChangesAsync();
+        var part = new VendorPart { VendorId = vendor.VendorId, PartNumber = $"Part-{Guid.NewGuid():N}", IsActive = partActive, CreatedAtUtc = DateTime.UtcNow };
+        db.VendorParts.Add(part);
+        await db.SaveChangesAsync();
+        return (vendor.VendorId, part.VendorPartId);
+    }
 
     [Fact]
     public async Task CreatePurchaseOrderAsync_CreatesOrderAndLines_Atomically()
     {
         await using var db = _fixture.CreateContext();
         var (userId, specId) = await SeedAsync(db);
+        var (vendorId, vendorPartId) = await SeedVendorAsync(db);
         var service = new PurchaseOrderService(db, new OperationLogGuard(db));
 
-        var orderId = await service.CreatePurchaseOrderAsync(Guid.NewGuid(), MakeRequest(specId), userId);
+        var orderId = await service.CreatePurchaseOrderAsync(Guid.NewGuid(), MakeRequest(specId, vendorId, vendorPartId), userId);
 
         var order = await db.PurchaseOrders.Include(x => x.Lines).SingleAsync(x => x.PurchaseOrderId == orderId);
-        Assert.Equal("O'Neal Steel", order.VendorName);
+        Assert.Equal(vendorId, order.VendorId);
         Assert.Equal("46318", order.PurchaseOrderNumber);
         Assert.Single(order.Lines);
         Assert.Equal(1, order.Lines[0].LineNumber);
         Assert.Equal(PurchaseOrderLineStatus.Open, order.Lines[0].Status);
         Assert.Equal(0m, order.Lines[0].QuantityReceived);
+        Assert.Equal(vendorPartId, order.Lines[0].VendorPartId);
     }
 
     [Fact]
-    public async Task CreatePurchaseOrderAsync_RejectsBlankVendorName()
+    public async Task CreatePurchaseOrderAsync_RejectsInactiveVendor()
     {
         await using var db = _fixture.CreateContext();
         var (userId, specId) = await SeedAsync(db);
+        var (vendorId, _) = await SeedVendorAsync(db, vendorActive: false);
         var service = new PurchaseOrderService(db, new OperationLogGuard(db));
-        var request = MakeRequest(specId) with { VendorName = "   " };
+        var request = MakeRequest(specId, vendorId);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CreatePurchaseOrderAsync(Guid.NewGuid(), request, userId));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreatePurchaseOrderAsync(Guid.NewGuid(), request, userId));
     }
 
     [Fact]
@@ -83,8 +98,9 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
     {
         await using var db = _fixture.CreateContext();
         var (userId, specId) = await SeedAsync(db);
+        var (vendorId, _) = await SeedVendorAsync(db);
         var service = new PurchaseOrderService(db, new OperationLogGuard(db));
-        var request = MakeRequest(specId);
+        var request = MakeRequest(specId, vendorId);
         var correlationId = Guid.NewGuid();
 
         var first = await service.CreatePurchaseOrderAsync(correlationId, request, userId);
@@ -97,9 +113,10 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
 
     private async Task<long> SeedLineAsync(MaterialLedgerDbContext db, int userId, long specId, decimal quantityOrdered, decimal quantityReceived = 0)
     {
+        var (vendorId, _) = await SeedVendorAsync(db);
         var order = new PurchaseOrder
         {
-            VendorName = "Acme Steel", PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
+            VendorId = vendorId, PurchaseOrderNumber = $"PO-{Guid.NewGuid():N}"[..20],
             CreatedAtUtc = DateTime.UtcNow, CreatedBy = userId
         };
         db.PurchaseOrders.Add(order);
@@ -187,12 +204,13 @@ public class PurchaseOrderServiceTests : IClassFixture<SqlServerTestDatabaseFixt
     {
         await using var db = _fixture.CreateContext();
         var (userId, specId) = await SeedAsync(db);
+        var (vendorId, _) = await SeedVendorAsync(db);
         var service = new PurchaseOrderService(db, new OperationLogGuard(db));
         var correlationId = Guid.NewGuid();
-        await service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, poNumber: "46318"), userId);
+        await service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, vendorId, poNumber: "46318"), userId);
 
         await Assert.ThrowsAsync<MaterialLedger.Data.Idempotency.OperationConflictException>(
-            () => service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, poNumber: "DIFFERENT-PO"), userId));
+            () => service.CreatePurchaseOrderAsync(correlationId, MakeRequest(specId, vendorId, poNumber: "DIFFERENT-PO"), userId));
     }
 
     private static InventoryLocation MakeLocation(InventoryLocationType type = InventoryLocationType.Shelf) => new()
