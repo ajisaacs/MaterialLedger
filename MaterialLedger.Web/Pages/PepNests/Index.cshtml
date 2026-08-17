@@ -27,7 +27,7 @@
 else
 {
     <p role="status">@Model.Nests.Count nest(s) found.</p>
-    <table>
+    <table class="desktop-table">
         <thead><tr><th>Nest</th><th>Status</th><th>Customer</th><th>PEP material</th><th>Created</th><th></th></tr></thead>
         <tbody>
         @foreach (var nest in Model.Nests)
@@ -40,4 +40,23 @@ else
         }
         </tbody>
     </table>
+    <div class="mobile-card-grid mobile-card" aria-label="PEP nests">
+    @foreach (var nest in Model.Nests)
+    {
+        <article class="pep-nest-card">
+            <div class="pep-nest-card-header">
+                <strong class="pep-nest-card-name">@nest.Name</strong>
+                <span class="pep-nest-card-status">@nest.Status</span>
+            </div>
+            <dl class="pep-nest-card-body">
+                <dt>Customer</dt><dd>@nest.Customer</dd>
+                <dt>PEP material</dt><dd>@nest.MaterialDescription, @nest.MaterialGrade</dd>
+                <dt>Created</dt><dd>@nest.DateCreated.ToString("yyyy-MM-dd")</dd>
+            </dl>
+            <div class="pep-nest-card-action">
+                <a class="button" asp-page="Details" asp-route-year="@Model.Year" asp-route-nestName="@nest.Name">View nest</a>
+            </div>
+        </article>
+    }
+    </div>
 }

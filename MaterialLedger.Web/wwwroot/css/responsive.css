@@ -442,6 +442,63 @@
     overflow-wrap: anywhere;
   }
 
+  /* ── PEP nests mobile cards ── */
+
+  .pep-nest-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .pep-nest-card-header {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .pep-nest-card-name {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .pep-nest-card-status {
+    color: var(--muted);
+    font-size: 0.84rem;
+  }
+
+  .pep-nest-card-body {
+    color: var(--muted);
+    display: grid;
+    gap: 0.25rem 1rem;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+  }
+
+  .pep-nest-card-body dt {
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .pep-nest-card-body dd {
+    margin: 0.15rem 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  .pep-nest-card-action {
+    margin-top: 0.75rem;
+  }
+
+  .pep-nest-card-action .button {
+    display: block;
+    text-align: center;
+    width: 100%;
+  }
+
   /* ── Closeout queue mobile cards ── */
 
   .closeout-card {
