@@ -1,5 +1,6 @@
 @page
 @using MaterialLedger.Data.Models
+@using MaterialLedger.Web.Shared
 @model MaterialLedger.Web.Pages.IndexModel
 @{ Layout = "Shared/_Layout"; ViewData["Title"] = "Material control"; }
 
@@ -164,9 +165,9 @@
             @foreach (var work in Model.Summary.RecentWork)
             {
                 <tr>
-                    <td>@work.TimestampUtc.ToString("u")</td>
-                    <td>@work.PublicItemCode</td>
-                    <td>@work.WorkReference</td>
+                    <td>@DisplayFormat.LocalDateTime(work.TimestampUtc)</td>
+                    <td><a asp-page="/Inventory/Details" asp-route-id="@work.InventoryItemId">@work.PublicItemCode</a></td>
+                    <td><a asp-page="/Reservations/Details" asp-route-id="@work.MaterialReservationId">@work.WorkReference</a></td>
                     <td>@work.WorkflowLabel</td>
                 </tr>
             }
@@ -177,15 +178,15 @@
             {
                 <article class="recent-work-card">
                     <header class="recent-work-card-header">
-                        <strong>@work.PublicItemCode</strong>
+                        <a asp-page="/Inventory/Details" asp-route-id="@work.InventoryItemId"><strong>@work.PublicItemCode</strong></a>
                         <span>@work.WorkflowLabel</span>
                     </header>
                     <dl class="recent-work-card-body">
                         <div><dt>Material</dt><dd>@work.MaterialDisplayName</dd></div>
                         <div><dt>Location</dt><dd>@work.LocationCode</dd></div>
-                        <div><dt>Work</dt><dd>@work.WorkReference</dd></div>
+                        <div><dt>Work</dt><dd><a asp-page="/Reservations/Details" asp-route-id="@work.MaterialReservationId">@work.WorkReference</a></dd></div>
                         <div><dt>Equipment</dt><dd>@work.Equipment</dd></div>
-                        <div><dt>When</dt><dd>@work.TimestampUtc.ToString("u")</dd></div>
+                        <div><dt>When</dt><dd>@DisplayFormat.LocalDateTime(work.TimestampUtc)</dd></div>
                     </dl>
                 </article>
             }
