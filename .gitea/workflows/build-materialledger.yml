@@ -25,11 +25,11 @@ jobs:
       - name: Build image
         run: |
           docker build \
-            -t git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:latest \
-            -t git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:${{ gitea.sha }} \
+            -t git.thecozycat.net/internal/materialledger:latest \
+            -t git.thecozycat.net/internal/materialledger:${{ gitea.sha }} \
             .
 
       - name: Push image
         run: |
-          docker push git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:latest
-          docker push git.thecozycat.net/${{ gitea.repository_owner }}/materialledger:${{ gitea.sha }}
+          docker push git.thecozycat.net/internal/materialledger:latest
+          docker push git.thecozycat.net/internal/materialledger:${{ gitea.sha }}
