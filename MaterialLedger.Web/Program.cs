@@ -4,6 +4,7 @@ using MaterialLedger.Web.Attachments;
 using MaterialLedger.Web.Api;
 using MaterialLedger.Web.Authorization;
 using MaterialLedger.Web.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -41,6 +42,9 @@ builder.Services.AddScoped(sp =>
         sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(), attachmentsPath);
 });
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.InventoryQueryService(
+    sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
+    builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
+builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.NestingStockQueryService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
 builder.Services.AddScoped<WorkQueueQueryService>();
@@ -84,8 +88,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.Cookie.IsEssential = true;
         ApiAuthenticationEvents.Configure(options.Events);
-    });
-builder.Services.AddAuthorization(options => options.AddMaterialLedgerPolicies());
+    })
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, null);
+builder.Services.Configure<ApiKeyOptions>(builder.Configuration.GetSection(ApiKeyOptions.SectionName));
+builder.Services.AddAuthorization(options =>
+{
+    options.AddMaterialLedgerPolicies();
+    // /api/stock answers only to an API key, never to a browser session.
+    options.AddPolicy(ApiKeyAuthenticationHandler.PolicyName, p => p
+        .AddAuthenticationSchemes(ApiKeyAuthenticationHandler.SchemeName)
+        .RequireAuthenticatedUser());
+});
 builder.Services.AddProblemDetails();
 builder.Services.Configure<AttachmentUploadOptions>(builder.Configuration.GetSection("Storage"));
 builder.Services.AddSingleton<AttachmentUploadPolicy>();
@@ -124,6 +137,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapMaterialLedgerApi(app.Environment);
 app.MapRazorPages();
+app.MapStockApi();
 app.Run();
 
 public partial class Program;
