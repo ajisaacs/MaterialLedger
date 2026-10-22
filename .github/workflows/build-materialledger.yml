@@ -1,0 +1,71 @@
+name: Build MaterialLedger image
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: materialledger-image
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/ajisaacs/materialledger
+
+jobs:
+  publish:
+    if: github.repository == 'ajisaacs/MaterialLedger' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Refuse to publish into a non-public package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A missing package (first publish) is allowed: GHCR creates it linked to this repo.
+          # An existing package must already be public; never push into a private one.
+          if visibility=$(gh api users/ajisaacs/packages/container/materialledger --jq '.visibility' 2>/dev/null); then
+            printf 'Package visibility: %s\n' "$visibility"
+            test "$visibility" = public
+          else
+            echo "Package not visible to this token yet; treating as first publish."
+          fi
+
+      - name: Build image
+        run: |
+          docker build --pull \
+            --label org.opencontainers.image.source=https://github.com/ajisaacs/MaterialLedger \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label org.opencontainers.image.licenses=MIT \
+            --tag "$IMAGE:$GITHUB_SHA" --tag "$IMAGE:latest" .
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish commit and latest tags, verify matching manifests
+        run: |
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"
+          docker manifest inspect "$IMAGE:$GITHUB_SHA" > "$RUNNER_TEMP/sha.json"
+          docker manifest inspect "$IMAGE:latest" > "$RUNNER_TEMP/latest.json"
+          cmp "$RUNNER_TEMP/sha.json" "$RUNNER_TEMP/latest.json"
+          printf 'Published:\n- %s:%s\n- %s:latest\n' "$IMAGE" "$GITHUB_SHA" "$IMAGE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io

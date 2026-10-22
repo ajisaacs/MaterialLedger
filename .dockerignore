@@ -1,5 +1,9 @@
 .git/
 .gitea/
+.github/
+.hermes/
+.run/
+docs/
 .vs/
 .superpowers/
 .worktrees/
