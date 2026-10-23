@@ -10,6 +10,8 @@ public enum ExpectedRemainderSource { OpenNest, Manual }
 
 public class MaterialReservation
 {
+    public const int NestNameMaxLength = 200;
+
     public long MaterialReservationId { get; set; }
     public long InventoryItemId { get; set; }
     public InventoryItem? InventoryItem { get; set; }
@@ -18,6 +20,8 @@ public class MaterialReservation
     public string? DrawingRevision { get; set; }
     public int? PepNestYear { get; set; }
     public string? PepNestName { get; set; }
+    public Guid? OpenNestNestId { get; set; }
+    public string? NestName { get; set; }
     public ReservationEquipment? Equipment { get; set; }
     public string? LaserProgramRecordId { get; set; }
     public int ReservedQuantity { get; set; } = 1;

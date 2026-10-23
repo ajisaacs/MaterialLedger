@@ -304,30 +304,32 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                                       r.Status,
                                       r.Equipment,
                                       r.CreatedAtUtc,
-                                      CreatedBy = r.CreatedByUser.DisplayName,
+                                      CreatedBy = r.CreatedByUser!.DisplayName,
                                       ApprovedAt = r.ApprovedAtUtc,
-                                      ApprovedBy = r.ApprovedByUser.DisplayName,
+                                      ApprovedBy = r.ApprovedByUser!.DisplayName,
                                       r.ShopOpsJobId,
                                       r.DrawingId,
                                       r.DrawingRevision,
                                       r.PepNestYear,
-                                      r.PepNestName
+                                      r.PepNestName,
+                                      r.NestName
                                   }).Take(20).ToListAsync();
 
         return reservations.Select(r => new ReservationSummary
         {
             ReservationId = r.MaterialReservationId,
             Status = r.Status.ToString(),
-            WorkReference = string.IsNullOrWhiteSpace(r.ShopOpsJobId) && string.IsNullOrWhiteSpace(r.DrawingId) && string.IsNullOrWhiteSpace(r.PepNestName)
-                ? null
-                : (string.IsNullOrWhiteSpace(r.ShopOpsJobId)
+            WorkReference = !string.IsNullOrWhiteSpace(r.ShopOpsJobId) ? $"Job {r.ShopOpsJobId}"
+                : !string.IsNullOrWhiteSpace(r.DrawingId)
                     ? (string.IsNullOrWhiteSpace(r.DrawingRevision)
                         ? $"Drawing {r.DrawingId}"
                         : $"Drawing {r.DrawingId} rev {r.DrawingRevision}")
-                    : $"Job {r.ShopOpsJobId}")
-                        ?? (r.PepNestYear is null
-                            ? $"Nest {r.PepNestName}"
-                            : $"Nest {r.PepNestYear}: {r.PepNestName}"),
+                : !string.IsNullOrWhiteSpace(r.NestName) ? $"Nest {r.NestName}"
+                : !string.IsNullOrWhiteSpace(r.PepNestName)
+                    ? (r.PepNestYear is null
+                        ? $"Nest {r.PepNestName}"
+                        : $"Nest {r.PepNestYear}: {r.PepNestName}")
+                : null,
             Equipment = r.Equipment?.ToString(),
             CreatedAt = r.CreatedAtUtc,
             CreatedBy = r.CreatedBy,
@@ -346,7 +348,7 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                                       t.MaterialTransactionId,
                                       t.TransactionType,
                                       t.OccurredAtUtc,
-                                      t.RecordedByUser.DisplayName,
+                                      t.RecordedByUser!.DisplayName,
                                       t.Notes,
                                       t.ReasonCode,
                                       t.SourceSystem,
@@ -383,9 +385,9 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                                     e.Status,
                                     e.OpenedAtUtc,
                                     e.Notes,
-                                    OpenedBy = e.OpenedByUser.DisplayName,
+                                    OpenedBy = e.OpenedByUser!.DisplayName,
                                     e.ResolvedAtUtc,
-                                    e.ResolvedByUser.DisplayName,
+                                    e.ResolvedByUser!.DisplayName,
                                     e.ResolutionNotes
                                 }).ToListAsync();
 

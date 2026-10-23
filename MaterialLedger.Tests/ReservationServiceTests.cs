@@ -57,6 +57,10 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
     private static CreateReservationRequest RequestFor(long itemId) =>
         new(itemId, "JOB-1", "DWG-1", "A", ReservationEquipment.Laser, 2026, "NEST-1", null, null, null, null);
 
+    private static CreateReservationRequest OpenNestRequestFor(long itemId, Guid nestId, string nestName) =>
+        new(itemId, null, null, null, ReservationEquipment.Laser, null, null, null, null, null, null,
+            OpenNestNestId: nestId, NestName: nestName);
+
     [Fact]
     public async Task CreateReservationAsync_Available_CreatesProposedReservationAndTransaction()
     {
@@ -212,6 +216,75 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
 
         Assert.Equal(0, await db.MaterialReservations.CountAsync());
         Assert.Equal(0, await db.MaterialTransactions.CountAsync());
+    }
+
+    [Fact]
+    public async Task CreateReservationAsync_OpenNestNest_PersistsNestIdAndNameWithoutPepFields()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var item = NewDrop(slotId, specId, userId);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var nestId = Guid.NewGuid();
+
+        var result = await service.CreateReservationAsync(Guid.NewGuid(), OpenNestRequestFor(item.InventoryItemId, nestId, "NEST-ON-1"), userId);
+
+        db.ChangeTracker.Clear();
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == result.Result.MaterialReservationId);
+        Assert.Equal(nestId, reservation.OpenNestNestId);
+        Assert.Equal("NEST-ON-1", reservation.NestName);
+        Assert.Null(reservation.PepNestYear);
+        Assert.Null(reservation.PepNestName);
+    }
+
+    [Fact]
+    public async Task CreateReservationBatchAsync_OpenNestNest_PersistsNestIdAndNameOnEveryHold()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var first = NewDrop(slotId, specId, userId);
+        var second = NewDrop(slotId, specId, userId);
+        db.InventoryItems.AddRange(first, second);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var nestId = Guid.NewGuid();
+
+        var results = await service.CreateReservationBatchAsync(Guid.NewGuid(),
+            [OpenNestRequestFor(first.InventoryItemId, nestId, "NEST-ON-2"), OpenNestRequestFor(second.InventoryItemId, nestId, "NEST-ON-2")], userId);
+
+        db.ChangeTracker.Clear();
+        var ids = results.Select(x => x.MaterialReservationId).ToList();
+        var reservations = await db.MaterialReservations.Where(x => ids.Contains(x.MaterialReservationId)).ToListAsync();
+        Assert.Equal(2, reservations.Count);
+        Assert.All(reservations, reservation =>
+        {
+            Assert.Equal(nestId, reservation.OpenNestNestId);
+            Assert.Equal("NEST-ON-2", reservation.NestName);
+            Assert.Null(reservation.PepNestYear);
+            Assert.Null(reservation.PepNestName);
+        });
+    }
+
+    [Fact]
+    public async Task CreateReservationAsync_PepNest_StillPersistsPepFieldsWithoutOpenNestFields()
+    {
+        await using var db = _fixture.CreateContext();
+        var (userId, slotId, specId) = await SeedAsync(db);
+        var item = NewDrop(slotId, specId, userId);
+        db.InventoryItems.Add(item);
+        await db.SaveChangesAsync();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+
+        var result = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
+
+        db.ChangeTracker.Clear();
+        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == result.Result.MaterialReservationId);
+        Assert.Equal(2026, reservation.PepNestYear);
+        Assert.Equal("NEST-1", reservation.PepNestName);
+        Assert.Null(reservation.OpenNestNestId);
+        Assert.Null(reservation.NestName);
     }
 
     [Fact]
@@ -447,4 +520,54 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         await Assert.ThrowsAsync<ReservationConcurrencyException>(() =>
             service.ReleaseReservationAsync(Guid.NewGuid(), created.Result.MaterialReservationId, staleRowVersion, userId, null));
     }
+}
+
+public class ReservationNestReferenceValidationTests
+{
+    private const string TooLongName = "<201 characters>";
+
+    [Theory]
+    [InlineData(true, null, null, null, "nest name is required")]
+    [InlineData(true, "   ", null, null, "nest name is required")]
+    [InlineData(true, TooLongName, null, null, "200 characters")]
+    [InlineData(true, "NEST-ON-1", 2026, "NEST-1", "not both")]
+    [InlineData(true, "NEST-ON-1", null, "NEST-1", "not both")]
+    [InlineData(false, "NEST-ON-1", 2026, "NEST-1", "not both")]
+    public async Task CreateReservationAsync_InvalidNestReference_ThrowsBeforeAnyWrite(
+        bool hasNestId, string? nestName, int? pepNestYear, string? pepNestName, string expectedMessage)
+    {
+        await using var db = CreateDb();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var request = Request(hasNestId, nestName, pepNestYear, pepNestName);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateReservationAsync(Guid.NewGuid(), request, 1));
+
+        Assert.Contains(expectedMessage, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, await db.MaterialReservations.CountAsync());
+    }
+
+    [Theory]
+    [InlineData(true, null, null, null, "nest name is required")]
+    [InlineData(true, TooLongName, null, null, "200 characters")]
+    [InlineData(true, "NEST-ON-1", 2026, "NEST-1", "not both")]
+    public async Task CreateReservationBatchAsync_InvalidNestReference_ThrowsBeforeAnyWrite(
+        bool hasNestId, string? nestName, int? pepNestYear, string? pepNestName, string expectedMessage)
+    {
+        await using var db = CreateDb();
+        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
+        var request = Request(hasNestId, nestName, pepNestYear, pepNestName);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateReservationBatchAsync(Guid.NewGuid(), [request], 1));
+
+        Assert.Contains(expectedMessage, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, await db.MaterialReservations.CountAsync());
+    }
+
+    private static CreateReservationRequest Request(bool hasNestId, string? nestName, int? pepNestYear, string? pepNestName) =>
+        new(1, null, null, null, ReservationEquipment.Laser, pepNestYear, pepNestName, null, null, null, null,
+            OpenNestNestId: hasNestId ? Guid.NewGuid() : null,
+            NestName: nestName == TooLongName ? new string('N', 201) : nestName);
+
+    private static MaterialLedgerDbContext CreateDb() => new(new DbContextOptionsBuilder<MaterialLedgerDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 }

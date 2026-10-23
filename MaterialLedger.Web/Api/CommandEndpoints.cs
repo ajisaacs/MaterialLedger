@@ -106,6 +106,13 @@ public static class CommandEndpoints
         Required(payload.InventoryItemId, "inventoryItemId", errors);
         Defined(payload.Equipment, "equipment", errors);
         if (payload.PepNestYear is <= 0) errors["pepNestYear"] = ["Pep nest year must be positive."];
+        if ((payload.OpenNestNestId is not null || !string.IsNullOrWhiteSpace(payload.NestName))
+            && (payload.PepNestYear is not null || !string.IsNullOrWhiteSpace(payload.PepNestName)))
+            errors["openNestNestId"] = ["Reference an OpenNest nest or a PEP nest, not both."];
+        if (payload.OpenNestNestId is not null && string.IsNullOrWhiteSpace(payload.NestName))
+            errors["nestName"] = ["Nest name is required when openNestNestId is set."];
+        else if (payload.NestName?.Length > MaterialReservation.NestNameMaxLength)
+            errors["nestName"] = [$"Nest name must be {MaterialReservation.NestNameMaxLength} characters or fewer."];
         var remnants = new List<ExpectedRemnantRequest>();
         if (payload.ExpectedRemnants is not null)
         {
@@ -129,7 +136,8 @@ public static class CommandEndpoints
         var result = await service.CreateReservationAsync(correlationId, new CreateReservationRequest(
             payload.InventoryItemId!.Value, payload.ShopOpsJobId, payload.DrawingId, payload.DrawingRevision,
             payload.Equipment, payload.PepNestYear, payload.PepNestName, payload.LaserProgramRecordId,
-            null, null, null, remnants.Count == 0 ? null : remnants), userId);
+            null, null, null, remnants.Count == 0 ? null : remnants,
+            OpenNestNestId: payload.OpenNestNestId, NestName: payload.NestName), userId);
         var response = new CommandEnvelope<ReservationResultContract>("create-reservation", new(
             result.Result.MaterialReservationId, result.Result.Status));
         if (result.WasReplayed)

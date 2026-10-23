@@ -78,6 +78,7 @@ public sealed class WorkQueueQueryService(MaterialLedgerDbContext db, InventoryQ
                 row.Reservation.DrawingRevision,
                 row.Reservation.PepNestYear,
                 row.Reservation.PepNestName,
+                row.Reservation.NestName,
                 row.Reservation.Equipment,
                 row.Reservation.Status,
                 row.Reservation.CreatedAtUtc,
@@ -108,22 +109,23 @@ public sealed class WorkQueueQueryService(MaterialLedgerDbContext db, InventoryQ
             reservation.PublicItemCode,
             reservation.MaterialDisplayName ?? "Material specification unavailable",
             reservation.LocationCode ?? "Location unavailable",
-            WorkReference(reservation.ShopOpsJobId, reservation.DrawingId, reservation.DrawingRevision, reservation.PepNestYear, reservation.PepNestName),
+            WorkReference(reservation.ShopOpsJobId, reservation.DrawingId, reservation.DrawingRevision, reservation.PepNestYear, reservation.PepNestName, reservation.NestName),
             reservation.Equipment?.ToString() ?? "Equipment not assigned",
             workflow.Label,
             reservation.TimestampUtc);
     }
 
-    private static string WorkReference(string? shopOpsJobId, string? drawingId, string? drawingRevision, int? pepNestYear, string? pepNestName)
+    private static string WorkReference(string? shopOpsJobId, string? drawingId, string? drawingRevision, int? pepNestYear, string? pepNestName, string? nestName)
     {
         if (!string.IsNullOrWhiteSpace(shopOpsJobId)) return $"Job {shopOpsJobId}";
         if (!string.IsNullOrWhiteSpace(drawingId)) return string.IsNullOrWhiteSpace(drawingRevision) ? $"Drawing {drawingId}" : $"Drawing {drawingId} rev {drawingRevision}";
+        if (!string.IsNullOrWhiteSpace(nestName)) return $"Nest {nestName}";
         if (!string.IsNullOrWhiteSpace(pepNestName)) return pepNestYear is null ? $"Nest {pepNestName}" : $"Nest {pepNestYear}: {pepNestName}";
         return "Unassigned material hold";
     }
 
     private sealed record ReservationProjection(long MaterialReservationId, long InventoryItemId, string PublicItemCode, string? MaterialDisplayName,
         string? LocationCode, string? ShopOpsJobId, string? DrawingId, string? DrawingRevision, int? PepNestYear,
-        string? PepNestName, ReservationEquipment? Equipment, ReservationStatus Status, DateTime CreatedAtUtc, DateTime TimestampUtc);
+        string? PepNestName, string? NestName, ReservationEquipment? Equipment, ReservationStatus Status, DateTime CreatedAtUtc, DateTime TimestampUtc);
 
 }

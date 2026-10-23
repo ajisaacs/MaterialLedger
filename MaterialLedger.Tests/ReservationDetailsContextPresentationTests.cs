@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using ClosingWorkReference = MaterialLedger.Web.Pages.Shared.ReservationWorkReference;
 
 namespace MaterialLedger.Tests;
 
@@ -51,6 +52,51 @@ public sealed class ReservationDetailsContextPresentationTests
         };
 
         Assert.Equal(expected, ReservationWorkReference.Describe(reservation));
+    }
+
+    [Theory]
+    [InlineData("JOB-42", "DWG-9", "Job JOB-42")]
+    [InlineData(null, "DWG-9", "Drawing DWG-9")]
+    [InlineData(null, null, "Nest ON-NEST-7")]
+    public void Work_reference_shows_the_opennest_nest_name_after_job_and_drawing(string? jobId, string? drawingId, string expected)
+    {
+        var reservation = new MaterialReservation
+        {
+            ShopOpsJobId = jobId,
+            DrawingId = drawingId,
+            OpenNestNestId = Guid.Parse("6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a"),
+            NestName = "ON-NEST-7"
+        };
+
+        Assert.Equal(expected, ReservationWorkReference.Describe(reservation));
+    }
+
+    [Fact]
+    public void Closeout_work_reference_shows_the_opennest_nest_name_and_keeps_the_pep_text()
+    {
+        Assert.Equal("ON-NEST-7", ClosingWorkReference.Describe(new MaterialReservation { OpenNestNestId = Guid.NewGuid(), NestName = "ON-NEST-7" }));
+        Assert.Equal("2026 nest-1", ClosingWorkReference.Describe(new MaterialReservation { PepNestYear = 2026, PepNestName = "nest-1" }));
+    }
+
+    [Fact]
+    public void Nest_link_points_at_the_opennest_nest_page_only_for_opennest_holds()
+    {
+        var nestId = Guid.Parse("6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a");
+
+        Assert.Equal("~/Nests/6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a", ReservationWorkReference.NestPath(new MaterialReservation { OpenNestNestId = nestId, NestName = "ON-NEST-7" }));
+        Assert.Null(ReservationWorkReference.NestPath(new MaterialReservation { PepNestYear = 2026, PepNestName = "nest-1" }));
+        Assert.Null(ReservationWorkReference.NestPath(new MaterialReservation()));
+    }
+
+    [Fact]
+    public void Details_links_opennest_holds_to_the_nest_page_and_keeps_the_pep_link()
+    {
+        var details = ReadReservationPage("Details.cshtml");
+
+        Assert.Contains("ReservationWorkReference.NestPath(Model.Reservation)", details);
+        Assert.Contains("href=\"@Url.Content(nestPath)\"", details);
+        Assert.Contains("@Model.Reservation.NestName", details);
+        Assert.Contains("asp-page=\"/PepNests/Details\"", details);
     }
 
     [Theory]

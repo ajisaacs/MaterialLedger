@@ -171,6 +171,51 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
     }
 
     [Fact]
+    public async Task OpenNestReferences_AreAddedBesidePepColumns()
+    {
+        await using var db = _fixture.CreateContext();
+        await using var connection = (SqlConnection)db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM sys.columns c
+            JOIN sys.tables t ON t.object_id = c.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+            WHERE s.name = 'material' AND t.name = 'MaterialReservations' AND c.is_nullable = 1 AND
+                ((c.name = 'OpenNestNestId' AND ty.name = 'uniqueidentifier') OR
+                 (c.name = 'NestName' AND ty.name = 'nvarchar' AND c.max_length = 400) OR
+                 (c.name = 'PepNestYear') OR
+                 (c.name = 'PepNestName'));
+
+            SELECT COUNT(*)
+            FROM sys.indexes i
+            JOIN sys.tables t ON t.object_id = i.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND t.name = 'MaterialReservations' AND i.name = 'IX_MaterialReservations_OpenNestNestId';
+
+            SELECT cc.definition
+            FROM sys.check_constraints cc
+            JOIN sys.tables t ON t.object_id = cc.parent_object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND cc.name = 'CK_MaterialSpecExternalMapping_ExternalSystem';
+            """;
+
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(4, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(1, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        var definition = reader.GetString(0);
+        Assert.Contains("N'PEP'", definition);
+        Assert.Contains("N'OpenNest'", definition);
+    }
+
+    [Fact]
     public async Task ItemCodeSequence_Exists()
     {
         await using var db = _fixture.CreateContext();
