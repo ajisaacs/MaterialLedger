@@ -49,11 +49,6 @@ builder.Services.AddScoped(sp => new MaterialLedger.Data.Inventory.NestingStockQ
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     builder.Configuration.GetValue("ReservationFreshnessThresholdDays", 90)));
 builder.Services.AddScoped<WorkQueueQueryService>();
-builder.Services.AddHttpClient<PepNestQueryService>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["PepApi:BaseUrl"] ?? "http://hermes.lan:8085/");
-    client.Timeout = TimeSpan.FromSeconds(15);
-});
 builder.Services.AddHttpClient<OpenNestClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["OpenNest:BaseUrl"] ?? "http://barge.lan:8091/");

@@ -1,0 +1,58 @@
+@page
+@model MaterialLedger.Web.Pages.Nests.IndexModel
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Nests"; }
+
+<header class="page-heading">
+    <p class="eyebrow">Cutting workflow</p>
+    <h1>View nests</h1>
+    <p>OpenNest is the source for nest material and sheet requirements. A Material Ledger hold is created only after you select a mapped on-hand item.</p>
+</header>
+
+<form method="get" class="filter-bar">
+    <label>Status
+        <select asp-for="Status">
+            <option value="">All statuses</option>
+            @foreach (var status in IndexModel.StatusOptions) { <option value="@status.Value">@status.Label</option> }
+        </select>
+    </label>
+    <label>Search <input asp-for="Search" type="search" placeholder="Name, customer, material, comments" /></label>
+    <button type="submit">Find nests</button>
+</form>
+
+@if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
+else
+{
+    <p role="status">@Model.Nests.Count nest(s) found@(Model.Nests.Count == 100 ? ", showing the newest 100" : "").</p>
+    <table class="desktop-table">
+        <thead><tr><th>Nest</th><th>Status</th><th>Customer</th><th>Material</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var nest in Model.Nests)
+        {
+            <tr>
+                <td>@nest.Name</td><td>@IndexModel.StatusLabel(nest.Status)</td><td>@nest.Customer</td>
+                <td>@IndexModel.MaterialText(nest)</td><td>@nest.DateCreated.ToString("yyyy-MM-dd")</td>
+                <td><a asp-page="Details" asp-route-id="@nest.Id">View nest</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <div class="mobile-card-grid mobile-card" aria-label="Nests">
+    @foreach (var nest in Model.Nests)
+    {
+        <article class="pep-nest-card">
+            <div class="pep-nest-card-header">
+                <strong class="pep-nest-card-name">@nest.Name</strong>
+                <span class="pep-nest-card-status">@IndexModel.StatusLabel(nest.Status)</span>
+            </div>
+            <dl class="pep-nest-card-body">
+                <dt>Customer</dt><dd>@nest.Customer</dd>
+                <dt>Material</dt><dd>@IndexModel.MaterialText(nest)</dd>
+                <dt>Created</dt><dd>@nest.DateCreated.ToString("yyyy-MM-dd")</dd>
+            </dl>
+            <div class="pep-nest-card-action">
+                <a class="button" asp-page="Details" asp-route-id="@nest.Id">View nest</a>
+            </div>
+        </article>
+    }
+    </div>
+}

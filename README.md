@@ -22,7 +22,7 @@ Settings (`appsettings.json`, overridable with `__` environment variables):
 |---|---|
 | `ConnectionStrings:MaterialLedger` | SQL Server connection string (required) |
 | `Storage:AttachmentsPath` | Attachment directory (default `App_Data/attachments`) |
-| `PepApi:BaseUrl` | PEP nest/material lookup service |
+| `OpenNest:BaseUrl` | OpenNest.Server nest lookup service (default `http://barge.lan:8091/`) |
 | `Api:Keys:*` | API keys for read-only integrations |
 | `SeedAccounts` | Initial users; blank `InitialPassword` skips seeding |
 

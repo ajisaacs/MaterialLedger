@@ -89,14 +89,16 @@ public sealed class ReservationDetailsContextPresentationTests
     }
 
     [Fact]
-    public void Details_links_opennest_holds_to_the_nest_page_and_keeps_the_pep_link()
+    public void Details_links_opennest_holds_to_the_nest_page_and_keeps_pep_holds_as_text()
     {
         var details = ReadReservationPage("Details.cshtml");
 
         Assert.Contains("ReservationWorkReference.NestPath(Model.Reservation)", details);
-        Assert.Contains("href=\"@Url.Content(nestPath)\"", details);
+        Assert.DoesNotContain("href=\"@Url.Content(nestPath)\"", details);
         Assert.Contains("@Model.Reservation.NestName", details);
-        Assert.Contains("asp-page=\"/PepNests/Details\"", details);
+        Assert.Contains("asp-page=\"/Nests/Details\" asp-route-id=\"@Model.Reservation.OpenNestNestId\"", details);
+        Assert.Contains("@Model.Reservation.PepNestYear @Model.Reservation.PepNestName", details);
+        Assert.DoesNotContain("PepNests/Details", details);
     }
 
     [Theory]

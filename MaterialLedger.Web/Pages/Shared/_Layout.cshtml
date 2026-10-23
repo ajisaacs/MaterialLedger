@@ -17,7 +17,7 @@
                 <p>Operations</p>
                 <a asp-page="/Index">Control board</a>
                 <a asp-page="/Inventory/Search">Find material</a>
-                <a asp-page="/PepNests/Index">PEP nests</a>
+                <a asp-page="/Nests/Index">Nests</a>
                 <a asp-page="/Reservations/Index">Material holds</a>
                 @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Record cut result</a> }
                 <p>Inventory setup</p>
@@ -39,7 +39,7 @@
                     <p>Operations</p>
                     <a asp-page="/Index">Control board</a>
                     <a asp-page="/Inventory/Search">Find material</a>
-                    <a asp-page="/PepNests/Index">PEP nests</a>
+                    <a asp-page="/Nests/Index">Nests</a>
                     <a asp-page="/Reservations/Index">Material holds</a>
                     @if (User.IsInRole("Operator") || User.IsInRole("Manager")) { <a asp-page="/Closeout/Index">Record cut result</a> }
                     <p>Inventory setup</p>

@@ -1,8 +1,8 @@
-@page "{year:int}/{nestName}"
-@model MaterialLedger.Web.Pages.PepNests.DetailsModel
+@page "{id:guid}"
+@model MaterialLedger.Web.Pages.Nests.DetailsModel
 @using MaterialLedger.Data.Models
 @using MaterialLedger.Web.Shared
-@{ Layout = "Shared/_Layout"; ViewData["Title"] = "PEP nest"; }
+@{ Layout = "Shared/_Layout"; ViewData["Title"] = "Nest"; }
 
 @if (Model.Nest is null)
 {
@@ -11,13 +11,13 @@
 else
 {
     <main class="pep-nest-workspace">
-        <a class="pep-nest-backlink" asp-page="Index" asp-route-year="@RouteData.Values["year"]">← All PEP nests</a>
+        <a class="pep-nest-backlink" asp-page="Index">← All nests</a>
 
         <header class="pep-nest-hero">
             <div>
-                <p class="eyebrow">PEP cutting program</p>
+                <p class="eyebrow">OpenNest cutting program</p>
                 <h1>@Model.Nest.Name</h1>
-                <span class="pep-nest-status">@Model.Nest.Status</span>
+                <span class="pep-nest-status">@IndexModel.StatusLabel(Model.Nest.Status)</span>
             </div>
             <dl class="pep-nest-hero-meta">
                 <div><dt>Customer</dt><dd>@Model.Nest.Customer</dd></div>
@@ -25,9 +25,13 @@ else
             </dl>
         </header>
 
-        @if (Model.Nest.Status?.Contains("has been cut", StringComparison.OrdinalIgnoreCase) == true)
+        @if (Model.AlreadyCut)
         {
             <p class="warning-banner" role="alert">⚠ This program has already been cut.</p>
+        }
+        @if (Model.SheetsUnavailable)
+        {
+            <p class="warning-banner" role="status">OpenNest did not return sheet sizes for this nest. Holds can be created once OpenNest provides them.</p>
         }
         @if (Model.Error is not null) { <p class="form-error" role="alert">@Model.Error</p> }
 
@@ -35,32 +39,35 @@ else
             <section class="pep-nest-panel pep-nest-parts-panel" aria-label="Nested parts">
                 <div class="pep-nest-panel-heading">
                     <div><p class="eyebrow">Program output</p><h2>Parts</h2></div>
-                    <p>@Model.Nest.Parts.Count part@(Model.Nest.Parts.Count == 1 ? "" : "s")</p>
+                    <p>@Model.Parts.Count part@(Model.Parts.Count == 1 ? "" : "s")</p>
                 </div>
-                @if (Model.Nest.Parts.Count == 0)
+                @if (Model.SheetsUnavailable)
+                {
+                    <p class="empty-state pep-nest-empty">OpenNest did not return part counts for this nest.</p>
+                }
+                else if (Model.Parts.Count == 0)
                 {
                     <p class="empty-state pep-nest-empty">No parts recorded for this nest.</p>
                 }
                 else
                 {
                     <table class="desktop-table pep-nest-parts-table">
-                        <thead><tr><th>Part</th><th>Part size</th><th>Nested</th><th>Required</th></tr></thead>
+                        <thead><tr><th>Part</th><th>Required</th><th>Nested</th></tr></thead>
                         <tbody>
-                        @foreach (var part in Model.Nest.Parts)
+                        @foreach (var part in Model.Parts)
                         {
-                            <tr><td>@part.Name</td><td>@(part.PartSize ?? part.Size ?? "—")</td><td>@part.QtyNested</td><td>@part.QtyRequired</td></tr>
+                            <tr><td>@part.Name</td><td>@part.Required</td><td>@part.Nested</td></tr>
                         }
                         </tbody>
                     </table>
                     <div class="mobile-card pep-nest-parts-cards">
-                        @foreach (var part in Model.Nest.Parts)
+                        @foreach (var part in Model.Parts)
                         {
                             <article class="pep-nest-part-card">
                                 <h3>@part.Name</h3>
                                 <dl>
-                                    <dt>Part size</dt><dd>@(part.PartSize ?? part.Size ?? "—")</dd>
-                                    <dt>Nested</dt><dd>@part.QtyNested</dd>
-                                    <dt>Required</dt><dd>@part.QtyRequired</dd>
+                                    <dt>Required</dt><dd>@part.Required</dd>
+                                    <dt>Nested</dt><dd>@part.Nested</dd>
                                 </dl>
                             </article>
                         }
@@ -70,12 +77,11 @@ else
 
             <aside class="pep-nest-sidebar" aria-label="Program material">
                 <section class="pep-nest-material-card">
-                    <div class="pep-nest-card-heading"><div><p class="eyebrow">PEP material</p><h2>Program stock</h2></div></div>
+                    <div class="pep-nest-card-heading"><div><p class="eyebrow">OpenNest material</p><h2>Program stock</h2></div></div>
                     <dl class="detail-grid">
-                        <dt>Material no.</dt><dd>#@Model.Nest.Material?.Number</dd>
-                        <dt>Grade</dt><dd>@Model.Nest.Material?.Grade</dd>
-                        <dt>Thickness</dt><dd>@Model.Nest.Material?.Thickness.ToString("0.####") in</dd>
-                        <dt>Description</dt><dd>@Model.Nest.Material?.Description</dd>
+                        <dt>Material</dt><dd>@Model.Nest.Material</dd>
+                        <dt>Grade</dt><dd>@Model.Nest.MaterialGrade</dd>
+                        <dt>Thickness</dt><dd>@Model.Nest.Thickness.ToString("0.####") in</dd>
                     </dl>
                     @if (User.IsInRole("Programmer") || User.IsInRole("Manager"))
                     {
@@ -98,9 +104,13 @@ else
 
                 <section class="pep-nest-requirements-card">
                     <div class="pep-nest-card-heading"><div><p class="eyebrow">Sheet requirements</p><h2>Program sheets</h2></div></div>
-                    @if (Model.ProgramSheetRequirements.Count == 0)
+                    @if (Model.SheetsUnavailable)
                     {
-                        <p class="empty-state pep-nest-empty">PEP did not provide usable sheet or plate sizes.</p>
+                        <p class="empty-state pep-nest-empty">OpenNest did not return sheet sizes for this nest.</p>
+                    }
+                    else if (Model.ProgramSheetRequirements.Count == 0)
+                    {
+                        <p class="empty-state pep-nest-empty">OpenNest did not provide usable sheet sizes.</p>
                     }
                     else
                     {
@@ -119,11 +129,11 @@ else
                         <div class="pep-nest-requirements-action">
                             @if (Model.Mapping?.MaterialSpec is null)
                             {
-                                <p>Map the PEP material before reserving the program sheets.</p>
+                                <p>Map the OpenNest material before reserving the program sheets.</p>
                             }
                             <form method="post" asp-page-handler="ReserveProgramSheets">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="button button-primary" @(Model.Mapping?.MaterialSpec is null || Model.ProgramSheetRequirements.Count == 0 ? "disabled" : null)>Reserve all program sheets</button>
+                                <button type="submit" class="button button-primary" @(Model.SheetsUnavailable || Model.Mapping?.MaterialSpec is null || Model.ProgramSheetRequirements.Count == 0 ? "disabled" : null)>Reserve all program sheets</button>
                             </form>
                         </div>
                     }
@@ -204,9 +214,9 @@ else
             <dialog id="pep-material-mapping-dialog" class="sheet-entry-dialog pep-material-mapping-dialog" aria-labelledby="pep-material-mapping-title">
                 <div class="dialog-heading">
                     <div>
-                        <p class="eyebrow">PEP material #@Model.Nest.Material?.Number</p>
+                        <p class="eyebrow">OpenNest material @IndexModel.MaterialText(Model.Nest)</p>
                         <h2 id="pep-material-mapping-title">Map catalog material</h2>
-                        <p>Choose the Material Ledger catalog material equivalent used for this PEP program.</p>
+                        <p>Choose the Material Ledger catalog material equivalent used for this OpenNest material, grade and thickness.</p>
                     </div>
                     <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close material mapping">×</button></form>
                 </div>
@@ -282,7 +292,7 @@ else
             <p class="pep-nest-stock-intro">Only exact programmed sheet sizes can be reserved. This action creates all required holds together or creates none.</p>
             @if (Model.Mapping?.MaterialSpec is null)
             {
-                <p class="empty-state pep-nest-empty">Map this PEP material to the Material Ledger catalog before selecting on-hand material.</p>
+                <p class="empty-state pep-nest-empty">Map this OpenNest material to the Material Ledger catalog before selecting on-hand material.</p>
             }
             else if (Model.AvailableItems.Count == 0)
             {

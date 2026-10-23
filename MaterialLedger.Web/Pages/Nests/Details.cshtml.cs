@@ -13,17 +13,19 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
-namespace MaterialLedger.Web.Pages.PepNests;
+namespace MaterialLedger.Web.Pages.Nests;
 
 [Authorize]
 public class DetailsModel(
-    PepNestQueryService pepNests,
+    OpenNestClient openNest,
     MaterialLedgerDbContext db,
     InventoryQueryService inventory,
-    PepMaterialMappingService mappings,
+    OpenNestMaterialMappingService mappings,
     ReservationService reservations,
     OpeningBalanceService openingBalance) : PageModel
 {
+    private const string UnreachableError = "OpenNest nests could not be reached.";
+
     [BindProperty] public long? MaterialSpecId { get; set; }
     [BindProperty] public string? MaterialGroupKey { get; set; }
     [BindProperty] public Guid CorrelationId { get; set; }
@@ -32,10 +34,14 @@ public class DetailsModel(
     [BindProperty] public decimal FoundSheetLengthIn { get; set; }
     [BindProperty] public decimal FoundSheetQuantity { get; set; }
     [BindProperty] public string? FoundSheetNotes { get; set; }
-    public PepNestDetails? Nest { get; private set; }
+    public OpenNestRecord? Nest { get; private set; }
+    public IReadOnlyList<OpenNestPartCount> Parts { get; private set; } = [];
+    // OpenNest.Server answers 404 for /sheets until that endpoint is deployed; the nest itself still shows.
+    public bool SheetsUnavailable { get; private set; }
+    public bool AlreadyCut => string.Equals(Nest?.Status, "hasBeenCut", StringComparison.OrdinalIgnoreCase);
     public MaterialSpecExternalMapping? Mapping { get; private set; }
     public IReadOnlyList<MaterialSpec> MaterialSpecs { get; private set; } = [];
-    public IReadOnlyList<PepCatalogMaterialGroup> MaterialGroups { get; private set; } = [];
+    public IReadOnlyList<CatalogMaterialGroup> MaterialGroups { get; private set; } = [];
     public IReadOnlyList<InventoryItemSummary> AvailableItems { get; private set; } = [];
     public IReadOnlyList<ProgramSheetRequirement> ProgramSheetRequirements { get; private set; } = [];
     public IReadOnlyList<ProgramSheetShortfall> ProgramSheetShortfalls { get; private set; } = [];
@@ -44,40 +50,46 @@ public class DetailsModel(
     public bool ShowFoundSheetDialog { get; private set; }
     public string? Error { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync(int year, string nestName)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        await LoadAsync(year, nestName);
-        return Nest is null ? NotFound() : Page();
+        await LoadAsync(id);
+        return Nest is null && Error is null ? NotFound() : Page();
     }
 
-    public async Task<IActionResult> OnPostMapAsync(int year, string nestName)
+    public async Task<IActionResult> OnPostMapAsync(Guid id)
     {
         if (!User.IsInRole("Programmer") && !User.IsInRole("Manager")) return Forbid();
-        Nest = await pepNests.GetNestAsync(year, nestName);
-        if (Nest?.Material is null) return NotFound();
+        try { Nest = await openNest.GetNestAsync(id, HttpContext.RequestAborted); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { Error = UnreachableError; return Page(); }
+        if (Nest is null) return NotFound();
 
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await mappings.MapAsync(CorrelationId, new MapPepMaterialRequest(Nest.Material.Number, MaterialSpecId ?? 0), userId);
-            return RedirectToPage(new { year, nestName });
+            await mappings.MapAsync(CorrelationId, new MapOpenNestMaterialRequest(Nest.Material ?? "", Nest.MaterialGrade ?? "", Nest.Thickness, MaterialSpecId ?? 0), userId);
+            return RedirectToPage(new { id });
         }
         catch (InvalidOperationException ex)
         {
             Error = ex.Message;
-            await LoadAsync(year, nestName);
+            await LoadAsync(id);
             return Page();
         }
     }
 
-    public async Task<IActionResult> OnPostReserveProgramSheetsAsync(int year, string nestName)
+    public async Task<IActionResult> OnPostReserveProgramSheetsAsync(Guid id)
     {
         if (!User.IsInRole("Programmer") && !User.IsInRole("Manager")) return Forbid();
-        await LoadAsync(year, nestName);
-        if (Nest is null) return NotFound();
+        await LoadAsync(id);
+        if (Nest is null) return Error is null ? NotFound() : Page();
+        if (SheetsUnavailable)
+        {
+            Error = "OpenNest did not return sheet sizes for this nest, so no holds can be created yet.";
+            return Page();
+        }
         if (Mapping?.MaterialSpec is null || ProgramSheetRequirements.Count == 0)
         {
-            Error = "Map the PEP material and confirm its program sheet sizes before creating holds.";
+            Error = "Map the OpenNest material and confirm its program sheet sizes before creating holds.";
             return Page();
         }
 
@@ -91,13 +103,14 @@ public class DetailsModel(
             return Page();
         }
 
-        return await CreateReservationBatchAsync(year, nestName, plan.ItemIds);
+        return await CreateReservationBatchAsync(id, plan.ItemIds);
     }
 
-    public async Task<IActionResult> OnPostRecordFoundSheetAsync(int year, string nestName)
+    public async Task<IActionResult> OnPostRecordFoundSheetAsync(Guid id)
     {
         if (!User.IsInRole("Programmer") && !User.IsInRole("Manager")) return Forbid();
-        await LoadAsync(year, nestName);
+        await LoadAsync(id);
+        if (Nest is null && Error is not null) return Page();
         if (Nest is null || Mapping?.MaterialSpec is null) return NotFound();
 
         var plan = BuildReservationPlan();
@@ -116,8 +129,8 @@ public class DetailsModel(
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var notes = string.IsNullOrWhiteSpace(FoundSheetNotes)
-                ? $"Found while preparing PEP nest {Nest.Name}."
-                : $"Found while preparing PEP nest {Nest.Name}. {FoundSheetNotes.Trim()}";
+                ? $"Found while preparing nest {Nest.Name}."
+                : $"Found while preparing nest {Nest.Name}. {FoundSheetNotes.Trim()}";
             // Each found drop remains a distinct, auditable physical item rather than being merged
             // into a bundle. This preserves the one-sheet-per-reservation rule.
             for (var count = 0; count < FoundSheetQuantity; count++)
@@ -127,7 +140,7 @@ public class DetailsModel(
                     FoundSheetWidthIn, FoundSheetLengthIn, ShapeClassification.Rectangular, false, notes), userId);
             }
 
-            await LoadAsync(year, nestName);
+            await LoadAsync(id);
             var refreshedPlan = BuildReservationPlan();
             if (refreshedPlan.Shortfalls.Count > 0)
             {
@@ -137,32 +150,48 @@ public class DetailsModel(
                 Error = "The found sheet was recorded, but other program sheet sizes are still short. No holds were created.";
                 return Page();
             }
-            return await CreateReservationBatchAsync(year, nestName, refreshedPlan.ItemIds);
+            return await CreateReservationBatchAsync(id, refreshedPlan.ItemIds);
         }
         catch (InvalidOperationException ex)
         {
             Error = $"No holds were created: {ex.Message}";
-            await LoadAsync(year, nestName);
+            await LoadAsync(id);
             return Page();
         }
     }
 
-    private async Task LoadAsync(int year, string nestName)
-    {
-        try { Nest = await pepNests.GetNestAsync(year, nestName); }
-        catch (HttpRequestException) { Error = "PEP nest details could not be reached."; return; }
-        if (Nest?.Material is null) return;
+    /// <summary>One hold per sheet, each pointing at the OpenNest nest by id with its name as a display snapshot.</summary>
+    public static IReadOnlyList<CreateReservationRequest> BuildHoldRequests(Guid nestId, string? nestName, IReadOnlyList<long> itemIds) =>
+        itemIds.Select(itemId => new CreateReservationRequest(itemId, null, null, null, null, null, null, null, null, null, null,
+            OpenNestNestId: nestId, NestName: nestName)).ToList();
 
-        ProgramSheetRequirements = Nest.Plates
-            .Where(plate => plate.Size is not null && plate.Size.Width > 0 && plate.Size.Length > 0 && plate.Qty > 0)
-            .GroupBy(plate => new { plate.Size!.Width, plate.Size.Length })
-            .Select(group => new ProgramSheetRequirement(group.Key.Width, group.Key.Length, group.Sum(plate => plate.Qty)))
+    private async Task LoadAsync(Guid id)
+    {
+        OpenNestSheets? sheets;
+        try
+        {
+            Nest = await openNest.GetNestAsync(id, HttpContext.RequestAborted);
+            if (Nest is null) return;
+            sheets = await openNest.GetSheetsAsync(id, HttpContext.RequestAborted);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Nest = null;
+            Error = UnreachableError;
+            return;
+        }
+
+        SheetsUnavailable = sheets is null;
+        Parts = sheets?.Parts ?? [];
+        ProgramSheetRequirements = (sheets?.Sheets ?? [])
+            .Where(sheet => sheet.Width > 0 && sheet.Length > 0 && sheet.Quantity > 0)
+            .GroupBy(sheet => new { sheet.Width, sheet.Length })
+            .Select(group => new ProgramSheetRequirement(group.Key.Width, group.Key.Length, group.Sum(sheet => sheet.Quantity)))
             .OrderBy(requirement => requirement.WidthIn).ThenBy(requirement => requirement.LengthIn).ToList();
 
         ProgramReservations = await db.MaterialReservations
             .Include(reservation => reservation.InventoryItem)!.ThenInclude(item => item!.InventoryLocation)
-            .Where(reservation => reservation.PepNestYear == year
-                && reservation.PepNestName == nestName
+            .Where(reservation => reservation.OpenNestNestId == id
                 && (reservation.Status == ReservationStatus.Proposed
                     || reservation.Status == ReservationStatus.Approved
                     || reservation.Status == ReservationStatus.AwaitingCloseout))
@@ -174,14 +203,15 @@ public class DetailsModel(
         MaterialLocations = await ActiveMaterialSlotQuery.Create(db).ToListAsync();
         MaterialGroups = MaterialSpecs
             .GroupBy(spec => new { spec.MaterialFamily, spec.Grade, spec.Finish })
-            .Select((group, index) => new PepCatalogMaterialGroup(
+            .Select((group, index) => new CatalogMaterialGroup(
                 $"material-{index}",
                 string.Join(" ", new[] { group.Key.MaterialFamily, group.Key.Grade, group.Key.Finish }.Where(value => !string.IsNullOrWhiteSpace(value))),
                 group.OrderBy(spec => spec.ThicknessIn).ToList()))
             .ToList();
-        Mapping = await db.MaterialSpecExternalMappings
+        var materialKey = MaterialKey(Nest);
+        Mapping = materialKey is null ? null : await db.MaterialSpecExternalMappings
             .Include(x => x.MaterialSpec)
-            .Where(x => x.ExternalSystem == "PEP" && x.ExternalKey == Nest.Material.Number.ToString() && x.Status == ExternalMappingStatus.Approved)
+            .Where(x => x.ExternalSystem == "OpenNest" && x.ExternalKey == materialKey && x.Status == ExternalMappingStatus.Approved)
             .SingleOrDefaultAsync();
         MaterialSpecId ??= Mapping?.MaterialSpecId;
         MaterialGroupKey ??= MaterialGroups.SingleOrDefault(group => group.Thicknesses.Any(spec => spec.MaterialSpecId == MaterialSpecId))?.Key;
@@ -194,6 +224,12 @@ public class DetailsModel(
                 null, null, null, null, AvailableOnly: true));
         }
     }
+
+    // Null when OpenNest has no material or thickness to key a mapping on.
+    private static string? MaterialKey(OpenNestRecord nest) =>
+        string.IsNullOrWhiteSpace(nest.Material) || nest.Thickness <= 0
+            ? null
+            : OpenNestMaterialKey.For(nest.Material, nest.MaterialGrade, nest.Thickness);
 
     private ReservationPlan BuildReservationPlan()
     {
@@ -226,20 +262,20 @@ public class DetailsModel(
         FoundSheetQuantity = first.Quantity;
     }
 
-    private async Task<IActionResult> CreateReservationBatchAsync(int year, string nestName, IReadOnlyList<long> itemIds)
+    private async Task<IActionResult> CreateReservationBatchAsync(Guid id, IReadOnlyList<long> itemIds)
     {
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var requests = itemIds.Select(id => new CreateReservationRequest(id, null, null, null, null, year, Nest!.Name, null, null, null, null)).ToList();
+            var requests = BuildHoldRequests(id, Nest!.Name, itemIds);
             var result = await reservations.CreateReservationBatchAsync(Guid.NewGuid(), requests, userId);
-            TempData["Message"] = $"Created {result.Count} proposed material hold(s) for PEP nest {Nest!.Name}.";
-            return RedirectToPage(new { year, nestName });
+            TempData["Message"] = $"Created {result.Count} proposed material hold(s) for nest {Nest!.Name}.";
+            return RedirectToPage(new { id });
         }
         catch (InvalidOperationException ex)
         {
             Error = $"No holds were created: {ex.Message}";
-            await LoadAsync(year, nestName);
+            await LoadAsync(id);
             return Page();
         }
     }
@@ -248,4 +284,4 @@ public class DetailsModel(
 public record ProgramSheetRequirement(decimal WidthIn, decimal LengthIn, int Quantity);
 public record ProgramSheetShortfall(decimal WidthIn, decimal LengthIn, int Quantity);
 public record ReservationPlan(IReadOnlyList<long> ItemIds, IReadOnlyList<ProgramSheetShortfall> Shortfalls);
-public record PepCatalogMaterialGroup(string Key, string DisplayName, IReadOnlyList<MaterialSpec> Thicknesses);
+public record CatalogMaterialGroup(string Key, string DisplayName, IReadOnlyList<MaterialSpec> Thicknesses);

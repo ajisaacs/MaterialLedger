@@ -88,7 +88,7 @@
         <dd>
             @if (nestPath is not null)
             {
-                <a href="@Url.Content(nestPath)">@Model.Reservation.NestName</a>
+                <a asp-page="/Nests/Details" asp-route-id="@Model.Reservation.OpenNestNestId">@Model.Reservation.NestName</a>
             }
             else
             {
@@ -99,7 +99,7 @@
         <dd>
             @if (Model.Reservation.PepNestYear is not null && !string.IsNullOrWhiteSpace(Model.Reservation.PepNestName))
             {
-                <a asp-page="/PepNests/Details" asp-route-year="@Model.Reservation.PepNestYear" asp-route-nestName="@Model.Reservation.PepNestName">@Model.Reservation.PepNestYear @Model.Reservation.PepNestName</a>
+                @:@Model.Reservation.PepNestYear @Model.Reservation.PepNestName
             }
             else
             {
