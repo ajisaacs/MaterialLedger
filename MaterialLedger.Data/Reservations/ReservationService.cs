@@ -24,7 +24,9 @@ public record CreateReservationRequest(
     decimal? ExpectedRemainderWidthIn,
     decimal? ExpectedRemainderLengthIn,
     ExpectedRemainderSource? ExpectedRemainderSourceType,
-    IReadOnlyList<ExpectedRemnantRequest>? ExpectedRemnants = null);
+    IReadOnlyList<ExpectedRemnantRequest>? ExpectedRemnants = null,
+    Guid? OpenNestNestId = null,
+    string? NestName = null);
 
 public class ReservationResult
 {
@@ -52,6 +54,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
     public async Task<IdempotentResult<ReservationResult>> CreateReservationAsync(Guid correlationId, CreateReservationRequest request, int createdBy)
     {
         ValidateExpectedRemnants(request);
+        ValidateNestReference(request);
         var payloadHash = HashPayload(request);
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -88,6 +91,8 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
             Equipment = request.Equipment,
             PepNestYear = request.PepNestYear,
             PepNestName = request.PepNestName,
+            OpenNestNestId = request.OpenNestNestId,
+            NestName = request.NestName,
             LaserProgramRecordId = request.LaserProgramRecordId,
             ReservedQuantity = 1,
             Status = ReservationStatus.Proposed,
@@ -125,7 +130,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
     }
 
     /// <summary>
-    /// Creates a set of proposed holds in one serializable transaction. PEP programs need their
+    /// Creates a set of proposed holds in one serializable transaction. Nest programs need their
     /// exact sheet sizes, so the entire program is held or no hold is created.
     /// </summary>
     public async Task<IReadOnlyList<ReservationResult>> CreateReservationBatchAsync(
@@ -133,7 +138,11 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
     {
         if (requests.Count == 0)
             throw new InvalidOperationException("At least one material hold is required.");
-        foreach (var request in requests) ValidateExpectedRemnants(request);
+        foreach (var request in requests)
+        {
+            ValidateExpectedRemnants(request);
+            ValidateNestReference(request);
+        }
 
         var payloadHash = HashPayload(requests);
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -168,7 +177,8 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
                 InventoryItemId = request.InventoryItemId, ShopOpsJobId = request.ShopOpsJobId,
                 DrawingId = request.DrawingId, DrawingRevision = request.DrawingRevision,
                 Equipment = request.Equipment, PepNestYear = request.PepNestYear,
-                PepNestName = request.PepNestName, LaserProgramRecordId = request.LaserProgramRecordId,
+                PepNestName = request.PepNestName, OpenNestNestId = request.OpenNestNestId,
+                NestName = request.NestName, LaserProgramRecordId = request.LaserProgramRecordId,
                 ReservedQuantity = 1, Status = ReservationStatus.Proposed, CreatedAtUtc = now, CreatedBy = createdBy,
                 ExpectedRemainderWidthIn = remnants.FirstOrDefault()?.WidthIn,
                 ExpectedRemainderLengthIn = remnants.FirstOrDefault()?.LengthIn,
@@ -325,5 +335,20 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
             if (remnant.WidthIn <= 0 || remnant.LengthIn <= 0)
                 throw new InvalidOperationException("Each expected drop requires a width and length greater than zero.");
         }
+    }
+
+    /// <summary>
+    /// A hold references an OpenNest nest (id plus name snapshot) or a legacy PEP nest (year plus name), never both.
+    /// </summary>
+    private static void ValidateNestReference(CreateReservationRequest request)
+    {
+        var hasOpenNest = request.OpenNestNestId is not null || !string.IsNullOrWhiteSpace(request.NestName);
+        var hasPep = request.PepNestYear is not null || !string.IsNullOrWhiteSpace(request.PepNestName);
+        if (hasOpenNest && hasPep)
+            throw new InvalidOperationException("A material hold can reference an OpenNest nest or a PEP nest, not both.");
+        if (request.OpenNestNestId is not null && string.IsNullOrWhiteSpace(request.NestName))
+            throw new InvalidOperationException("A nest name is required when an OpenNest nest is referenced.");
+        if (request.NestName?.Length > MaterialReservation.NestNameMaxLength)
+            throw new InvalidOperationException($"Nest name must be {MaterialReservation.NestNameMaxLength} characters or fewer.");
     }
 }

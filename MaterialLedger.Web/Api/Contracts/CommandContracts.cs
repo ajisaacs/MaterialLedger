@@ -34,7 +34,9 @@ public sealed record CreateReservationCommand(
     int? PepNestYear,
     string? PepNestName,
     string? LaserProgramRecordId,
-    IReadOnlyList<ExpectedRemnantCommand>? ExpectedRemnants);
+    IReadOnlyList<ExpectedRemnantCommand>? ExpectedRemnants,
+    Guid? OpenNestNestId = null,
+    string? NestName = null);
 
 public sealed record ExpectedRemnantCommand(
     decimal? WidthIn,
@@ -57,5 +59,7 @@ public sealed record ReservationContract(
     string? DrawingRevision,
     int? PepNestYear,
     string? PepNestName,
+    Guid? OpenNestNestId,
+    string? NestName,
     string? LaserProgramRecordId,
     DateTime CreatedAtUtc);

@@ -8,6 +8,7 @@
     <p class="eyebrow">Cutting workflow</p>
     <h1>Hold material for work</h1>
     <p>Record the work context that is known now. Additional identifiers stay available without blocking the hold.</p>
+    @if (!string.IsNullOrWhiteSpace(Model.NestName)) { <p role="status">Creating a material hold from nest <strong>@Model.NestName</strong>.</p> }
     @if (!string.IsNullOrWhiteSpace(Model.PepNestName)) { <p role="status">Creating a material hold from PEP nest <strong>@Model.PepNestName</strong>.</p> }
 </header>
 
@@ -74,6 +75,8 @@
         <label>Drawing revision <input asp-for="DrawingRevision" /></label>
         <label>PEP nest year <input asp-for="PepNestYear" type="number" /></label>
         <label>PEP nest name <input asp-for="PepNestName" /></label>
+        <input type="hidden" asp-for="OpenNestNestId" />
+        <input type="hidden" asp-for="NestName" />
         <label>Program record ID <input asp-for="LaserProgramRecordId" /></label>
     </details>
 

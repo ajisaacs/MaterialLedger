@@ -113,6 +113,68 @@ public sealed class ReservationHoldPresentationTests
     }
 
     [Fact]
+    public void Hold_form_carries_the_opennest_nest_reference_in_hidden_fields()
+    {
+        var page = ReadPage("Reservations", "Create.cshtml");
+        var model = ReadPage("Reservations", "Create.cshtml.cs");
+
+        Assert.Contains("<input type=\"hidden\" asp-for=\"OpenNestNestId\" />", page);
+        Assert.Contains("<input type=\"hidden\" asp-for=\"NestName\" />", page);
+        Assert.Contains("[BindProperty] public Guid? OpenNestNestId", model);
+        Assert.Contains("[BindProperty] public string? NestName", model);
+        Assert.Contains("OpenNestNestId: OpenNestNestId, NestName: NestName", model);
+    }
+
+    [Fact]
+    public async Task Hold_get_accepts_the_opennest_nest_reference_from_the_query()
+    {
+        await using var db = CreateDb();
+        var item = await AddAvailableSheetAsync(db);
+        var model = NewCreateModel(db);
+        var nestId = Guid.NewGuid();
+
+        var result = await model.OnGetAsync(item.InventoryItemId, openNestNestId: nestId, nestName: "ON-NEST-7");
+
+        Assert.IsType<PageResult>(result);
+        Assert.Equal(nestId, model.OpenNestNestId);
+        Assert.Equal("ON-NEST-7", model.NestName);
+        Assert.Null(model.PepNestYear);
+        Assert.Null(model.PepNestName);
+    }
+
+    [Fact]
+    public async Task Hold_get_still_accepts_the_pep_nest_reference_from_the_query()
+    {
+        await using var db = CreateDb();
+        var item = await AddAvailableSheetAsync(db);
+        var model = NewCreateModel(db);
+
+        var result = await model.OnGetAsync(item.InventoryItemId, pepNestYear: 2026, pepNestName: "NEST-31");
+
+        Assert.IsType<PageResult>(result);
+        Assert.Equal(2026, model.PepNestYear);
+        Assert.Equal("NEST-31", model.PepNestName);
+        Assert.Null(model.OpenNestNestId);
+        Assert.Null(model.NestName);
+    }
+
+    private static async Task<InventoryItem> AddAvailableSheetAsync(MaterialLedgerDbContext db)
+    {
+        var user = new AppUser { AppUserId = 1, Username = "holder", DisplayName = "Holder", PasswordHash = "hash" };
+        var spec = new MaterialSpec { MaterialSpecId = 1, MaterialFamily = "Steel", DisplayName = "Steel", ThicknessIn = .25m, IsActive = true };
+        var location = new InventoryLocation { InventoryLocationId = 1, LocationCode = "S-1", DisplayName = "Shelf 1", LocationType = InventoryLocationType.Shelf, StorageMode = InventoryStorageMode.RolloutShelf, IsActive = true };
+        var item = new InventoryItem
+        {
+            InventoryItemId = 1, PublicItemCode = "SHEET-1", MaterialSpec = spec, InventoryLocation = location,
+            ItemKind = InventoryItemKind.FullSheet, Status = InventoryItemStatus.Available, QuantityOnHand = 1,
+            ShapeClassification = ShapeClassification.Rectangular, LastObservedAtUtc = DateTime.UtcNow, LastObservedByUser = user
+        };
+        db.Add(item);
+        await db.SaveChangesAsync();
+        return item;
+    }
+
+    [Fact]
     public async Task Hold_get_missing_item_redirects_safely_to_inventory_search()
     {
         await using var db = CreateDb();

@@ -21,13 +21,16 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
     [BindProperty] public ReservationEquipment? Equipment { get; set; }
     [BindProperty] public int? PepNestYear { get; set; }
     [BindProperty] public string? PepNestName { get; set; }
+    [BindProperty] public Guid? OpenNestNestId { get; set; }
+    [BindProperty] public string? NestName { get; set; }
     [BindProperty] public string? LaserProgramRecordId { get; set; }
     [BindProperty] public List<string?> ExpectedDropSizes { get; set; } = [string.Empty];
 
     public InventoryItemSummary? Item { get; set; }
     public string? Error { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(long inventoryItemId, int? pepNestYear = null, string? pepNestName = null, int? pepMaterialNumber = null)
+    public async Task<IActionResult> OnGetAsync(long inventoryItemId, int? pepNestYear = null, string? pepNestName = null, int? pepMaterialNumber = null,
+        Guid? openNestNestId = null, string? nestName = null)
     {
         Item = await inventoryQuery.GetItemSummaryAsync(inventoryItemId);
         if (Item is null)
@@ -38,6 +41,8 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
         InventoryItemId = inventoryItemId;
         PepNestYear = pepNestYear;
         PepNestName = pepNestName;
+        OpenNestNestId = openNestNestId;
+        NestName = nestName;
         CorrelationId = Guid.NewGuid();
         return Page();
     }
@@ -68,7 +73,8 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
                 InventoryItemId, ShopOpsJobId, DrawingId, DrawingRevision, Equipment,
                 PepNestYear, PepNestName, LaserProgramRecordId,
                 null, null, null,
-                expectedRemnants.Count > 0 ? expectedRemnants : null);
+                expectedRemnants.Count > 0 ? expectedRemnants : null,
+                OpenNestNestId: OpenNestNestId, NestName: NestName);
 
             var result = await reservations.CreateReservationAsync(CorrelationId, request, userId);
             return RedirectToPage("Details", new { id = result.Result.MaterialReservationId });

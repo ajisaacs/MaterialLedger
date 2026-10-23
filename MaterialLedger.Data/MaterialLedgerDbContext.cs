@@ -205,7 +205,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.DrawingId).HasMaxLength(100);
             e.Property(x => x.DrawingRevision).HasMaxLength(50);
             e.Property(x => x.PepNestName).HasMaxLength(200);
-            e.Property(x => x.NestName).HasMaxLength(200);
+            e.Property(x => x.NestName).HasMaxLength(MaterialReservation.NestNameMaxLength);
             e.HasIndex(x => x.OpenNestNestId);
             e.Property(x => x.Equipment).HasConversion<string?>().HasMaxLength(20);
             e.Property(x => x.LaserProgramRecordId).HasMaxLength(100);

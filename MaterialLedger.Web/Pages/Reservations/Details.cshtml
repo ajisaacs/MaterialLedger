@@ -7,6 +7,7 @@
     Layout = "Shared/_Layout";
     var workflow = ReservationWorkflowDisplay.For(Model.Reservation!.Status);
     var workReference = ReservationWorkReference.Describe(Model.Reservation);
+    var nestPath = ReservationWorkReference.NestPath(Model.Reservation);
     var nextAction = Model.Reservation.Status switch
     {
         ReservationStatus.Proposed => "Review and approve the hold before material is released for cutting.",
@@ -83,6 +84,17 @@
         <dt>ShopOps job ID</dt><dd>@(Model.Reservation.ShopOpsJobId ?? "Not recorded")</dd>
         <dt>Drawing ID</dt><dd>@(Model.Reservation.DrawingId ?? "Not recorded")</dd>
         <dt>Drawing revision</dt><dd>@(Model.Reservation.DrawingRevision ?? "Not recorded")</dd>
+        <dt>Nest</dt>
+        <dd>
+            @if (nestPath is not null)
+            {
+                <a href="@Url.Content(nestPath)">@Model.Reservation.NestName</a>
+            }
+            else
+            {
+                @(Model.Reservation.NestName ?? "Not recorded")
+            }
+        </dd>
         <dt>PEP nest</dt>
         <dd>
             @if (Model.Reservation.PepNestYear is not null && !string.IsNullOrWhiteSpace(Model.Reservation.PepNestName))

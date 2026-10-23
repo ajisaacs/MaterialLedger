@@ -211,6 +211,43 @@ public class ReadEndpointTests : IClassFixture<ReadEndpointTests.ApiFactory>
     }
 
     [Fact]
+    public async Task Reservation_route_returns_the_opennest_and_pep_nest_references()
+    {
+        var nestId = Guid.NewGuid();
+        long openNestHoldId = 0, pepHoldId = 0;
+        await SeedAsync(async (MaterialLedgerDbContext db) =>
+        {
+            var user = new AppUser { Username = $"holder-{Guid.NewGuid():N}", DisplayName = "Holder", PasswordHash = "hash" };
+            var spec = new MaterialSpec { MaterialFamily = "Steel", DisplayName = "Steel", ThicknessIn = .25m, IsActive = true };
+            var location = new InventoryLocation { LocationCode = $"R-{Guid.NewGuid():N}"[..20], DisplayName = "Rack", LocationType = InventoryLocationType.Shelf, StorageMode = InventoryStorageMode.RolloutShelf, IsActive = true };
+            var item = new InventoryItem
+            {
+                PublicItemCode = $"RES-{Guid.NewGuid():N}"[..20], MaterialSpec = spec, InventoryLocation = location,
+                ItemKind = InventoryItemKind.FullSheetBundle, Status = InventoryItemStatus.Available, QuantityOnHand = 2,
+                ShapeClassification = ShapeClassification.Rectangular, LastObservedAtUtc = DateTime.UtcNow, LastObservedByUser = user
+            };
+            var openNestHold = new MaterialReservation { InventoryItem = item, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUser = user, OpenNestNestId = nestId, NestName = "ON-NEST-7" };
+            var pepHold = new MaterialReservation { InventoryItem = item, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUser = user, PepNestYear = 2026, PepNestName = "NEST-31" };
+            db.AddRange(item, openNestHold, pepHold);
+            await db.SaveChangesAsync();
+            openNestHoldId = openNestHold.MaterialReservationId;
+            pepHoldId = pepHold.MaterialReservationId;
+        });
+        using var client = CreateAuthenticatedClient();
+
+        var openNest = await client.GetFromJsonAsync<JsonElement>($"/api/v1/reservations/{openNestHoldId}");
+        var pep = await client.GetFromJsonAsync<JsonElement>($"/api/v1/reservations/{pepHoldId}");
+
+        Assert.Equal(nestId, openNest.GetProperty("openNestNestId").GetGuid());
+        Assert.Equal("ON-NEST-7", openNest.GetProperty("nestName").GetString());
+        Assert.Equal(JsonValueKind.Null, openNest.GetProperty("pepNestYear").ValueKind);
+        Assert.Equal(2026, pep.GetProperty("pepNestYear").GetInt32());
+        Assert.Equal("NEST-31", pep.GetProperty("pepNestName").GetString());
+        Assert.Equal(JsonValueKind.Null, pep.GetProperty("openNestNestId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, pep.GetProperty("nestName").ValueKind);
+    }
+
+    [Fact]
     public async Task Locations_route_returns_active_projection_in_sort_order_without_navigation_graphs()
     {
         var suffix = Guid.NewGuid().ToString("N");
