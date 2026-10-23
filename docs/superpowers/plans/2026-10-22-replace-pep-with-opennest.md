@@ -94,25 +94,22 @@ public sealed record OpenNestQuery(string? Status, string? Search, int Offset = 
 - [ ] Write failing tests with a stub `HttpMessageHandler`: query string shape, 404 → null, enum-as-string status, double→decimal rounding
 - [ ] Implement
 
-## Task 3: Data model — reservations and mappings
+## Task 3: Data model — reservations and mappings (additive)
+
+Like Task 2, this is additive. The PEP columns, the PEP mapping rows and `PepMaterialMappingService` all stay so the PEP pages keep working. Task 6 drops them.
 
 **Files:**
-- Modify: `MaterialLedger.Data/Models/MaterialReservation.cs` — replace `PepNestYear`/`PepNestName` with `Guid? OpenNestNestId` and `string? NestName` (display snapshot taken when the hold is created, so lists never need an HTTP call).
-- Modify: `MaterialLedger.Data/MaterialLedgerDbContext.cs:96` — check constraint becomes `[ExternalSystem] IN (N'OpenNest')`; `:207` — `NestName` max 200; add index on `OpenNestNestId`.
-- Modify: `MaterialLedger.Data/Models/MaterialSpecExternalMapping.cs:10` — doc comment / default value.
-- Create: migration `ReplacePepWithOpenNest`.
+- Modify: `MaterialLedger.Data/Models/MaterialReservation.cs` — add `Guid? OpenNestNestId` and `string? NestName` next to `PepNestYear`/`PepNestName`. `NestName` is a display snapshot taken when the hold is created, so hold lists never need an HTTP call.
+- Modify: `MaterialLedger.Data/MaterialLedgerDbContext.cs:96` — the check constraint becomes `[ExternalSystem] IN (N'PEP', N'OpenNest')`. At `:207`, `NestName` gets a max length of 200. Add an index on `OpenNestNestId`.
+- Modify: `MaterialLedger.Data/Models/MaterialSpecExternalMapping.cs:10` — update the doc comment to list both systems.
+- Create: migration `AddOpenNestReferences` — adds the two nullable columns and the index, and swaps the check constraint. No data changes.
+- Create: `MaterialLedger.Data/Materials/OpenNestMaterialMappingService.cs` beside the PEP service (don't rename it). It takes `MapOpenNestMaterialRequest(string Material, string Grade, decimal ThicknessIn, long MaterialSpecId)`, logs operations as `MapOpenNestMaterial`, and stores mappings with `ExternalSystem = "OpenNest"`. Copy the transaction and operation-log pattern from `PepMaterialMappingService`. Add a static `OpenNestMaterialKey.For(material, grade, thicknessIn)` that Task 5's Details page will also use to look mappings up.
 
-Migration steps, in order:
-1. Add `OpenNestNestId uniqueidentifier NULL`.
-2. Rename `PepNestName` → `NestName`; `UPDATE ... SET NestName = CONCAT('PEP ', PepNestYear, ': ', NestName) WHERE PepNestYear IS NOT NULL` so legacy holds still read sensibly.
-3. Drop `PepNestYear`.
-4. `DELETE FROM MaterialSpecExternalMappings WHERE ExternalSystem = N'PEP'` (PEP material numbers mean nothing to OpenNest), then swap the check constraint.
+Mapping key: `ExternalKey = "{material}|{grade}|{thickness:0.####}"`. Trim each part, collapse whitespace and lower-case it, the same normalization as OpenNest's `SharedListNames.Key`. A blank grade stays an empty segment. There's one approved mapping per key, just as there's one per PEP material number today. Reject a blank material or a thickness ≤ 0.
 
-Mapping key: `ExternalKey = "{material}|{grade}|{thickness:0.####}"`, each part trimmed, whitespace collapsed and lower-cased (the same normalization as OpenNest's `SharedListNames.Key`). One approved mapping per key, exactly as one per PEP material number today.
-
-- [ ] Update `SchemaShapeTests` first (expected columns/constraint), see it fail
-- [ ] Make the model changes, `dotnet ef migrations add ReplacePepWithOpenNest`, then `dotnet ef database update`
-- [ ] Rename `PepMaterialMappingService` → `OpenNestMaterialMappingService` with `MapOpenNestMaterialRequest(string Material, string Grade, decimal ThicknessIn, long MaterialSpecId)`; operation-log name `MapOpenNestMaterial`. Port `PepMaterialMappingServiceTests`.
+- [ ] Update `SchemaShapeTests` first (new columns, index, constraint) and see it fail
+- [ ] Make the model changes, run `dotnet ef migrations add AddOpenNestReferences`, then `dotnet ef database update`
+- [ ] Write `OpenNestMaterialMappingServiceTests` covering create, remap, replay, key normalization and rejects, modeled on `PepMaterialMappingServiceTests`, then implement the service
 
 ## Task 4: Reservation plumbing
 
@@ -145,6 +142,7 @@ Every place that reads or writes the PEP pair moves to `OpenNestNestId` + `NestN
 
 ## Task 6: Cleanup
 
+- [ ] Migration `RemovePepReferences`: copy legacy holds' text with `UPDATE MaterialReservations SET NestName = CONCAT('PEP ', PepNestYear, ': ', PepNestName) WHERE PepNestName IS NOT NULL AND NestName IS NULL`, drop `PepNestYear` and `PepNestName`, run `DELETE FROM MaterialSpecExternalMappings WHERE ExternalSystem = N'PEP'`, and narrow the check constraint to `IN (N'OpenNest')`. Then delete `PepMaterialMappingService` and its tests.
 - [ ] `wwwroot/css/pep-nests.css` → `nests.css`, `.pep-nest-*`/`.pep-*-dialog` → `.nest-*`; update `app.css:13` and `responsive.css:243-496`
 - [ ] `README.md:25` config table: `OpenNest:BaseUrl`
 - [ ] `grep -ri pep` over `MaterialLedger.*` and `README.md` returns only migration history
