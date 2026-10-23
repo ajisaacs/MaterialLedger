@@ -25,6 +25,7 @@ builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationSlotService>();
 builder.Services.AddScoped<MaterialLedger.Data.Locations.LocationService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.MaterialSpecService>();
 builder.Services.AddScoped<MaterialLedger.Data.Materials.PepMaterialMappingService>();
+builder.Services.AddScoped<MaterialLedger.Data.Materials.OpenNestMaterialMappingService>();
 builder.Services.AddScoped<MaterialLedger.Data.Vendors.VendorService>();
 builder.Services.AddScoped<MaterialLedger.Data.Vendors.VendorQueryService>();
 builder.Services.AddScoped<MaterialLedger.Data.Census.OpeningBalanceService>();

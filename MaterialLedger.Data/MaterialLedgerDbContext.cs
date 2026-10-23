@@ -93,7 +93,7 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
         {
             e.HasKey(x => x.MaterialSpecExternalMappingId);
             e.Property(x => x.ExternalSystem).HasMaxLength(40).IsRequired();
-            e.ToTable(t => t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP')"));
+            e.ToTable(t => t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP', N'OpenNest')"));
             e.Property(x => x.ExternalKey).HasMaxLength(256).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             e.HasIndex(x => new { x.ExternalSystem, x.ExternalKey }).IsUnique();
@@ -205,6 +205,8 @@ public class MaterialLedgerDbContext(DbContextOptions<MaterialLedgerDbContext> o
             e.Property(x => x.DrawingId).HasMaxLength(100);
             e.Property(x => x.DrawingRevision).HasMaxLength(50);
             e.Property(x => x.PepNestName).HasMaxLength(200);
+            e.Property(x => x.NestName).HasMaxLength(200);
+            e.HasIndex(x => x.OpenNestNestId);
             e.Property(x => x.Equipment).HasConversion<string?>().HasMaxLength(20);
             e.Property(x => x.LaserProgramRecordId).HasMaxLength(100);
             e.Property(x => x.ReservedAreaSqIn).HasColumnType("decimal(14,3)");

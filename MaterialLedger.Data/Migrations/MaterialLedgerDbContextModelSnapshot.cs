@@ -399,6 +399,13 @@ namespace MaterialLedger.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("NestName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("OpenNestNestId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("PepNestName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -437,6 +444,8 @@ namespace MaterialLedger.Data.Migrations
                     b.HasIndex("CreatedBy");
 
                     b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("OpenNestNestId");
 
                     b.ToTable("MaterialReservations", "material", t =>
                         {
@@ -538,7 +547,7 @@ namespace MaterialLedger.Data.Migrations
 
                     b.ToTable("MaterialSpecExternalMappings", "material", t =>
                         {
-                            t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP')");
+                            t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP', N'OpenNest')");
                         });
                 });
 
