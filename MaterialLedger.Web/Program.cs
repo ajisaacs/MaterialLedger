@@ -53,6 +53,11 @@ builder.Services.AddHttpClient<PepNestQueryService>(client =>
     client.BaseAddress = new Uri(builder.Configuration["PepApi:BaseUrl"] ?? "http://hermes.lan:8085/");
     client.Timeout = TimeSpan.FromSeconds(15);
 });
+builder.Services.AddHttpClient<OpenNestClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["OpenNest:BaseUrl"] ?? "http://barge.lan:8091/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 builder.Services.AddScoped(sp => new MaterialLedger.Data.Reservations.ReservationService(
     sp.GetRequiredService<MaterialLedger.Data.MaterialLedgerDbContext>(),
     sp.GetRequiredService<MaterialLedger.Data.Idempotency.OperationLogGuard>(),
