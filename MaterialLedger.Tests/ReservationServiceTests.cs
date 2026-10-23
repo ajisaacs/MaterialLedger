@@ -55,10 +55,10 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
     };
 
     private static CreateReservationRequest RequestFor(long itemId) =>
-        new(itemId, "JOB-1", "DWG-1", "A", ReservationEquipment.Laser, 2026, "NEST-1", null, null, null, null);
+        new(itemId, "JOB-1", "DWG-1", "A", ReservationEquipment.Laser, null, null, null, null);
 
     private static CreateReservationRequest OpenNestRequestFor(long itemId, Guid nestId, string nestName) =>
-        new(itemId, null, null, null, ReservationEquipment.Laser, null, null, null, null, null, null,
+        new(itemId, null, null, null, ReservationEquipment.Laser, null, null, null, null,
             OpenNestNestId: nestId, NestName: nestName);
 
     [Fact]
@@ -219,7 +219,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
     }
 
     [Fact]
-    public async Task CreateReservationAsync_OpenNestNest_PersistsNestIdAndNameWithoutPepFields()
+    public async Task CreateReservationAsync_OpenNestNest_PersistsNestIdAndName()
     {
         await using var db = _fixture.CreateContext();
         var (userId, slotId, specId) = await SeedAsync(db);
@@ -235,8 +235,6 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == result.Result.MaterialReservationId);
         Assert.Equal(nestId, reservation.OpenNestNestId);
         Assert.Equal("NEST-ON-1", reservation.NestName);
-        Assert.Null(reservation.PepNestYear);
-        Assert.Null(reservation.PepNestName);
     }
 
     [Fact]
@@ -262,29 +260,7 @@ public class ReservationServiceTests : IClassFixture<SqlServerTestDatabaseFixtur
         {
             Assert.Equal(nestId, reservation.OpenNestNestId);
             Assert.Equal("NEST-ON-2", reservation.NestName);
-            Assert.Null(reservation.PepNestYear);
-            Assert.Null(reservation.PepNestName);
         });
-    }
-
-    [Fact]
-    public async Task CreateReservationAsync_PepNest_StillPersistsPepFieldsWithoutOpenNestFields()
-    {
-        await using var db = _fixture.CreateContext();
-        var (userId, slotId, specId) = await SeedAsync(db);
-        var item = NewDrop(slotId, specId, userId);
-        db.InventoryItems.Add(item);
-        await db.SaveChangesAsync();
-        var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
-
-        var result = await service.CreateReservationAsync(Guid.NewGuid(), RequestFor(item.InventoryItemId), userId);
-
-        db.ChangeTracker.Clear();
-        var reservation = await db.MaterialReservations.SingleAsync(x => x.MaterialReservationId == result.Result.MaterialReservationId);
-        Assert.Equal(2026, reservation.PepNestYear);
-        Assert.Equal("NEST-1", reservation.PepNestName);
-        Assert.Null(reservation.OpenNestNestId);
-        Assert.Null(reservation.NestName);
     }
 
     [Fact]
@@ -527,18 +503,15 @@ public class ReservationNestReferenceValidationTests
     private const string TooLongName = "<201 characters>";
 
     [Theory]
-    [InlineData(true, null, null, null, "nest name is required")]
-    [InlineData(true, "   ", null, null, "nest name is required")]
-    [InlineData(true, TooLongName, null, null, "200 characters")]
-    [InlineData(true, "NEST-ON-1", 2026, "NEST-1", "not both")]
-    [InlineData(true, "NEST-ON-1", null, "NEST-1", "not both")]
-    [InlineData(false, "NEST-ON-1", 2026, "NEST-1", "not both")]
+    [InlineData(true, null, "nest name is required")]
+    [InlineData(true, "   ", "nest name is required")]
+    [InlineData(true, TooLongName, "200 characters")]
     public async Task CreateReservationAsync_InvalidNestReference_ThrowsBeforeAnyWrite(
-        bool hasNestId, string? nestName, int? pepNestYear, string? pepNestName, string expectedMessage)
+        bool hasNestId, string? nestName, string expectedMessage)
     {
         await using var db = CreateDb();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
-        var request = Request(hasNestId, nestName, pepNestYear, pepNestName);
+        var request = Request(hasNestId, nestName);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateReservationAsync(Guid.NewGuid(), request, 1));
 
@@ -547,15 +520,14 @@ public class ReservationNestReferenceValidationTests
     }
 
     [Theory]
-    [InlineData(true, null, null, null, "nest name is required")]
-    [InlineData(true, TooLongName, null, null, "200 characters")]
-    [InlineData(true, "NEST-ON-1", 2026, "NEST-1", "not both")]
+    [InlineData(true, null, "nest name is required")]
+    [InlineData(true, TooLongName, "200 characters")]
     public async Task CreateReservationBatchAsync_InvalidNestReference_ThrowsBeforeAnyWrite(
-        bool hasNestId, string? nestName, int? pepNestYear, string? pepNestName, string expectedMessage)
+        bool hasNestId, string? nestName, string expectedMessage)
     {
         await using var db = CreateDb();
         var service = new ReservationService(db, new OperationLogGuard(db), freshnessThresholdDays: 90);
-        var request = Request(hasNestId, nestName, pepNestYear, pepNestName);
+        var request = Request(hasNestId, nestName);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateReservationBatchAsync(Guid.NewGuid(), [request], 1));
 
@@ -563,8 +535,8 @@ public class ReservationNestReferenceValidationTests
         Assert.Equal(0, await db.MaterialReservations.CountAsync());
     }
 
-    private static CreateReservationRequest Request(bool hasNestId, string? nestName, int? pepNestYear, string? pepNestName) =>
-        new(1, null, null, null, ReservationEquipment.Laser, pepNestYear, pepNestName, null, null, null, null,
+    private static CreateReservationRequest Request(bool hasNestId, string? nestName) =>
+        new(1, null, null, null, ReservationEquipment.Laser, null, null, null, null,
             OpenNestNestId: hasNestId ? Guid.NewGuid() : null,
             NestName: nestName == TooLongName ? new string('N', 201) : nestName);
 

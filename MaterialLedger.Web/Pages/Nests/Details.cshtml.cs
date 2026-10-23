@@ -162,7 +162,7 @@ public class DetailsModel(
 
     /// <summary>One hold per sheet, each pointing at the OpenNest nest by id with its name as a display snapshot.</summary>
     public static IReadOnlyList<CreateReservationRequest> BuildHoldRequests(Guid nestId, string? nestName, IReadOnlyList<long> itemIds) =>
-        itemIds.Select(itemId => new CreateReservationRequest(itemId, null, null, null, null, null, null, null, null, null, null,
+        itemIds.Select(itemId => new CreateReservationRequest(itemId, null, null, null, null, null, null, null, null,
             OpenNestNestId: nestId, NestName: nestName)).ToList();
 
     private async Task LoadAsync(Guid id)

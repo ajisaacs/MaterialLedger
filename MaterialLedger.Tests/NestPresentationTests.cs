@@ -102,15 +102,15 @@ public sealed class NestPresentationTests
 
         Assert.StartsWith("@page \"{id:guid}\"", page);
         Assert.Contains("OpenNest material", page);
-        Assert.Contains("pep-nest-mapping-summary", page);
-        Assert.Contains("pep-material-mapping-dialog", page);
+        Assert.Contains("nest-mapping-summary", page);
+        Assert.Contains("nest-material-mapping-dialog", page);
         Assert.Contains("Map catalog material", page);
         Assert.Contains("Change mapping", page);
         Assert.Contains("showModal()", page);
         Assert.Contains("Catalog material", page);
         Assert.Contains("Thickness", page);
-        Assert.Contains("pep-material-group", page);
-        Assert.Contains("pep-material-thickness", page);
+        Assert.Contains("nest-material-group", page);
+        Assert.Contains("nest-material-thickness", page);
         Assert.Contains("data-material-group", page);
         Assert.Contains("updateThicknesses", page);
         Assert.Contains("Program sheet size", page);
@@ -118,8 +118,8 @@ public sealed class NestPresentationTests
         Assert.Contains("asp-page-handler=\"ReserveProgramSheets\"", page);
         Assert.Contains("Reserve all program sheets", page);
         Assert.Contains("creates all required holds together or creates none", page);
-        Assert.Contains("pep-nest-requirements-action", page);
-        Assert.True(page.IndexOf("asp-page-handler=\"ReserveProgramSheets\"", StringComparison.Ordinal) < page.IndexOf("pep-nest-stock-panel", StringComparison.Ordinal));
+        Assert.Contains("nest-requirements-action", page);
+        Assert.True(page.IndexOf("asp-page-handler=\"ReserveProgramSheets\"", StringComparison.Ordinal) < page.IndexOf("nest-stock-panel", StringComparison.Ordinal));
         Assert.Contains("CreateReservationBatchAsync", model);
         Assert.Contains("No holds were created", model);
         Assert.Contains("BuildReservationPlan", model);
@@ -128,7 +128,7 @@ public sealed class NestPresentationTests
         Assert.Contains("ProgramSheetShortfall", model);
         Assert.Contains("Found while preparing nest {Nest.Name}", model);
         Assert.Contains("OpenNestNestId == id", model);
-        Assert.Contains("pep-found-sheet-dialog", page);
+        Assert.Contains("nest-found-sheet-dialog", page);
         Assert.Contains("Record found sheet and retry reservation", page);
         Assert.Contains("Continue inventory search", page);
         Assert.Contains("FoundSheetLocationId", page);
@@ -137,7 +137,7 @@ public sealed class NestPresentationTests
         Assert.Contains("ProgramReservations", page);
         Assert.Contains("asp-page=\"/Reservations/Details\"", page);
         Assert.Contains("Material holds are already placed for this program", page);
-        Assert.True(page.IndexOf("pep-nest-mapping-summary", StringComparison.Ordinal) < page.IndexOf("pep-nest-requirements-card", StringComparison.Ordinal));
+        Assert.True(page.IndexOf("nest-mapping-summary", StringComparison.Ordinal) < page.IndexOf("nest-requirements-card", StringComparison.Ordinal));
         Assert.DoesNotContain("PEP", page);
     }
 
@@ -145,19 +145,19 @@ public sealed class NestPresentationTests
     public void Nest_details_uses_a_dedicated_nest_workspace_layout()
     {
         var page = ReadPage("Nests", "Details.cshtml");
-        var css = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "pep-nests.css"));
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "nests.css"));
         var appCss = File.ReadAllText(Path.Combine(RepositoryRoot, "MaterialLedger.Web", "wwwroot", "css", "app.css"));
 
-        Assert.Contains("pep-nest-workspace", page);
-        Assert.Contains("pep-nest-overview", page);
-        Assert.Contains("pep-nest-parts-panel", page);
-        Assert.Contains("pep-nest-material-card", page);
-        Assert.Contains(".pep-nest-mapping-summary", css);
-        Assert.Contains(".pep-material-mapping-dialog", css);
+        Assert.Contains("nest-workspace", page);
+        Assert.Contains("nest-overview", page);
+        Assert.Contains("nest-parts-panel", page);
+        Assert.Contains("nest-material-card", page);
+        Assert.Contains(".nest-mapping-summary", css);
+        Assert.Contains(".nest-material-mapping-dialog", css);
         Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", css);
-        Assert.Contains(".pep-nest-workspace", css);
-        Assert.Contains(".pep-nest-overview", css);
-        Assert.Contains("@import url(\"pep-nests.css\");", appCss);
+        Assert.Contains(".nest-workspace", css);
+        Assert.Contains(".nest-overview", css);
+        Assert.Contains("@import url(\"nests.css\");", appCss);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public sealed class NestPresentationTests
     }
 
     [Fact]
-    public void Nest_holds_carry_the_OpenNest_nest_id_and_name_without_PEP_fields()
+    public void Nest_holds_carry_the_OpenNest_nest_id_and_name()
     {
         var requests = DetailsModel.BuildHoldRequests(NestId, "N-1001", [5, 5, 9]);
 
@@ -304,8 +304,6 @@ public sealed class NestPresentationTests
         {
             Assert.Equal(NestId, request.OpenNestNestId);
             Assert.Equal("N-1001", request.NestName);
-            Assert.Null(request.PepNestYear);
-            Assert.Null(request.PepNestName);
         });
     }
 
@@ -317,8 +315,6 @@ public sealed class NestPresentationTests
 
         Assert.Contains("<a asp-page=\"/Nests/Index\">Nests</a>", layout);
         Assert.Contains("asp-page=\"/Nests/Index\">Nests</a>", home);
-        Assert.DoesNotContain("PepNests", layout);
-        Assert.DoesNotContain("PepNests", home);
     }
 
     private static async Task SeedMappingAsync(MaterialLedgerDbContext db)
@@ -328,7 +324,7 @@ public sealed class NestPresentationTests
         db.MaterialSpecs.AddRange(steel, decoy);
         var key = OpenNestMaterialKey.For("Steel", "A36", .25m);
         db.MaterialSpecExternalMappings.AddRange(
-            new MaterialSpecExternalMapping { MaterialSpecExternalMappingId = 1, MaterialSpec = decoy, ExternalSystem = "PEP", ExternalKey = key, Status = ExternalMappingStatus.Approved },
+            new MaterialSpecExternalMapping { MaterialSpecExternalMappingId = 1, MaterialSpec = decoy, ExternalSystem = "Other", ExternalKey = key, Status = ExternalMappingStatus.Approved },
             new MaterialSpecExternalMapping { MaterialSpecExternalMappingId = 2, MaterialSpec = steel, ExternalSystem = "OpenNest", ExternalKey = key, Status = ExternalMappingStatus.Approved });
         await db.SaveChangesAsync();
     }

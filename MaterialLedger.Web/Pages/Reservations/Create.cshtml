@@ -9,7 +9,6 @@
     <h1>Hold material for work</h1>
     <p>Record the work context that is known now. Additional identifiers stay available without blocking the hold.</p>
     @if (!string.IsNullOrWhiteSpace(Model.NestName)) { <p role="status">Creating a material hold from nest <strong>@Model.NestName</strong>.</p> }
-    @if (!string.IsNullOrWhiteSpace(Model.PepNestName)) { <p role="status">Creating a material hold from PEP nest <strong>@Model.PepNestName</strong>.</p> }
 </header>
 
 <section aria-label="Selected material">
@@ -73,8 +72,6 @@
         <p>Optional technical identifiers are retained for audit and can be recorded when available.</p>
         <label>ShopOps job ID <input asp-for="ShopOpsJobId" /></label>
         <label>Drawing revision <input asp-for="DrawingRevision" /></label>
-        <label>PEP nest year <input asp-for="PepNestYear" type="number" /></label>
-        <label>PEP nest name <input asp-for="PepNestName" /></label>
         <input type="hidden" asp-for="OpenNestNestId" />
         <input type="hidden" asp-for="NestName" />
         <label>Program record ID <input asp-for="LaserProgramRecordId" /></label>

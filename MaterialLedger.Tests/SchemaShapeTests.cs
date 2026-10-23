@@ -171,7 +171,7 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
     }
 
     [Fact]
-    public async Task OpenNestReferences_AreAddedBesidePepColumns()
+    public async Task NestReferences_AreOpenNestOnly()
     {
         await using var db = _fixture.CreateContext();
         await using var connection = (SqlConnection)db.Database.GetDbConnection();
@@ -185,9 +185,13 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
             JOIN sys.types ty ON ty.user_type_id = c.user_type_id
             WHERE s.name = 'material' AND t.name = 'MaterialReservations' AND c.is_nullable = 1 AND
                 ((c.name = 'OpenNestNestId' AND ty.name = 'uniqueidentifier') OR
-                 (c.name = 'NestName' AND ty.name = 'nvarchar' AND c.max_length = 400) OR
-                 (c.name = 'PepNestYear') OR
-                 (c.name = 'PepNestName'));
+                 (c.name = 'NestName' AND ty.name = 'nvarchar' AND c.max_length = 400));
+
+            SELECT COUNT(*)
+            FROM sys.columns c
+            JOIN sys.tables t ON t.object_id = c.object_id
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = 'material' AND t.name = 'MaterialReservations' AND c.name LIKE 'Pep%';
 
             SELECT COUNT(*)
             FROM sys.indexes i
@@ -204,15 +208,33 @@ public class SchemaShapeTests : IClassFixture<SqlServerTestDatabaseFixture>
 
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
-        Assert.Equal(4, reader.GetInt32(0));
+        Assert.Equal(2, reader.GetInt32(0));
+        Assert.True(await reader.NextResultAsync());
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(0, reader.GetInt32(0));
         Assert.True(await reader.NextResultAsync());
         Assert.True(await reader.ReadAsync());
         Assert.Equal(1, reader.GetInt32(0));
         Assert.True(await reader.NextResultAsync());
         Assert.True(await reader.ReadAsync());
         var definition = reader.GetString(0);
-        Assert.Contains("N'PEP'", definition);
         Assert.Contains("N'OpenNest'", definition);
+        Assert.DoesNotContain("N'PEP'", definition);
+    }
+
+    [Fact]
+    public async Task ExternalMappingConstraint_RejectsRetiredSystems()
+    {
+        await using var db = _fixture.CreateContext();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var spec = new MaterialSpec { MaterialFamily = "Steel", DisplayName = $"Steel {Guid.NewGuid():N}", ThicknessIn = .25m, IsActive = true };
+        db.MaterialSpecs.Add(spec);
+        await db.SaveChangesAsync();
+        db.MaterialSpecExternalMappings.Add(new MaterialSpecExternalMapping { MaterialSpecId = spec.MaterialSpecId, ExternalSystem = "PEP", ExternalKey = "1001", Status = ExternalMappingStatus.Approved });
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        Assert.Contains("CK_MaterialSpecExternalMapping_ExternalSystem", exception.InnerException?.Message);
     }
 
     [Fact]

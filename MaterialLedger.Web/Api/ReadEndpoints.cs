@@ -110,8 +110,6 @@ public static class ReadEndpoints
                 x.ShopOpsJobId,
                 x.DrawingId,
                 x.DrawingRevision,
-                x.PepNestYear,
-                x.PepNestName,
                 x.OpenNestNestId,
                 x.NestName,
                 x.LaserProgramRecordId,

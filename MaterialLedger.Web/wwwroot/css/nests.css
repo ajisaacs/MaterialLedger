@@ -1,7 +1,7 @@
-.pep-nest-workspace {
+.nest-workspace {
   max-width: 1440px;
 }
-.pep-nest-backlink {
+.nest-backlink {
   color: var(--muted);
   display: inline-block;
   font-size: 0.85rem;
@@ -9,11 +9,11 @@
   margin-bottom: 1rem;
   text-decoration: none;
 }
-.pep-nest-backlink:hover {
+.nest-backlink:hover {
   color: var(--blue-dark);
   text-decoration: underline;
 }
-.pep-nest-hero {
+.nest-hero {
   align-items: end;
   background: var(--rail);
   color: #f5fbfb;
@@ -23,14 +23,14 @@
   margin-bottom: 1.25rem;
   padding: clamp(1.35rem, 3vw, 2.4rem);
 }
-.pep-nest-hero .eyebrow {
+.nest-hero .eyebrow {
   color: #9fcbd1;
 }
-.pep-nest-hero h1 {
+.nest-hero h1 {
   font-size: clamp(2rem, 4.5vw, 4rem);
   overflow-wrap: anywhere;
 }
-.pep-nest-status {
+.nest-status {
   background: #254b55;
   border: 1px solid #47717a;
   color: #d9f0f3;
@@ -42,7 +42,7 @@
   padding: 0.45rem 0.65rem;
   text-transform: uppercase;
 }
-.pep-nest-hero-meta {
+.nest-hero-meta {
   border-left: 1px solid #3a5961;
   display: grid;
   gap: 0.85rem;
@@ -50,33 +50,33 @@
   min-width: 14rem;
   padding-left: 1.5rem;
 }
-.pep-nest-hero-meta dt {
+.nest-hero-meta dt {
   color: #9fcbd1;
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.pep-nest-hero-meta dd {
+.nest-hero-meta dd {
   font-size: 0.98rem;
   font-weight: 700;
   margin: 0.2rem 0 0;
 }
-.pep-nest-overview {
+.nest-overview {
   display: grid;
   gap: 1.25rem;
   grid-template-columns: minmax(0, 1.65fr) minmax(18rem, 0.85fr);
 }
-.pep-nest-panel,
-.pep-nest-material-card,
-.pep-nest-requirements-card,
-.pep-nest-reservations-card,
-.pep-nest-stock-panel {
+.nest-panel,
+.nest-material-card,
+.nest-requirements-card,
+.nest-reservations-card,
+.nest-stock-panel {
   background: var(--surface);
   border: 1px solid var(--line);
 }
-.pep-nest-panel-heading,
-.pep-nest-card-heading {
+.nest-panel-heading,
+.nest-card-heading {
   align-items: baseline;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -84,51 +84,51 @@
   justify-content: space-between;
   padding: 1rem 1.1rem;
 }
-.pep-nest-panel-heading h2,
-.pep-nest-card-heading h2 {
+.nest-panel-heading h2,
+.nest-card-heading h2 {
   font-size: 1.25rem;
 }
-.pep-nest-panel-heading p,
-.pep-nest-card-heading p {
+.nest-panel-heading p,
+.nest-card-heading p {
   color: var(--muted);
   font-size: 0.8rem;
   margin: 0;
 }
-.pep-nest-parts-table {
+.nest-parts-table {
   margin: 0;
 }
-.pep-nest-parts-table th:first-child,
-.pep-nest-parts-table td:first-child {
+.nest-parts-table th:first-child,
+.nest-parts-table td:first-child {
   width: 42%;
 }
-.pep-nest-parts-table td:first-child {
+.nest-parts-table td:first-child {
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-.pep-nest-parts-table td:nth-last-child(-n + 2),
-.pep-nest-parts-table th:nth-last-child(-n + 2) {
+.nest-parts-table td:nth-last-child(-n + 2),
+.nest-parts-table th:nth-last-child(-n + 2) {
   text-align: right;
 }
-.pep-nest-sidebar {
+.nest-sidebar {
   display: grid;
   gap: 1.25rem;
 }
-.pep-nest-material-card .detail-grid,
-.pep-nest-requirements-card .detail-grid {
+.nest-material-card .detail-grid,
+.nest-requirements-card .detail-grid {
   border: 0;
   margin: 0;
 }
-.pep-nest-material-card .detail-grid {
+.nest-material-card .detail-grid {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
-.pep-nest-requirements-table {
+.nest-requirements-table {
   margin: 0;
 }
-.pep-nest-requirements-table td:last-child,
-.pep-nest-requirements-table th:last-child {
+.nest-requirements-table td:last-child,
+.nest-requirements-table th:last-child {
   text-align: right;
 }
-.pep-nest-mapping-summary {
+.nest-mapping-summary {
   align-items: center;
   border-top: 1px solid var(--line);
   display: grid;
@@ -136,113 +136,113 @@
   grid-template-columns: minmax(0, 1fr) auto;
   padding: 0.85rem 1.1rem;
 }
-.pep-nest-mapping-summary > span {
+.nest-mapping-summary > span {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.pep-nest-mapping-summary strong {
+.nest-mapping-summary strong {
   grid-column: 1;
   overflow-wrap: anywhere;
 }
-.pep-nest-mapping-summary .button {
+.nest-mapping-summary .button {
   grid-column: 2;
   grid-row: 1 / span 2;
   margin: 0;
 }
-.pep-nest-mapping-summary .pep-nest-mapping-unset {
+.nest-mapping-summary .nest-mapping-unset {
   color: #9a4d15;
 }
-.pep-material-mapping-dialog {
+.nest-material-mapping-dialog {
   max-width: min(34rem, calc(100vw - 2rem));
 }
-.pep-found-sheet-dialog {
+.nest-found-sheet-dialog {
   max-width: min(42rem, calc(100vw - 2rem));
 }
-.pep-material-mapping-dialog > form:not([method="dialog"]) {
+.nest-material-mapping-dialog > form:not([method="dialog"]) {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: none;
   padding: 1.1rem;
 }
-.pep-material-mapping-dialog label {
+.nest-material-mapping-dialog label {
   margin: 0;
 }
-.pep-material-mapping-dialog .button {
+.nest-material-mapping-dialog .button {
   margin: 0;
 }
-.pep-found-sheet-dialog > form:not([method="dialog"]) {
+.nest-found-sheet-dialog > form:not([method="dialog"]) {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: none;
   padding: 1.1rem;
 }
-.pep-found-sheet-dialog .pep-found-sheet-notes,
-.pep-found-sheet-dialog .button {
+.nest-found-sheet-dialog .nest-found-sheet-notes,
+.nest-found-sheet-dialog .button {
   grid-column: 1 / -1;
 }
-.pep-found-sheet-dialog .button {
+.nest-found-sheet-dialog .button {
   margin: 0;
   text-align: center;
 }
-.pep-found-sheet-shortfalls {
+.nest-found-sheet-shortfalls {
   background: #fff8e9;
   border-bottom: 1px solid #e7cb91;
   color: #66410b;
   padding: 0.85rem 1.1rem;
 }
-.pep-found-sheet-shortfalls ul {
+.nest-found-sheet-shortfalls ul {
   margin: 0.35rem 0 0;
   padding-left: 1.2rem;
 }
-.pep-nest-stock-panel {
+.nest-stock-panel {
   margin-top: 1.25rem;
 }
-.pep-nest-stock-intro {
+.nest-stock-intro {
   color: var(--muted);
   font-size: 0.88rem;
   margin: 0;
   padding: 1rem 1.1rem 0;
 }
-.pep-nest-stock-table {
+.nest-stock-table {
   margin-bottom: 0;
 }
-.pep-nest-requirements-action {
+.nest-requirements-action {
   background: #f5f8f8;
   border-top: 1px solid var(--line);
   padding: 0.75rem 1.1rem;
 }
-.pep-nest-requirements-action p {
+.nest-requirements-action p {
   color: var(--muted);
   font-size: 0.8rem;
   margin: 0 0 0.6rem;
 }
-.pep-nest-requirements-action form,
-.pep-nest-requirements-action button {
+.nest-requirements-action form,
+.nest-requirements-action button {
   margin: 0;
 }
-.pep-nest-requirements-action .button {
+.nest-requirements-action .button {
   width: 100%;
 }
-.pep-nest-reservations-intro {
+.nest-reservations-intro {
   color: var(--muted);
   font-size: 0.8rem;
   margin: 0;
   padding: 0.85rem 1.1rem 0;
 }
-.pep-nest-reservations-list {
+.nest-reservations-list {
   list-style: none;
   margin: 0;
   padding: 0.65rem 1.1rem 0.85rem;
 }
-.pep-nest-reservations-list li + li {
+.nest-reservations-list li + li {
   border-top: 1px solid var(--line);
 }
-.pep-nest-reservations-list a {
+.nest-reservations-list a {
   align-items: baseline;
   color: inherit;
   display: flex;
@@ -251,16 +251,16 @@
   padding: 0.7rem 0;
   text-decoration: none;
 }
-.pep-nest-reservations-list a:hover strong {
+.nest-reservations-list a:hover strong {
   color: var(--blue-dark);
   text-decoration: underline;
 }
-.pep-nest-reservations-list span {
+.nest-reservations-list span {
   color: var(--muted);
   font-size: 0.8rem;
   text-align: right;
 }
-.pep-nest-stock-actions {
+.nest-stock-actions {
   background: #f5f8f8;
   border-top: 1px solid var(--line);
   color: var(--muted);
@@ -268,90 +268,90 @@
   font-size: 0.8rem;
   padding: 0.75rem 1.1rem;
 }
-.pep-nest-stock-actions form,
-.pep-nest-stock-actions button {
+.nest-stock-actions form,
+.nest-stock-actions button {
   margin: 0;
 }
-.pep-nest-empty {
+.nest-empty {
   margin: 1rem 1.1rem;
 }
 @media (max-width: 900px) {
-  .pep-nest-overview {
+  .nest-overview {
     grid-template-columns: 1fr;
   }
-  .pep-nest-sidebar {
+  .nest-sidebar {
     grid-template-columns: 1fr 1fr;
   }
 }
 @media (max-width: 720px) {
-  .pep-nest-hero {
+  .nest-hero {
     grid-template-columns: 1fr;
   }
-  .pep-nest-hero-meta {
+  .nest-hero-meta {
     border-left: 0;
     border-top: 1px solid #3a5961;
     grid-template-columns: 1fr 1fr;
     min-width: 0;
     padding: 1rem 0 0;
   }
-  .pep-nest-sidebar {
+  .nest-sidebar {
     grid-template-columns: 1fr;
   }
-  .pep-nest-parts-table {
+  .nest-parts-table {
     display: none;
   }
-  .pep-nest-parts-cards {
+  .nest-parts-cards {
     display: grid;
     gap: 0;
   }
-  .pep-nest-part-card {
+  .nest-part-card {
     border-bottom: 1px solid var(--line);
     padding: 1rem 1.1rem;
   }
-  .pep-nest-part-card:last-child {
+  .nest-part-card:last-child {
     border-bottom: 0;
   }
-  .pep-nest-part-card h3 {
+  .nest-part-card h3 {
     font-size: 1rem;
     margin-bottom: 0.7rem;
     overflow-wrap: anywhere;
   }
-  .pep-nest-part-card dl {
+  .nest-part-card dl {
     display: grid;
     gap: 0.25rem 1rem;
     grid-template-columns: 1fr 1fr;
     margin: 0;
   }
-  .pep-nest-part-card dt {
+  .nest-part-card dt {
     color: var(--muted);
     font-size: 0.75rem;
     font-weight: 700;
   }
-  .pep-nest-part-card dd {
+  .nest-part-card dd {
     margin: 0;
     overflow-wrap: anywhere;
   }
-  .pep-nest-material-card .detail-grid {
+  .nest-material-card .detail-grid {
     grid-template-columns: 1fr;
   }
-  .pep-nest-mapping-summary {
+  .nest-mapping-summary {
     grid-template-columns: 1fr;
   }
-  .pep-nest-mapping-summary .button {
+  .nest-mapping-summary .button {
     grid-column: 1;
     grid-row: auto;
     width: 100%;
   }
-  .pep-material-mapping-dialog .button {
+  .nest-material-mapping-dialog .button {
     width: 100%;
   }
-  .pep-material-mapping-dialog > form:not([method="dialog"]) {
+  .nest-material-mapping-dialog > form:not([method="dialog"]) {
     grid-template-columns: 1fr;
   }
-  .pep-found-sheet-dialog > form:not([method="dialog"]) {
+  .nest-found-sheet-dialog > form:not([method="dialog"]) {
     grid-template-columns: 1fr;
   }
-  .pep-nest-stock-actions .button {
+  .nest-stock-actions .button {
     width: 100%;
   }
 }

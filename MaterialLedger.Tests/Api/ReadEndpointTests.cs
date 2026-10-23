@@ -211,10 +211,10 @@ public class ReadEndpointTests : IClassFixture<ReadEndpointTests.ApiFactory>
     }
 
     [Fact]
-    public async Task Reservation_route_returns_the_opennest_and_pep_nest_references()
+    public async Task Reservation_route_returns_the_opennest_and_legacy_nest_references()
     {
         var nestId = Guid.NewGuid();
-        long openNestHoldId = 0, pepHoldId = 0;
+        long openNestHoldId = 0, legacyHoldId = 0;
         await SeedAsync(async (MaterialLedgerDbContext db) =>
         {
             var user = new AppUser { Username = $"holder-{Guid.NewGuid():N}", DisplayName = "Holder", PasswordHash = "hash" };
@@ -227,24 +227,23 @@ public class ReadEndpointTests : IClassFixture<ReadEndpointTests.ApiFactory>
                 ShapeClassification = ShapeClassification.Rectangular, LastObservedAtUtc = DateTime.UtcNow, LastObservedByUser = user
             };
             var openNestHold = new MaterialReservation { InventoryItem = item, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUser = user, OpenNestNestId = nestId, NestName = "ON-NEST-7" };
-            var pepHold = new MaterialReservation { InventoryItem = item, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUser = user, PepNestYear = 2026, PepNestName = "NEST-31" };
-            db.AddRange(item, openNestHold, pepHold);
+            var legacyHold = new MaterialReservation { InventoryItem = item, Status = ReservationStatus.Proposed, ReservedQuantity = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUser = user, NestName = "LEGACY NEST-31" };
+            db.AddRange(item, openNestHold, legacyHold);
             await db.SaveChangesAsync();
             openNestHoldId = openNestHold.MaterialReservationId;
-            pepHoldId = pepHold.MaterialReservationId;
+            legacyHoldId = legacyHold.MaterialReservationId;
         });
         using var client = CreateAuthenticatedClient();
 
         var openNest = await client.GetFromJsonAsync<JsonElement>($"/api/v1/reservations/{openNestHoldId}");
-        var pep = await client.GetFromJsonAsync<JsonElement>($"/api/v1/reservations/{pepHoldId}");
+        var legacy = await client.GetFromJsonAsync<JsonElement>($"/api/v1/reservations/{legacyHoldId}");
 
         Assert.Equal(nestId, openNest.GetProperty("openNestNestId").GetGuid());
         Assert.Equal("ON-NEST-7", openNest.GetProperty("nestName").GetString());
-        Assert.Equal(JsonValueKind.Null, openNest.GetProperty("pepNestYear").ValueKind);
-        Assert.Equal(2026, pep.GetProperty("pepNestYear").GetInt32());
-        Assert.Equal("NEST-31", pep.GetProperty("pepNestName").GetString());
-        Assert.Equal(JsonValueKind.Null, pep.GetProperty("openNestNestId").ValueKind);
-        Assert.Equal(JsonValueKind.Null, pep.GetProperty("nestName").ValueKind);
+        Assert.Equal(JsonValueKind.Null, legacy.GetProperty("openNestNestId").ValueKind);
+        Assert.Equal("LEGACY NEST-31", legacy.GetProperty("nestName").GetString());
+        Assert.False(legacy.TryGetProperty("pepNestYear", out _));
+        Assert.False(legacy.TryGetProperty("pepNestName", out _));
     }
 
     [Fact]

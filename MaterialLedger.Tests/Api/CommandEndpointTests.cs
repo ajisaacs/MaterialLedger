@@ -153,32 +153,28 @@ public class CommandEndpointTests : IClassFixture<CommandEndpointTests.ApiFactor
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal(nestId, service.LastRequest!.OpenNestNestId);
         Assert.Equal("ON-NEST-7", service.LastRequest.NestName);
-        Assert.Null(service.LastRequest.PepNestYear);
-        Assert.Null(service.LastRequest.PepNestName);
     }
 
-    [Fact]
-    public async Task Reservation_still_passes_the_pep_nest_reference_to_the_service()
+    [Theory]
+    [InlineData("pepNestYear", "{\"kind\":\"create-reservation\",\"createReservation\":{\"inventoryItemId\":9,\"pepNestYear\":2026}}")]
+    [InlineData("pepNestName", "{\"kind\":\"create-reservation\",\"createReservation\":{\"inventoryItemId\":9,\"pepNestName\":\"NEST-31\"}}")]
+    public async Task Reservation_rejects_the_removed_legacy_nest_fields(string field, string body)
     {
-        var service = new StubReservationService();
-        using var client = CreateClient("Manager", services => services.Replace(ServiceDescriptor.Scoped<IReservationService>(_ => service)));
+        var reservations = new StubReservationService();
+        using var client = CreateClient("Manager", services => services.Replace(ServiceDescriptor.Scoped<IReservationService>(_ => reservations)));
         client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
 
-        var response = await client.PostAsJsonAsync("/api/v1/commands", new { kind = "create-reservation", createReservation = new { inventoryItemId = 9L, pepNestYear = 2026, pepNestName = "NEST-31" } });
+        var response = await PostJsonAsync(client, body);
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.Equal(2026, service.LastRequest!.PepNestYear);
-        Assert.Equal("NEST-31", service.LastRequest.PepNestName);
-        Assert.Null(service.LastRequest.OpenNestNestId);
-        Assert.Null(service.LastRequest.NestName);
+        var problem = await AssertProblemAsync(response, HttpStatusCode.BadRequest, "validation");
+        Assert.True(problem.GetProperty("errors").TryGetProperty(field, out _));
+        Assert.Equal(0, reservations.Calls);
     }
 
     [Theory]
     [InlineData("{\"kind\":\"create-reservation\",\"createReservation\":{\"inventoryItemId\":9,\"openNestNestId\":\"6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a\"}}", "nestName")]
     [InlineData("{\"kind\":\"create-reservation\",\"createReservation\":{\"inventoryItemId\":9,\"openNestNestId\":\"6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a\",\"nestName\":\"  \"}}", "nestName")]
-    [InlineData("{\"kind\":\"create-reservation\",\"createReservation\":{\"inventoryItemId\":9,\"openNestNestId\":\"6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a\",\"nestName\":\"ON-NEST-7\",\"pepNestYear\":2026,\"pepNestName\":\"NEST-31\"}}", "openNestNestId")]
-    [InlineData("{\"kind\":\"create-reservation\",\"createReservation\":{\"inventoryItemId\":9,\"nestName\":\"ON-NEST-7\",\"pepNestName\":\"NEST-31\"}}", "openNestNestId")]
-    public async Task Reservation_rejects_an_incomplete_or_conflicting_nest_reference(string body, string errorProperty)
+    public async Task Reservation_rejects_an_incomplete_nest_reference(string body, string errorProperty)
     {
         var reservations = new StubReservationService();
         using var client = CreateClient("Manager", services => services.Replace(ServiceDescriptor.Scoped<IReservationService>(_ => reservations)));

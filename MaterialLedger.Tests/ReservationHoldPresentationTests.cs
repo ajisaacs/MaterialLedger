@@ -57,8 +57,7 @@ public sealed class ReservationHoldPresentationTests
         Assert.Contains("<summary>Additional traceability</summary>", page);
         Assert.Contains("asp-for=\"ShopOpsJobId\"", page);
         Assert.Contains("asp-for=\"DrawingRevision\"", page);
-        Assert.Contains("asp-for=\"PepNestYear\"", page);
-        Assert.Contains("asp-for=\"PepNestName\"", page);
+        Assert.DoesNotContain("PEP", page, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("asp-for=\"LaserProgramRecordId\"", page);
     }
 
@@ -138,24 +137,6 @@ public sealed class ReservationHoldPresentationTests
         Assert.IsType<PageResult>(result);
         Assert.Equal(nestId, model.OpenNestNestId);
         Assert.Equal("ON-NEST-7", model.NestName);
-        Assert.Null(model.PepNestYear);
-        Assert.Null(model.PepNestName);
-    }
-
-    [Fact]
-    public async Task Hold_get_still_accepts_the_pep_nest_reference_from_the_query()
-    {
-        await using var db = CreateDb();
-        var item = await AddAvailableSheetAsync(db);
-        var model = NewCreateModel(db);
-
-        var result = await model.OnGetAsync(item.InventoryItemId, pepNestYear: 2026, pepNestName: "NEST-31");
-
-        Assert.IsType<PageResult>(result);
-        Assert.Equal(2026, model.PepNestYear);
-        Assert.Equal("NEST-31", model.PepNestName);
-        Assert.Null(model.OpenNestNestId);
-        Assert.Null(model.NestName);
     }
 
     private static async Task<InventoryItem> AddAvailableSheetAsync(MaterialLedgerDbContext db)

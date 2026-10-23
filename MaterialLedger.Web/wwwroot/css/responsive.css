@@ -240,38 +240,38 @@
     display: block;
   }
 
-  .pep-nest-parts-cards {
+  .nest-parts-cards {
     display: grid;
     gap: 0.85rem;
   }
 
-  .pep-nest-part-card {
+  .nest-part-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 6px;
     padding: 0.9rem 1rem;
   }
 
-  .pep-nest-part-card h3 {
+  .nest-part-card h3 {
     font-size: 1rem;
     margin-bottom: 0.7rem;
     overflow-wrap: anywhere;
   }
 
-  .pep-nest-part-card dl {
+  .nest-part-card dl {
     display: grid;
     gap: 0.25rem 1rem;
     grid-template-columns: 1fr 1fr;
     margin: 0;
   }
 
-  .pep-nest-part-card dt {
+  .nest-part-card dt {
     color: var(--ink);
     font-size: 0.78rem;
     font-weight: 700;
   }
 
-  .pep-nest-part-card dd {
+  .nest-part-card dd {
     color: var(--muted);
     margin: 0;
     overflow-wrap: anywhere;
@@ -442,16 +442,16 @@
     overflow-wrap: anywhere;
   }
 
-  /* ── PEP nests mobile cards ── */
+  /* ── Nests mobile cards ── */
 
-  .pep-nest-card {
+  .nest-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 6px;
     padding: 0.9rem 1rem;
   }
 
-  .pep-nest-card-header {
+  .nest-card-header {
     align-items: baseline;
     display: flex;
     flex-wrap: wrap;
@@ -460,17 +460,17 @@
     margin-bottom: 0.6rem;
   }
 
-  .pep-nest-card-name {
+  .nest-card-name {
     font-size: 1rem;
     font-weight: 700;
   }
 
-  .pep-nest-card-status {
+  .nest-card-status {
     color: var(--muted);
     font-size: 0.84rem;
   }
 
-  .pep-nest-card-body {
+  .nest-card-body {
     color: var(--muted);
     display: grid;
     gap: 0.25rem 1rem;
@@ -478,22 +478,22 @@
     margin: 0;
   }
 
-  .pep-nest-card-body dt {
+  .nest-card-body dt {
     color: var(--ink);
     font-size: 0.78rem;
     font-weight: 700;
   }
 
-  .pep-nest-card-body dd {
+  .nest-card-body dd {
     margin: 0.15rem 0 0;
     overflow-wrap: anywhere;
   }
 
-  .pep-nest-card-action {
+  .nest-card-action {
     margin-top: 0.75rem;
   }
 
-  .pep-nest-card-action .button {
+  .nest-card-action .button {
     display: block;
     text-align: center;
     width: 100%;

@@ -310,8 +310,6 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                                       r.ShopOpsJobId,
                                       r.DrawingId,
                                       r.DrawingRevision,
-                                      r.PepNestYear,
-                                      r.PepNestName,
                                       r.NestName
                                   }).Take(20).ToListAsync();
 
@@ -325,10 +323,6 @@ public class InventoryQueryService(MaterialLedgerDbContext db, int freshnessThre
                         ? $"Drawing {r.DrawingId}"
                         : $"Drawing {r.DrawingId} rev {r.DrawingRevision}")
                 : !string.IsNullOrWhiteSpace(r.NestName) ? $"Nest {r.NestName}"
-                : !string.IsNullOrWhiteSpace(r.PepNestName)
-                    ? (r.PepNestYear is null
-                        ? $"Nest {r.PepNestName}"
-                        : $"Nest {r.PepNestYear}: {r.PepNestName}")
                 : null,
             Equipment = r.Equipment?.ToString(),
             CreatedAt = r.CreatedAtUtc,

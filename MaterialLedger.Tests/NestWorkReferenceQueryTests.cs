@@ -10,7 +10,7 @@ namespace MaterialLedger.Tests;
 public class NestWorkReferenceQueryTests
 {
     [Fact]
-    public async Task Item_reservations_describe_opennest_pep_and_drawing_holds_with_job_and_drawing_first()
+    public async Task Item_reservations_describe_opennest_legacy_and_drawing_holds_with_job_and_drawing_first()
     {
         await using var db = CreateDb();
         var item = await SeedReservationsAsync(db);
@@ -18,12 +18,12 @@ public class NestWorkReferenceQueryTests
         var summaries = await new InventoryQueryService(db, freshnessThresholdDays: 90).GetItemReservationsAsync(item.InventoryItemId);
 
         Assert.Equal(
-            ["Job JOB-1", "Drawing DWG-1 rev A", "Nest ON-NEST-7", "Nest 2026: NEST-31", "Nest NEST-NOYEAR", null],
+            ["Job JOB-1", "Drawing DWG-1 rev A", "Nest ON-NEST-7", "Nest LEGACY 2026: NEST-31", "Nest LEGACY NEST-NOYEAR", null],
             summaries.OrderBy(x => x.ReservationId).Select(x => x.WorkReference));
     }
 
     [Fact]
-    public async Task Work_queue_describes_opennest_pep_and_drawing_holds_with_job_and_drawing_first()
+    public async Task Work_queue_describes_opennest_legacy_and_drawing_holds_with_job_and_drawing_first()
     {
         await using var db = CreateDb();
         await SeedReservationsAsync(db);
@@ -31,7 +31,7 @@ public class NestWorkReferenceQueryTests
         var summary = await new WorkQueueQueryService(db, new InventoryQueryService(db, freshnessThresholdDays: 90)).GetAsync();
 
         Assert.Equal(
-            ["Job JOB-1", "Drawing DWG-1 rev A", "Nest ON-NEST-7", "Nest 2026: NEST-31", "Nest NEST-NOYEAR", "Unassigned material hold"],
+            ["Job JOB-1", "Drawing DWG-1 rev A", "Nest ON-NEST-7", "Nest LEGACY 2026: NEST-31", "Nest LEGACY NEST-NOYEAR", "Unassigned material hold"],
             summary.RecentWork.OrderBy(x => x.MaterialReservationId).Select(x => x.WorkReference));
     }
 
@@ -53,8 +53,8 @@ public class NestWorkReferenceQueryTests
             Hold(1, item, user, createdAt, r => { r.ShopOpsJobId = "JOB-1"; r.DrawingId = "DWG-1"; r.OpenNestNestId = nestId; r.NestName = "ON-NEST-7"; }),
             Hold(2, item, user, createdAt, r => { r.DrawingId = "DWG-1"; r.DrawingRevision = "A"; r.OpenNestNestId = nestId; r.NestName = "ON-NEST-7"; }),
             Hold(3, item, user, createdAt, r => { r.OpenNestNestId = nestId; r.NestName = "ON-NEST-7"; }),
-            Hold(4, item, user, createdAt, r => { r.PepNestYear = 2026; r.PepNestName = "NEST-31"; }),
-            Hold(5, item, user, createdAt, r => r.PepNestName = "NEST-NOYEAR"),
+            Hold(4, item, user, createdAt, r => r.NestName = "LEGACY 2026: NEST-31"),
+            Hold(5, item, user, createdAt, r => r.NestName = "LEGACY NEST-NOYEAR"),
             Hold(6, item, user, createdAt, _ => { }));
         await db.SaveChangesAsync();
         return item;

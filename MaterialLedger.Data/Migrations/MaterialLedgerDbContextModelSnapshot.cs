@@ -406,13 +406,6 @@ namespace MaterialLedger.Data.Migrations
                     b.Property<Guid?>("OpenNestNestId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("PepNestName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int?>("PepNestYear")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("ReservedAreaSqIn")
                         .HasColumnType("decimal(14,3)");
 
@@ -547,7 +540,7 @@ namespace MaterialLedger.Data.Migrations
 
                     b.ToTable("MaterialSpecExternalMappings", "material", t =>
                         {
-                            t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'PEP', N'OpenNest')");
+                            t.HasCheckConstraint("CK_MaterialSpecExternalMapping_ExternalSystem", "[ExternalSystem] IN (N'OpenNest')");
                         });
                 });
 

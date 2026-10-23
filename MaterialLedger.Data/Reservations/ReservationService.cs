@@ -18,8 +18,6 @@ public record CreateReservationRequest(
     string? DrawingId,
     string? DrawingRevision,
     ReservationEquipment? Equipment,
-    int? PepNestYear,
-    string? PepNestName,
     string? LaserProgramRecordId,
     decimal? ExpectedRemainderWidthIn,
     decimal? ExpectedRemainderLengthIn,
@@ -89,8 +87,6 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
             DrawingId = request.DrawingId,
             DrawingRevision = request.DrawingRevision,
             Equipment = request.Equipment,
-            PepNestYear = request.PepNestYear,
-            PepNestName = request.PepNestName,
             OpenNestNestId = request.OpenNestNestId,
             NestName = request.NestName,
             LaserProgramRecordId = request.LaserProgramRecordId,
@@ -176,8 +172,7 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
             {
                 InventoryItemId = request.InventoryItemId, ShopOpsJobId = request.ShopOpsJobId,
                 DrawingId = request.DrawingId, DrawingRevision = request.DrawingRevision,
-                Equipment = request.Equipment, PepNestYear = request.PepNestYear,
-                PepNestName = request.PepNestName, OpenNestNestId = request.OpenNestNestId,
+                Equipment = request.Equipment, OpenNestNestId = request.OpenNestNestId,
                 NestName = request.NestName, LaserProgramRecordId = request.LaserProgramRecordId,
                 ReservedQuantity = 1, Status = ReservationStatus.Proposed, CreatedAtUtc = now, CreatedBy = createdBy,
                 ExpectedRemainderWidthIn = remnants.FirstOrDefault()?.WidthIn,
@@ -338,14 +333,10 @@ public class ReservationService(MaterialLedgerDbContext db, OperationLogGuard op
     }
 
     /// <summary>
-    /// A hold references an OpenNest nest (id plus name snapshot) or a legacy PEP nest (year plus name), never both.
+    /// A hold references an OpenNest nest by id plus a name snapshot; legacy holds carry only the name.
     /// </summary>
     private static void ValidateNestReference(CreateReservationRequest request)
     {
-        var hasOpenNest = request.OpenNestNestId is not null || !string.IsNullOrWhiteSpace(request.NestName);
-        var hasPep = request.PepNestYear is not null || !string.IsNullOrWhiteSpace(request.PepNestName);
-        if (hasOpenNest && hasPep)
-            throw new InvalidOperationException("A material hold can reference an OpenNest nest or a PEP nest, not both.");
         if (request.OpenNestNestId is not null && string.IsNullOrWhiteSpace(request.NestName))
             throw new InvalidOperationException("A nest name is required when an OpenNest nest is referenced.");
         if (request.NestName?.Length > MaterialReservation.NestNameMaxLength)

@@ -19,8 +19,6 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
     [BindProperty] public string? DrawingId { get; set; }
     [BindProperty] public string? DrawingRevision { get; set; }
     [BindProperty] public ReservationEquipment? Equipment { get; set; }
-    [BindProperty] public int? PepNestYear { get; set; }
-    [BindProperty] public string? PepNestName { get; set; }
     [BindProperty] public Guid? OpenNestNestId { get; set; }
     [BindProperty] public string? NestName { get; set; }
     [BindProperty] public string? LaserProgramRecordId { get; set; }
@@ -29,8 +27,7 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
     public InventoryItemSummary? Item { get; set; }
     public string? Error { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(long inventoryItemId, int? pepNestYear = null, string? pepNestName = null, int? pepMaterialNumber = null,
-        Guid? openNestNestId = null, string? nestName = null)
+    public async Task<IActionResult> OnGetAsync(long inventoryItemId, Guid? openNestNestId = null, string? nestName = null)
     {
         Item = await inventoryQuery.GetItemSummaryAsync(inventoryItemId);
         if (Item is null)
@@ -39,8 +36,6 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
             return RedirectToPage("/Inventory/Search");
         }
         InventoryItemId = inventoryItemId;
-        PepNestYear = pepNestYear;
-        PepNestName = pepNestName;
         OpenNestNestId = openNestNestId;
         NestName = nestName;
         CorrelationId = Guid.NewGuid();
@@ -70,8 +65,7 @@ public class CreateModel(InventoryQueryService inventoryQuery, ReservationServic
             }
 
             var request = new CreateReservationRequest(
-                InventoryItemId, ShopOpsJobId, DrawingId, DrawingRevision, Equipment,
-                PepNestYear, PepNestName, LaserProgramRecordId,
+                InventoryItemId, ShopOpsJobId, DrawingId, DrawingRevision, Equipment, LaserProgramRecordId,
                 null, null, null,
                 expectedRemnants.Count > 0 ? expectedRemnants : null,
                 OpenNestNestId: OpenNestNestId, NestName: NestName);

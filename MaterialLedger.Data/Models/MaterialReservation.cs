@@ -18,8 +18,6 @@ public class MaterialReservation
     public string? ShopOpsJobId { get; set; }
     public string? DrawingId { get; set; }
     public string? DrawingRevision { get; set; }
-    public int? PepNestYear { get; set; }
-    public string? PepNestName { get; set; }
     public Guid? OpenNestNestId { get; set; }
     public string? NestName { get; set; }
     public ReservationEquipment? Equipment { get; set; }

@@ -35,20 +35,19 @@ public sealed class ReservationDetailsContextPresentationTests
     }
 
     [Theory]
-    [InlineData("JOB-42", "DWG-9", "B", 2026, "nest-1", "Job JOB-42")]
-    [InlineData(null, "DWG-9", "B", 2026, "nest-1", "Drawing DWG-9 rev B")]
-    [InlineData(null, null, null, 2026, "nest-1", "Nest 2026: nest-1")]
-    [InlineData(null, null, null, null, null, "Unassigned material hold")]
+    [InlineData("JOB-42", "DWG-9", "B", "2026: nest-1", "Job JOB-42")]
+    [InlineData(null, "DWG-9", "B", "2026: nest-1", "Drawing DWG-9 rev B")]
+    [InlineData(null, null, null, "2026: nest-1", "Nest 2026: nest-1")]
+    [InlineData(null, null, null, null, "Unassigned material hold")]
     public void Work_reference_uses_the_queue_priority_for_every_supported_reference_type(
-        string? jobId, string? drawingId, string? revision, int? nestYear, string? nestName, string expected)
+        string? jobId, string? drawingId, string? revision, string? nestName, string expected)
     {
         var reservation = new MaterialReservation
         {
             ShopOpsJobId = jobId,
             DrawingId = drawingId,
             DrawingRevision = revision,
-            PepNestYear = nestYear,
-            PepNestName = nestName
+            NestName = nestName
         };
 
         Assert.Equal(expected, ReservationWorkReference.Describe(reservation));
@@ -72,10 +71,10 @@ public sealed class ReservationDetailsContextPresentationTests
     }
 
     [Fact]
-    public void Closeout_work_reference_shows_the_opennest_nest_name_and_keeps_the_pep_text()
+    public void Closeout_work_reference_shows_the_nest_name_for_opennest_and_legacy_holds()
     {
         Assert.Equal("ON-NEST-7", ClosingWorkReference.Describe(new MaterialReservation { OpenNestNestId = Guid.NewGuid(), NestName = "ON-NEST-7" }));
-        Assert.Equal("2026 nest-1", ClosingWorkReference.Describe(new MaterialReservation { PepNestYear = 2026, PepNestName = "nest-1" }));
+        Assert.Equal("LEGACY 2026: nest-1", ClosingWorkReference.Describe(new MaterialReservation { NestName = "LEGACY 2026: nest-1" }));
     }
 
     [Fact]
@@ -84,12 +83,12 @@ public sealed class ReservationDetailsContextPresentationTests
         var nestId = Guid.Parse("6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a");
 
         Assert.Equal("~/Nests/6f9a1c1e-3c55-4d7e-9b0e-2a4f1d2c3b4a", ReservationWorkReference.NestPath(new MaterialReservation { OpenNestNestId = nestId, NestName = "ON-NEST-7" }));
-        Assert.Null(ReservationWorkReference.NestPath(new MaterialReservation { PepNestYear = 2026, PepNestName = "nest-1" }));
+        Assert.Null(ReservationWorkReference.NestPath(new MaterialReservation { NestName = "LEGACY 2026: nest-1" }));
         Assert.Null(ReservationWorkReference.NestPath(new MaterialReservation()));
     }
 
     [Fact]
-    public void Details_links_opennest_holds_to_the_nest_page_and_keeps_pep_holds_as_text()
+    public void Details_links_opennest_holds_to_the_nest_page_and_shows_legacy_holds_as_text()
     {
         var details = ReadReservationPage("Details.cshtml");
 
@@ -97,8 +96,8 @@ public sealed class ReservationDetailsContextPresentationTests
         Assert.DoesNotContain("href=\"@Url.Content(nestPath)\"", details);
         Assert.Contains("@Model.Reservation.NestName", details);
         Assert.Contains("asp-page=\"/Nests/Details\" asp-route-id=\"@Model.Reservation.OpenNestNestId\"", details);
-        Assert.Contains("@Model.Reservation.PepNestYear @Model.Reservation.PepNestName", details);
-        Assert.DoesNotContain("PepNests/Details", details);
+        Assert.Contains("@(Model.Reservation.NestName ?? \"Not recorded\")", details);
+        Assert.DoesNotContain("PEP", details, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]

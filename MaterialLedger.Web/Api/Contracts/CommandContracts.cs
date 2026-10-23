@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MaterialLedger.Data.Models;
 
 namespace MaterialLedger.Web.Api.Contracts;
@@ -25,14 +26,14 @@ public sealed record ReceiveMaterialCommand(
     string? Notes,
     long? PurchaseOrderLineId);
 
+// Unknown members are rejected so callers still sending removed fields get a 400 instead of a silently unreferenced hold.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CreateReservationCommand(
     long? InventoryItemId,
     string? ShopOpsJobId,
     string? DrawingId,
     string? DrawingRevision,
     ReservationEquipment? Equipment,
-    int? PepNestYear,
-    string? PepNestName,
     string? LaserProgramRecordId,
     IReadOnlyList<ExpectedRemnantCommand>? ExpectedRemnants,
     Guid? OpenNestNestId = null,
@@ -57,8 +58,6 @@ public sealed record ReservationContract(
     string? ShopOpsJobId,
     string? DrawingId,
     string? DrawingRevision,
-    int? PepNestYear,
-    string? PepNestName,
     Guid? OpenNestNestId,
     string? NestName,
     string? LaserProgramRecordId,

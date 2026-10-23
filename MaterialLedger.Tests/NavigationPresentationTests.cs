@@ -138,7 +138,7 @@ public sealed class NavigationPresentationTests
         Assert.Contains("class=\"inventory-card\"", search);
         Assert.Contains("class=\"desktop-table\"", nests);
         Assert.Contains("mobile-card-grid mobile-card", nests);
-        Assert.Contains("class=\"pep-nest-card\"", nests);
+        Assert.Contains("class=\"nest-card\"", nests);
         Assert.Contains("class=\"desktop-table\"", reservations);
         Assert.Contains("mobile-card-grid mobile-card", reservations);
         Assert.Contains("class=\"workflow-queue-card\"", reservations);

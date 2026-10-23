@@ -5,7 +5,7 @@ public enum MaterialTransactionType
     OpeningBalance, Receipt, Reservation, ReservationRelease, Return,
     Consumption, RemnantCreated, Transfer, Adjustment, Scrap, Quarantine
 }
-public enum MaterialTransactionSourceSystem { OperatorUI, LaserDashboard, PEPReference, AdministrativeAdjustment }
+public enum MaterialTransactionSourceSystem { OperatorUI, LaserDashboard, AdministrativeAdjustment }
 
 public class MaterialTransaction
 {

@@ -14,8 +14,6 @@ public static class ReservationWorkReference
                 : $"{reservation.DrawingId} rev {reservation.DrawingRevision}";
         if (!string.IsNullOrWhiteSpace(reservation.NestName))
             return reservation.NestName;
-        if (!string.IsNullOrWhiteSpace(reservation.PepNestName))
-            return reservation.PepNestYear is null ? reservation.PepNestName : $"{reservation.PepNestYear} {reservation.PepNestName}";
         return "No work reference recorded";
     }
 }
