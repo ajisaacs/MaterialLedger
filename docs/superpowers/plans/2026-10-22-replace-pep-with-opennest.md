@@ -111,9 +111,9 @@ Mapping key: `ExternalKey = "{material}|{grade}|{thickness:0.####}"`. Trim each 
 - [ ] Make the model changes, run `dotnet ef migrations add AddOpenNestReferences`, then `dotnet ef database update`
 - [ ] Write `OpenNestMaterialMappingServiceTests` covering create, remap, replay, key normalization and rejects, modeled on `PepMaterialMappingServiceTests`, then implement the service
 
-## Task 4: Reservation plumbing
+## Task 4: Reservation plumbing (additive)
 
-Every place that reads or writes the PEP pair moves to `OpenNestNestId` + `NestName`:
+Every place that reads or writes the PEP pair also carries `OpenNestNestId` + `NestName`. The PEP fields stay, so PEP holds and pages keep working. Task 6 removes them, which is when the API break lands. Display order: OpenNest reference first, then the PEP pair, then job/drawing as today.
 
 - `MaterialLedger.Data/Reservations/ReservationService.cs:21-22, 89-90, 170-171` (request record, create, batch create). Update the comment at `:128`.
 - `MaterialLedger.Data/Inventory/InventoryQueryService.cs:313-330` — work reference text becomes `Nest {NestName}`.
@@ -124,7 +124,8 @@ Every place that reads or writes the PEP pair moves to `OpenNestNestId` + `NestN
 - `docs/api/v1.md` — same rename.
 
 - [ ] Port `ReservationServiceTests`, `ReservationDetailsContextPresentationTests`, `ReservationHoldPresentationTests` to the new fields first
-- [ ] Make the changes until the solution builds with no `Pep` identifiers outside migrations
+- [ ] Make the changes until the solution builds and every PEP path still works alongside the new one
+- [ ] (Task 6) Remove the PEP fields from all of the above and from `docs/api/v1.md`
 
 ## Task 5: Pages — `/PepNests` → `/Nests`
 
